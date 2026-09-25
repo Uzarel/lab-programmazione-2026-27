@@ -1,0 +1,26 @@
+# LaTeX
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+*.vrb
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+mermaid/
+
+# Java
+*.class
+out/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Jekyll
+_site/
+.jekyll-cache/

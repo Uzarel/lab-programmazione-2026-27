@@ -1,0 +1,30 @@
+name: Errore nelle slide
+description: Refuso, errore o spiegazione poco chiara in una slide
+title: "[L__] "
+labels: ["slide"]
+body:
+  - type: dropdown
+    id: lezione
+    attributes:
+      label: Lezione
+      options: ["L01","L02","L03","L04","L05","L06","L07","L08","L09","L10","L11","L12","L13","Programma"]
+    validations:
+      required: true
+  - type: input
+    id: slide
+    attributes:
+      label: Numero di slide
+      placeholder: "es. 14"
+  - type: textarea
+    id: problema
+    attributes:
+      label: Cosa non va
+      description: Copia il testo sbagliato e, se sai come, scrivi la versione corretta.
+    validations:
+      required: true
+  - type: checkboxes
+    id: pr
+    attributes:
+      label: Vuoi correggerlo tu?
+      options:
+        - label: Sì, apro io una pull request

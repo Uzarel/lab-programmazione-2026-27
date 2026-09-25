@@ -1,0 +1,15 @@
+title: Laboratorio di Programmazione 2026/27
+description: Slide, sorgenti LaTeX ed esercizi del corso — Ingegneria Informatica, II anno
+theme: jekyll-theme-cayman
+lang: it
+
+# Cartelle che non devono finire nel sito
+exclude:
+  - README.md
+  - CONTRIBUTING.md
+  - Makefile
+  - common/
+  - .github/
+  - "*.aux"
+  - "*.log"
+  - mermaid/

@@ -1,0 +1,25 @@
+name: Errore nel codice
+description: Un esercizio non compila o dà un risultato sbagliato
+title: "[L__] "
+labels: ["codice"]
+body:
+  - type: input
+    id: file
+    attributes:
+      label: File
+      placeholder: "es. lezioni/L01/esercizi/Media.java"
+    validations:
+      required: true
+  - type: textarea
+    id: errore
+    attributes:
+      label: Errore o output sbagliato
+      description: Incolla il messaggio di javac o l'output ottenuto e quello atteso.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: jdk
+    attributes:
+      label: Versione JDK
+      placeholder: "output di: java -version"

@@ -1,0 +1,10 @@
+name: Proposta
+description: Un esercizio extra, un chiarimento, un'idea per il corso
+labels: ["proposta"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Proposta
+    validations:
+      required: true

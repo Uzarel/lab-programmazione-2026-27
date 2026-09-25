@@ -1,0 +1,27 @@
+# Compila tutti gli esercizi Java: se una PR rompe un esempio, si vede subito.
+name: Compila esercizi Java
+on:
+  pull_request:
+    paths: ["lezioni/**/*.java"]
+  push:
+    branches: [main]
+    paths: ["lezioni/**/*.java"]
+jobs:
+  javac:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: javac su ogni cartella esercizi
+        run: |
+          set -e
+          for d in lezioni/*/esercizi; do
+            files=$(find "$d" -name '*.java')
+            [ -z "$files" ] && continue
+            echo "== $d"
+            out=$(mktemp -d)
+            javac -Xlint:all -Werror -d "$out" $files
+          done

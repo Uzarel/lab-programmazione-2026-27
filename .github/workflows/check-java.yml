@@ -1,14 +1,13 @@
-# Compila tutti gli esercizi Java: se una PR rompe un esempio, si vede subito.
+# Compila tutti gli esercizi Java. Gira su OGNI pull request e su ogni push su main,
+# anche quando non tocca file .java: un check richiesto dalla protezione del branch
+# deve sempre riportare un esito, altrimenti la PR resta bloccata in attesa.
 name: Compila esercizi Java
 on:
   pull_request:
-    paths: ["lezioni/**/*.java"]
   push:
     branches: [main]
-    paths: ["lezioni/**/*.java"]
 jobs:
   javac:
-    name: Compila esercizi Java
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,10 +18,13 @@ jobs:
       - name: javac su ogni cartella esercizi
         run: |
           set -e
+          found=0
           for d in lezioni/*/esercizi; do
-            files=$(find "$d" -name '*.java')
+            files=$(find "$d" -name '*.java' 2>/dev/null)
             [ -z "$files" ] && continue
+            found=1
             echo "== $d"
             out=$(mktemp -d)
             javac -Xlint:all -Werror -d "$out" $files
           done
+          [ "$found" = 1 ] || echo "Nessun file .java trovato: niente da compilare."

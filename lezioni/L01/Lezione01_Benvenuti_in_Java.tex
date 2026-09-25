@@ -1,0 +1,900 @@
+% ============================================================================
+%  Laboratorio di Programmazione -- Lezione 1 (15 settembre 2026)
+%  Compilare con:  pdflatex -shell-escape Lezione01_Benvenuti_in_Java.tex
+%  Richiede: pacchetto `mermaid` (CTAN: ltmermaid) + Mermaid CLI `mmdc` nel PATH
+%  NB: ogni frame che contiene codice (lstlisting) o un diagramma (mermaid)
+%      deve essere dichiarato [fragile].
+% ============================================================================
+\documentclass[10pt,aspectratio=169]{beamer}
+\usetheme{Madrid}
+\usecolortheme{default}
+
+% `provide=*` carica la localizzazione italiana dai file .ini di babel: funziona anche
+% su installazioni TeX prive di texlive-lang-italian; con una TeX Live completa e`
+% equivalente al classico \usepackage[italian]{babel}.
+\usepackage[italian,provide=*]{babel}
+\usepackage[utf8]{inputenc}
+
+% Localizzazione dei nomi dei blocchi Beamer
+\uselanguage{italian}
+\languagepath{italian}
+\deftranslation[to=italian]{Definition}{Definizione}
+\deftranslation[to=italian]{Theorem}{Teorema}
+\deftranslation[to=italian]{Example}{Esempio}
+\deftranslation[to=italian]{Proof}{Dimostrazione}
+\deftranslation[to=italian]{Corollary}{Corollario}
+\deftranslation[to=italian]{Lemma}{Lemma}
+
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{mermaid}
+
+% Mermaid: sfondo trasparente e dimensione massima adatta a una slide 16:9
+\MermaidRendererOptions{-b transparent}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+% Configurazione colori per il codice
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\definecolor{keywordblue}{rgb}{0.0,0.0,0.7}
+
+% Stile per snippet Java
+\lstdefinestyle{javastyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen}\itshape,
+    keywordstyle=\color{keywordblue}\bfseries,
+    numberstyle=\scriptsize\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=none,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    language=Java,
+    literate={à}{{\`a}}1 {è}{{\`e}}1 {é}{{\'e}}1 {ì}{{\`i}}1
+             {ò}{{\`o}}1 {ù}{{\`u}}1 {È}{{\`E}}1
+}
+\lstset{style=javastyle}
+
+% Stile per righe di terminale
+\lstdefinestyle{shell}{
+    language=bash,
+    backgroundcolor=\color{black!85},
+    basicstyle=\ttfamily\footnotesize\color{white},
+    keywordstyle=\color{white},
+    stringstyle=\color{white},
+    commentstyle=\color{green!70},
+    numbers=none,
+    frame=none,
+    showstringspaces=false
+}
+
+\title[Lezione 1 -- Benvenuti in Java]{Lezione 1 -- Benvenuti in Java}
+\subtitle{Il corso, la piattaforma Java, il primo programma}
+\author[Mattia Fonisto]{Mattia Fonisto}
+\institute[Lab.\ di Programmazione]{Laboratorio di Programmazione -- Ingegneria Informatica, II anno\\
+           Università degli Studi di Napoli Federico II -- Sede di San Giovanni a Teduccio}
+\date{15 settembre 2026}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% ========================================================================
+\begin{frame}{Agenda della lezione (2h)}
+\begin{enumerate}
+    \item \textbf{Il corso} \hfill (\emph{15 min})
+    \begin{itemize}
+        \item obiettivi, percorso, organizzazione, homework
+    \end{itemize}
+    \item \textbf{Java: perché e come} \hfill (\emph{25 min})
+    \begin{itemize}
+        \item ``scrivi una volta, esegui ovunque'': bytecode e JVM
+        \item JDK, JRE, versioni; che cosa installare
+    \end{itemize}
+    \item \textbf{Il primo programma} \hfill (\emph{30 min})
+    \begin{itemize}
+        \item anatomia di \texttt{HelloWorld.java}
+        \item edit \textrightarrow{} \texttt{javac} \textrightarrow{} \texttt{java}: dal vivo, da terminale
+        \item gli errori che farete (tutti) la prima settimana
+    \end{itemize}
+    \item \textbf{Esercitazione guidata} -- programmi interattivi \hfill (\emph{40 min})
+    \begin{itemize}
+        \item \texttt{System.out.printf}, \texttt{Scanner}, metodi \texttt{static}
+        \item \texttt{SommaNumeri} commentato insieme, poi \texttt{Media} scritto insieme, passo passo
+    \end{itemize}
+    \item \textbf{Wrap-up e homework} \hfill (\emph{10 min})
+\end{enumerate}
+\end{frame}
+
+% ========================================================================
+\section{Il corso}
+
+\begin{frame}{Obiettivi del corso}
+Al termine del corso saprete:
+\begin{itemize}
+    \item \textbf{progettare} piccoli sistemi software in modo modulare, ragionando per \emph{astrazioni};
+    \item \textbf{programmare a oggetti} in Java: classi, incapsulamento, ereditarietà, polimorfismo, interfacce;
+    \item usare alcune \textbf{tecniche avanzate}: ricorsione, eccezioni, tipi generici, API standard;
+    \item implementare le \textbf{strutture dati fondamentali}: pila, coda, liste collegate;
+    \item leggere e scrivere \textbf{file di testo}.
+\end{itemize}
+
+\vspace{0.3cm}
+\begin{block}{È un laboratorio}
+Ogni lezione contiene codice scritto \emph{insieme} e codice scritto \emph{da voi}. Portate il portatile con il JDK installato (oggi vediamo come).
+\end{block}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Il percorso: 13 lezioni, 4 blocchi}
+\begin{mermaid}
+flowchart LR
+  A["<b>A · Fondamenti</b><br/>L1–L4<br/>Java e JVM · tipi · String<br/>metodi · array · modularità"]
+  B["<b>B · Oggetti</b><br/>L5–L9<br/>classi · this/static · immutabilità<br/>ereditarietà · polimorfismo<br/>Object · interfacce · package"]
+  C["<b>C · Avanzato</b><br/>L10–L12<br/>eccezioni · ricorsione<br/>ricerca binaria · generici<br/>Comparable · pile, code, liste"]
+  D["<b>D · Chiusura</b><br/>L13<br/>file di testo<br/>ripasso e simulazione"]
+  A --> B --> C --> D
+  style A fill:#dbeafe,stroke:#1d4ed8
+  style B fill:#dcfce7,stroke:#15803d
+  style C fill:#fef3c7,stroke:#b45309
+  style D fill:#fce7f3,stroke:#be185d
+\end{mermaid}
+
+\vspace{0.2cm}
+\small Martedì, 2h, dal 15 settembre al 15 dicembre (l'8 dicembre è festivo). Il programma completo, con date e contenuti di ogni lezione, sarà pubblicato sul team Microsoft Teams del corso (seguirà comunicazione).
+\end{frame}
+
+% ========================================================================
+\begin{frame}{Come funziona una lezione -- e il corso}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\textbf{Struttura tipica (2h)}
+\begin{itemize}\itemsep=2pt
+    \item 10--15' ripasso e correzione homework
+    \item 35--45' concetti nuovi, con esempi \emph{eseguiti}
+    \item 50--60' esercitazione
+    \item 5--10' wrap-up e homework
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Strumenti}
+\begin{itemize}\itemsep=2pt
+    \item JDK 25 (LTS, Eclipse Temurin)
+    \item Visual Studio Code con l'\emph{Extension Pack for Java} (lo installiamo oggi)
+    \item terminale per capire cosa fa l'IDE ``sotto''
+\end{itemize}
+
+\column{0.5\textwidth}
+\textbf{Homework}
+\begin{itemize}\itemsep=2pt
+    \item uno a settimana, da svolgere prima della lezione successiva
+    \item non obbligatori ma \textbf{fortemente consigliati}
+    \item all'inizio di ogni lezione chiederò a qualcuno di \textbf{presentare la propria soluzione}: la discutiamo insieme
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Testo di riferimento}
+\begin{itemize}\itemsep=2pt
+    \item Deitel \& Deitel, \emph{Programmare in Java}, 11\textsuperscript{a} ed., Pearson
+    \item slide, codice ed esercizi sul team \textbf{Microsoft Teams} del corso (seguirà comunicazione)
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Java: perché e come}
+
+\begin{frame}{Che cos'è Java}
+\begin{itemize}
+    \item Nasce in Sun Microsystems (progetto \emph{Green}, 1991; ``Oak''), annunciato ufficialmente il 23 maggio 1995. Dal 2006--2007 l'implementazione di riferimento è \emph{open source} (OpenJDK).
+    \item È un linguaggio \textbf{orientato agli oggetti}, \textbf{fortemente tipizzato}, con \textbf{gestione automatica della memoria} (garbage collector).
+    \item È definito da un documento, la \emph{Java Language Specification} (JLS); la piattaforma è \textbf{Java SE} (Standard Edition), un insieme di specifiche mantenute dal Java Community Process.
+\end{itemize}
+
+\vspace{0.2cm}
+\begin{block}{La filosofia: \emph{Write Once, Run Anywhere}}
+Un programma Java viene scritto e compilato \textbf{una volta} e poi eseguito \textbf{ovunque} esista una Java Virtual Machine: Windows, macOS, Linux, Android, server, schede embedded\ldots
+\end{block}
+
+\vspace{0.2cm}
+\small Come è possibile? La risposta è nella parola \textbf{bytecode}.
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Compilazione tradizionale (es.\ C/C++) vs Java}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.46\textheight,center}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\centering\textbf{C++: un compilatore (e un eseguibile) per ogni architettura}
+\begin{mermaid}
+flowchart LR
+  S1["sorgente<br/>.cpp"] --> C1["compilatore<br/>x86"] --> O1["eseguibile<br/>x86"]
+  S1 --> C2["compilatore<br/>ARM"] --> O2["eseguibile<br/>ARM"]
+  S1 --> C3["compilatore<br/>RISC-V"] --> O3["eseguibile<br/>RISC-V"]
+\end{mermaid}
+
+\column{0.5\textwidth}
+\centering\textbf{Java: un solo bytecode, una JVM per architettura}
+\begin{mermaid}
+flowchart LR
+  S2["sorgente<br/>.java"] -->|javac| B["bytecode<br/>.class"]
+  B --> J1["JVM x86"]
+  B --> J2["JVM ARM"]
+  B --> J3["JVM RISC-V"]
+  style B fill:#fef3c7,stroke:#b45309
+\end{mermaid}
+\end{columns}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+\vspace{0.3cm}
+\begin{block}{Il punto}
+\texttt{javac} \textbf{non} genera codice macchina ma \emph{bytecode}, per un processore virtuale. Si compila \textbf{una volta}; a tradurlo è la JVM installata su ogni macchina.
+\end{block}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Il ciclo di vita di un programma Java: le 5 fasi}
+\begin{mermaid}
+flowchart LR
+  E["<b>1. Edit</b><br/>editor / IDE<br/>Prova.java"]
+  C["<b>2. Compile</b><br/>javac Prova.java<br/>→ Prova.class"]
+  L["<b>3. Load</b><br/>Class Loader<br/>carica il .class in RAM"]
+  V["<b>4. Verify</b><br/>Bytecode Verifier<br/>controlli di sicurezza"]
+  X["<b>5. Execute</b><br/>Execution Engine<br/>interprete + JIT"]
+  E --> C --> L --> V --> X
+  subgraph JVM ["java Prova  (Java Virtual Machine)"]
+    L
+    V
+    X
+  end
+\end{mermaid}
+
+\vspace{0.3cm}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\textbf{A tempo di compilazione}
+\begin{itemize}\itemsep=0pt
+    \item controllo sintattico e dei \emph{tipi}
+    \item un file \texttt{.class} \textbf{per ogni classe}
+\end{itemize}
+\column{0.5\textwidth}
+\textbf{A tempo di esecuzione}
+\begin{itemize}\itemsep=0pt
+    \item il \emph{collegamento} è dinamico: le classi sono caricate solo quando servono
+    \item ogni classe caricata viene verificata
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Dentro la JVM}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.46\textheight,center}
+\begin{mermaid}
+flowchart LR
+  F["file .class<br/>(bytecode)"]
+  CL["<b>Class Loader</b><br/>carica e collega le classi<br/>solo quando servono"]
+  BV["<b>Bytecode Verifier</b><br/>bytecode conforme?<br/>nessun cast illegale,<br/>nessun overflow di stack"]
+  subgraph EE ["Execution Engine"]
+    I["<b>Interprete</b><br/>istruzione per istruzione"]
+    JIT["<b>JIT Compiler</b><br/>compila i blocchi 'caldi'<br/>in codice macchina"]
+  end
+  F --> CL --> BV --> EE
+  I -.->|codice eseguito spesso| JIT
+  style F fill:#fef3c7,stroke:#b45309
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+\vspace{0.1cm}
+\footnotesize
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{itemize}\itemsep=2pt
+    \item La JVM è \textbf{processore virtuale + sistema operativo virtuale}: un ambiente completo e isolato.
+    \item Il \emph{verifier} impedisce al codice di violare l'integrità del sistema (es.\ trasformare un intero in un puntatore).
+\end{itemize}
+\column{0.5\textwidth}
+\begin{itemize}\itemsep=2pt
+    \item L'\emph{interprete} parte subito; il \emph{JIT} ottimizza le parti eseguite più spesso: oggi Java è competitivo con i linguaggi compilati.
+    \item La \textbf{memoria è gestita dalla JVM}: creiamo oggetti con \texttt{new}, il \emph{garbage collector} li libera.
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}{JDK, JRE, versioni: che cosa installare}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\textbf{JDK -- Java Development Kit}
+\begin{itemize}\itemsep=2pt
+    \item tutto ciò che serve per \textbf{sviluppare}: compilatore \texttt{javac}, JVM \texttt{java}, strumenti (\texttt{jshell}, \texttt{javadoc}, \texttt{jar}\ldots) e la libreria standard
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{JRE -- Java Runtime Environment}
+\begin{itemize}\itemsep=2pt
+    \item solo la JVM e la libreria: basta per \textbf{eseguire}
+    \item dalla versione 11 non si distribuisce più separatamente: \textbf{installate il JDK}
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{La libreria standard}
+\begin{itemize}\itemsep=2pt
+    \item migliaia di classi organizzate in \emph{package}: \texttt{java.lang} (String, Math, System\ldots), \texttt{java.util} (Scanner, collezioni), \texttt{java.io} (file)\ldots
+    \item documentazione ufficiale: \emph{docs.oracle.com} \textrightarrow{} Java SE 25 API
+\end{itemize}
+
+\column{0.5\textwidth}
+\textbf{Versioni}
+\begin{itemize}\itemsep=2pt
+    \item una release ogni 6 mesi (marzo e settembre): due numeri di versione all'anno
+    \item \textbf{LTS} (Long Term Support) ogni 2 anni, cioè una versione ogni quattro: 17 (2021), 21 (2023), \textbf{25} (2025)
+    \item per il corso usiamo tutti \textbf{JDK 25}: stessa versione, stessi comportamenti, stessi messaggi d'errore -- distribuzione consigliata: Eclipse Temurin (Adoptium)
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Verifichiamo l'installazione (adesso, tutti)}
+Da terminale (macOS/Linux) o prompt dei comandi / PowerShell (Windows):
+\begin{lstlisting}[style=shell]
+$ java -version
+openjdk version "25.0.2" 2026-01-20 LTS
+OpenJDK Runtime Environment Temurin-25.0.2+10 (build 25.0.2+10-LTS)
+OpenJDK 64-Bit Server VM Temurin-25.0.2+10 (build 25.0.2+10-LTS, mixed mode)
+
+$ javac -version
+javac 25.0.2
+\end{lstlisting}
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\textbf{Se \texttt{java} funziona ma \texttt{javac} no}
+\begin{itemize}\itemsep=0pt
+    \item avete un JRE, non un JDK: installate il JDK
+\end{itemize}
+\textbf{Se nessuno dei due funziona}
+\begin{itemize}\itemsep=0pt
+    \item JDK non installato, oppure non è nel \texttt{PATH}
+    \item su Windows verificate anche la variabile \texttt{JAVA\_HOME}
+\end{itemize}
+\column{0.5\textwidth}
+\textbf{Download del JDK 25}
+\begin{itemize}\itemsep=0pt
+    \item \url{https://adoptium.net} \textrightarrow{} Temurin 25 (LTS)
+    \item Windows: scegliete l'installer \texttt{.msi} e spuntate \emph{Set JAVA\_HOME} e \emph{Add to PATH}
+    \item macOS: \texttt{.pkg}; Linux: pacchetto della distribuzione (\texttt{openjdk-25-jdk})
+\end{itemize}
+\textbf{IDE}
+\begin{itemize}\itemsep=0pt
+    \item useremo sempre \textbf{Visual Studio Code}: prossima slide
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Visual Studio Code per Java: installazione in 4 passi}
+\small
+\begin{enumerate}\itemsep=2pt
+    \item \textbf{Installare VS Code} da \url{https://code.visualstudio.com}
+    \item \textbf{Installare l'estensione}: icona \emph{Extensions} (\texttt{Ctrl+Shift+X}), cercare \textbf{Extension Pack for Java} (Microsoft), \emph{Install}. Porta con sé supporto al linguaggio, debugger, test runner e gestione progetti.
+    \item \textbf{Collegare il JDK}: \texttt{Ctrl+Shift+P} \textrightarrow{} \emph{Java: Configure Java Runtime}; deve comparire il JDK 25. Se non lo trova, impostare in \emph{Settings} \texttt{java.jdt.ls.java.home} sulla cartella del JDK.
+    \item \textbf{Aprire una cartella} (\emph{File \textrightarrow{} Open Folder}), non un singolo file: VS Code compila da solo ogni \texttt{.java} che contiene.
+\end{enumerate}
+
+\MermaidAdjustBoxOpts{max width=0.9\linewidth,max height=0.2\textheight,center}
+\begin{mermaid}
+flowchart LR
+  A["1. VS Code"] --> B["2. Extension Pack<br/>for Java"] --> C["3. Configure Java<br/>Runtime → JDK 25"] --> D["4. Open Folder<br/>con i sorgenti"] --> E["▶ Run · F5 Debug"]
+  style E fill:#dcfce7,stroke:#15803d
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+\begin{block}{Come si esegue un programma}
+Sopra il \texttt{main} compaiono i link \textbf{Run | Debug} (oppure \texttt{F5}). L'output appare nel pannello \emph{Terminal}: sotto, VS Code lancia lo stesso \texttt{javac} + \texttt{java} che oggi vediamo a mano.
+\end{block}
+\end{frame}
+
+% ========================================================================
+\section{Il primo programma}
+
+\begin{frame}[fragile]{\texttt{HelloWorld.java}}
+\begin{lstlisting}
+/* Prima classe di esempio: illustra il metodo main
+   e i passi di sviluppo di un'applicazione Java. */
+public class HelloWorld {
+
+    // metodi della classe
+    public static void main(String[] args) {
+        System.out.println("Welcome to Java!");
+    }
+}
+\end{lstlisting}
+
+\vspace{0.2cm}
+Un'\textbf{applicazione} Java è un programma eseguibile autonomamente. Ha bisogno di:
+\begin{itemize}\itemsep=0pt
+    \item almeno una \textbf{classe} (qui \texttt{HelloWorld}) dichiarata dal programmatore\ldots
+    \item \ldots che contenga un metodo \textbf{\texttt{main}} con \emph{esattamente} questa firma: è il punto di avvio.
+\end{itemize}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Anatomia riga per riga}
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{lstlisting}
+public class HelloWorld {
+\end{lstlisting}
+\small
+\begin{itemize}\itemsep=0pt
+    \item \texttt{class} introduce la dichiarazione di classe, seguita dal \textbf{nome}
+    \item \texttt{public} è un \emph{modificatore di accesso} (ne parleremo)
+    \item le graffe \texttt{\{ \}} delimitano il \textbf{corpo} della classe
+\end{itemize}
+
+\vspace{0.2cm}
+\normalsize
+\begin{lstlisting}
+public static void main(String[] args)
+\end{lstlisting}
+\small
+\begin{itemize}\itemsep=0pt
+    \item \texttt{public}: invocabile dall'esterno (dalla JVM)
+    \item \texttt{static}: invocabile \textbf{senza creare oggetti}
+    \item \texttt{void}: non restituisce nulla
+    \item \texttt{String[] args}: gli argomenti da riga di comando
+\end{itemize}
+
+\column{0.48\textwidth}
+\normalsize
+\begin{lstlisting}
+System.out.println("Welcome to Java!");
+\end{lstlisting}
+\small
+\begin{itemize}\itemsep=0pt
+    \item \texttt{System.out} è l'oggetto \emph{standard output}
+    \item \texttt{println} è un suo \textbf{metodo}: stampa l'argomento e va a capo (\texttt{print} non va a capo)
+    \item \texttt{"Welcome to Java!"} è una \textbf{stringa letterale}
+    \item ogni \emph{istruzione} termina con \texttt{;}
+\end{itemize}
+
+\vspace{0.2cm}
+\normalsize
+\begin{lstlisting}
+/* commento su più righe */
+// commento fino a fine riga
+\end{lstlisting}
+\small I commenti sono ignorati dal compilatore. Usateli per spiegare il \emph{perché}, non il \emph{cosa}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}{Regole e convenzioni sui nomi}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\textbf{Regole (le impone il compilatore)}
+\begin{itemize}\itemsep=2pt
+    \item un identificatore è formato da lettere, cifre, \texttt{\_} e \texttt{\$}
+    \item non può iniziare con una cifra né contenere spazi
+    \item non può essere una parola chiave (\texttt{class}, \texttt{public}, \texttt{int}\ldots)
+    \item Java è \textbf{case sensitive}: \texttt{a1} e \texttt{A1} sono identificatori diversi
+    \item il file \texttt{X.java} deve contenere la classe pubblica \texttt{X} (stesso nome, stesse maiuscole)
+\end{itemize}
+
+\column{0.5\textwidth}
+\textbf{Convenzioni (le impone la comunità)}
+\begin{itemize}\itemsep=2pt
+    \item classi: \texttt{UpperCamelCase} \textrightarrow{} \texttt{ContoBancario}
+    \item metodi e variabili: \texttt{lowerCamelCase} \textrightarrow{} \texttt{calcolaMedia}, \texttt{numeroStudenti}
+    \item costanti: \texttt{UPPER\_SNAKE\_CASE} \textrightarrow{} \texttt{MAX\_TENTATIVI}
+    \item package: tutto minuscolo \textrightarrow{} \texttt{java.util}
+\end{itemize}
+
+\vspace{0.3cm}
+\begin{alertblock}{Perché rispettarle}
+Il compilatore non se ne accorge, ma chi legge il vostro codice (incluso il voi del futuro) sì. All'esame le convenzioni fanno parte della valutazione.
+\end{alertblock}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Dal sorgente all'output: dal vivo, da terminale}
+\begin{lstlisting}[style=shell]
+$ ls
+HelloWorld.java
+$ javac HelloWorld.java          # compilazione: produce il bytecode
+$ ls
+HelloWorld.class  HelloWorld.java
+$ java HelloWorld                # esecuzione: nome della CLASSE, senza .class
+Welcome to Java!
+\end{lstlisting}
+
+\begin{mermaid}
+flowchart LR
+  A["HelloWorld.java<br/><i>sorgente (testo)</i>"] -->|"javac HelloWorld.java"| B["HelloWorld.class<br/><i>bytecode (binario)</i>"]
+  B -->|"java HelloWorld"| C["JVM<br/>caricamento · verifica · esecuzione"]
+  C --> D[/"Welcome to Java!"/]
+  style A fill:#dbeafe,stroke:#1d4ed8
+  style B fill:#fef3c7,stroke:#b45309
+  style D fill:#dcfce7,stroke:#15803d
+\end{mermaid}
+
+\small Il file \texttt{.class} \textbf{non} è un file di testo: aprirlo con un editor mostra caratteri senza senso. Provate.
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Gli errori della prima settimana (e come leggerli)}
+\footnotesize
+\begin{columns}[T]
+\column{0.5\textwidth}
+\textbf{1. Nome del file diverso dalla classe}
+\begin{lstlisting}[style=shell]
+$ javac hello.java
+hello.java:1: error: class HelloWorld is
+public, should be declared in a file
+named HelloWorld.java
+\end{lstlisting}
+
+\textbf{2. Manca un \texttt{;} o una graffa}
+\begin{lstlisting}[style=shell]
+HelloWorld.java:6: error: ';' expected
+    System.out.println("Welcome")
+                                 ^
+\end{lstlisting}
+Il compilatore indica \emph{file:riga} e mette \texttt{\^{}} dove si è accorto del problema (non sempre dove sta l'errore!).
+
+\column{0.5\textwidth}
+\textbf{3. Maiuscole sbagliate}
+\begin{lstlisting}[style=shell]
+HelloWorld.java:6: error: package system
+does not exist
+    system.out.println("Welcome");
+\end{lstlisting}
+
+\textbf{4. Eseguire con \texttt{.class} o senza compilare}
+\begin{lstlisting}[style=shell]
+$ java HelloWorld.class
+Error: Could not find or load main class
+HelloWorld.class
+\end{lstlisting}
+
+\textbf{5. Firma del \texttt{main} sbagliata}
+\begin{lstlisting}[style=shell]
+Error: Main method not found in class
+HelloWorld, please define the main method
+as: public static void main(String[] args)
+\end{lstlisting}
+\end{columns}
+
+\vspace{0.2cm}
+\normalsize
+\begin{block}{Regola d'oro}
+Leggete \textbf{il primo} messaggio d'errore, non l'ultimo: gli errori successivi sono spesso conseguenza del primo.
+\end{block}
+\end{frame}
+
+% ========================================================================
+\section{Esercitazione guidata: programmi interattivi}
+
+\begin{frame}[fragile]{Obiettivo dell'esercitazione}
+Finora il programma \emph{parla} soltanto (\texttt{println}). Ora vogliamo programmi che \textbf{dialogano} con l'utente:
+\begin{enumerate}\itemsep=0pt
+    \item \textbf{leggono} numeri e testo digitati da tastiera;
+    \item li \textbf{elaborano} in metodi separati, ognuno con un compito preciso;
+    \item \textbf{stampano} il risultato ben formattato.
+\end{enumerate}
+
+\MermaidAdjustBoxOpts{max width=0.9\linewidth,max height=0.34\textheight,center}
+\begin{mermaid}
+flowchart LR
+  U(["Utente<br/>digita 7 e 5"]) --> K["Tastiera<br/>System.in"]
+  K -->|"nextInt()"| S["<b>Scanner</b><br/>Byte → int"]
+  S -->|"7, 5"| M["<b>Metodo somma(a, b)</b><br/>Calcola 12"]
+  M -->|"12"| P["<b>System.out.printf</b><br/>Formatta"]
+  P --> O(["Schermo<br/>La somma è: 12"])
+  style S fill:#dbeafe,stroke:#1d4ed8
+  style M fill:#fef3c7,stroke:#b45309
+  style P fill:#dcfce7,stroke:#15803d
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+\vspace{0.1cm}
+Servono tre ingredienti nuovi, che vediamo uno alla volta e poi mettiamo insieme in \texttt{SommaNumeri}:
+\begin{itemize}\itemsep=0pt
+    \item \texttt{System.out.printf} -- stampa formattata (colonne, decimali)
+    \item \texttt{Scanner} -- lettura da tastiera
+    \item metodi \texttt{static} -- ``funzioni'' per spezzare il programma in compiti
+\end{itemize}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Ingrediente 1 -- Stampa formattata con \texttt{printf}}
+Si comporta come la \texttt{printf} del C:
+\begin{lstlisting}
+int n = 7;
+double media = 27.3333;
+String nome = "Anna";
+System.out.printf("Ciao %s, hai %d esami con media %.2f%n", nome, n, media);
+// Ciao Anna, hai 7 esami con media 27.33
+\end{lstlisting}
+
+\begin{center}\small
+\begin{tabular}{ll}
+\toprule
+\textbf{Specificatore} & \textbf{Significato} \\
+\midrule
+\texttt{\%d} & intero \\
+\texttt{\%f}, \texttt{\%.2f} & reale (con 2 decimali) \\
+\texttt{\%s} & stringa \\
+\texttt{\%c} & carattere \\
+\texttt{\%n} & a capo (portabile: usatelo al posto di \texttt{\textbackslash n}) \\
+\texttt{\%5d}, \texttt{\%-10s} & larghezza minima 5, allineato a sinistra su 10 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\small In alternativa: \texttt{System.out.println("Ciao " + nome + ", media " + media);} -- l'operatore \texttt{+} concatena stringhe (ne parleremo la prossima lezione).
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Ingrediente 2 -- Leggere dall'utente con \texttt{Scanner}}
+\begin{lstlisting}
+import java.util.Scanner;   // 1. la classe Scanner sta nel package java.util
+
+public class Eta {
+    public static void main(String[] args) {
+        Scanner in = new Scanner(System.in);   // 2. un oggetto Scanner "collegato" alla tastiera
+        System.out.print("Come ti chiami? ");
+        String nome = in.nextLine();           // 3. legge un'intera riga
+        System.out.print("Quanti anni hai? ");
+        int eta = in.nextInt();                // 4. legge il prossimo intero
+        System.out.printf("Ciao %s, tra un anno avrai %d anni.%n", nome, eta + 1);
+        in.close();                            // 5. chiusura (buona pratica)
+    }
+}
+\end{lstlisting}
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\small
+\begin{itemize}\itemsep=0pt
+    \item \texttt{import}: dice al compilatore dove trovare \texttt{Scanner}
+    \item \texttt{new}: \textbf{crea un oggetto} (lo studieremo a fondo); \texttt{System.in} è lo standard input
+\end{itemize}
+\column{0.5\textwidth}
+\small
+\textbf{Metodi principali}: \texttt{nextInt()}, \texttt{nextDouble()}, \texttt{next()} (una parola), \texttt{nextLine()} (una riga), \texttt{hasNextInt()} (c'è un intero da leggere?)
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Ingrediente 3 -- Metodi \texttt{static}: funzioni per organizzare il codice}
+\begin{columns}[T]
+\column{0.58\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class Geometria {
+
+    // modificatori, tipo, nome, parametri
+    public static double areaCerchio(double r) {
+        return Math.PI * r * r;
+    }
+
+    public static void stampaSaluto() {  // void
+        System.out.println("Ciao!");
+    }
+
+    public static void main(String[] args) {
+        stampaSaluto();               // chiamata
+        double a = areaCerchio(2.0);  // 12.566...
+        System.out.printf("Area: %.3f%n", a);
+    }
+}
+\end{lstlisting}
+
+\column{0.42\textwidth}
+\small
+\textbf{\texttt{static}} significa che il metodo \textbf{appartiene alla classe}, non a un oggetto: si può chiamare senza fare \texttt{new}.
+
+\vspace{0.2cm}
+Per ora \emph{tutti} i nostri metodi saranno \texttt{static}: sono le ``funzioni'' che conoscete dal C. Dalla lezione~5 scopriremo i metodi \emph{di istanza}.
+
+\vspace{0.2cm}
+\begin{block}{Perché spezzare il codice in metodi}
+\begin{itemize}\itemsep=0pt
+    \item un metodo = \textbf{un compito}, con un nome che lo descrive
+    \item si \emph{riusa} e si \emph{testa} separatamente
+    \item il \texttt{main} diventa la ``trama'', leggibile in 5 righe
+\end{itemize}
+\end{block}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{SommaNumeri}}
+\begin{columns}[T]
+\column{0.6\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+import java.util.Scanner;
+
+public class SommaNumeri {
+
+    public static void main(String[] args) {
+        int risultato = sommaDueNumeri();
+        System.out.printf("La somma è: %d%n", risultato);
+    }
+
+    public static int sommaDueNumeri() {
+        Scanner scanner = new Scanner(System.in);
+        System.out.printf("Primo numero: ");
+        int numero1 = scanner.nextInt();
+        System.out.printf("Secondo numero: ");
+        int numero2 = scanner.nextInt();
+        scanner.close();
+        return numero1 + numero2;
+    }
+}
+\end{lstlisting}
+
+\column{0.4\textwidth}
+\small
+\textbf{Leggiamolo dall'alto}
+\begin{enumerate}\itemsep=2pt
+    \item il \texttt{main} \emph{chiama} \texttt{sommaDueNumeri()} e mette il valore restituito in \texttt{risultato}
+    \item \texttt{sommaDueNumeri} è \texttt{static} e restituisce un \texttt{int}
+    \item lo \texttt{Scanner} traduce i byte digitati in un \texttt{int} utilizzabile
+    \item \texttt{return} termina il metodo e ``consegna'' il valore al chiamante
+\end{enumerate}
+
+\textbf{Poi lo miglioriamo insieme}
+\begin{itemize}\itemsep=2pt
+    \item separare \emph{input} e \emph{calcolo}: \texttt{static int somma(int a, int b)}
+    \item leggere i numeri nel \texttt{main} e lasciare ai metodi solo il calcolo
+    \item cosa succede se l'utente scrive \texttt{ciao}? (lo risolveremo alla lezione~10)
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Variante -- Argomenti da riga di comando}
+Il parametro \texttt{args} del \texttt{main} contiene ciò che scriviamo dopo il nome della classe:
+\begin{lstlisting}
+public class Saluta {
+    public static void main(String[] args) {
+        if (args.length == 0) {
+            System.out.println("Uso: java Saluta <nome> [<nome> ...]");
+            return;
+        }
+        for (int i = 0; i < args.length; i++) {   // args.length: quanti argomenti
+            System.out.printf("Ciao, %s!%n", args[i]);
+        }
+    }
+}
+\end{lstlisting}
+\begin{lstlisting}[style=shell]
+$ java Saluta Anna Luca
+Ciao, Anna!
+Ciao, Luca!
+$ java Saluta
+Uso: java Saluta <nome> [<nome> ...]
+\end{lstlisting}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo (25 min) -- \texttt{Media.java}}
+\textbf{Il problema.} Chiedere quanti voti si vogliono inserire, leggerli uno alla volta e stampare la media con 2 decimali.
+
+\vspace{0.3cm}
+\textbf{Prima di scrivere codice, decidiamo insieme:}
+\begin{enumerate}\itemsep=3pt
+    \item quali \textbf{dati} servono (quanti voti? la somma? di che tipo?);
+    \item quale \textbf{calcolo} isolare in un metodo, e cosa deve ricevere e restituire\\
+          \small \textrightarrow{} \texttt{static double media(double somma, int n)}\normalsize;
+    \item cosa fa il \texttt{main}: crea lo \texttt{Scanner}, legge, chiama il metodo, stampa.
+\end{enumerate}
+
+\vspace{0.3cm}
+\begin{block}{Come procediamo}
+Lo scriviamo \textbf{insieme}, una riga alla volta: io al PC proiettato, voi sul vostro portatile in VS Code. Alla fine compiliamo ed eseguiamo (almeno una volta \textbf{da terminale}) e proviamo qualche input strano. Quel che non finiamo in aula, lo finite a casa.
+\end{block}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione -- \texttt{Media.java}}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+import java.util.Scanner;
+
+public class Media {
+
+    // il calcolo, separato dall'input/output
+    public static double media(double somma, int n) {
+        return somma / n;   // somma e` double: la divisione e` reale
+    }
+
+    public static void main(String[] args) {
+        Scanner in = new Scanner(System.in);
+        System.out.print("Quanti voti? ");
+        int n = in.nextInt();
+        double somma = 0;
+        for (int i = 1; i <= n; i++) {
+            System.out.print("Voto " + i + ": ");
+            somma += in.nextInt();
+        }
+        System.out.printf("Media: %.2f%n", media(somma, n));
+        in.close();
+    }
+}
+\end{lstlisting}
+\vspace{-0.2cm}\small Perché \texttt{somma} è \texttt{double} e non \texttt{int}? Provate a cambiarlo e a inserire i voti 27 e 28. E cosa succede con $n = 0$?
+\end{frame}
+
+% ========================================================================
+% ========================================================================
+\section{Wrap-up}
+
+\begin{frame}{Riepilogo: cosa abbiamo trattato}
+\small
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Concetto (unità di riferimento)} & \textbf{Dove compare oggi} \\
+\hline
+Bytecode, JVM, WORA (U2) & diagrammi C++ vs Java; le 5 fasi; dentro la JVM \\
+\hline
+JDK vs JRE, versioni LTS (U1, U2) & verifica dell'installazione, \texttt{java -version} \\
+\hline
+Classe, \texttt{main}, \texttt{System.out} (U1) & anatomia di \texttt{HelloWorld} \\
+\hline
+\texttt{javac} / \texttt{java}, file \texttt{.class} (U1) & compilazione ed esecuzione da terminale \\
+\hline
+Identificatori, case sensitivity, CamelCase (U1) & regole e convenzioni; errori tipici \\
+\hline
+\texttt{import}, \texttt{Scanner}, \texttt{printf} (U6) & \texttt{Eta}, \texttt{SommaNumeri}, \texttt{Media} \\
+\hline
+Metodi \texttt{static}, \texttt{return} (U6) & \texttt{Geometria}, \texttt{sommaDueNumeri}, \texttt{Media} \\
+\hline
+\texttt{args}, \texttt{args.length} (U1) & \texttt{Saluta} \\
+\hline
+\end{tabular}
+\end{center}
+
+\vspace{0.3cm}
+\textbf{Prossima lezione (22 settembre)}: il sistema dei tipi -- primitivi, costanti, riferimenti e \texttt{null} -- e le stringhe (\texttt{String}, \texttt{StringBuilder}).
+\end{frame}
+
+% ========================================================================
+\begin{frame}{Homework 1 (da svolgere entro lunedì 21 settembre)}
+\begin{enumerate}
+    \item \textbf{\texttt{Calcolatrice.java}}: legge due numeri reali e un operatore (\texttt{+ - * /}) e stampa il risultato con 3 decimali. Un metodo statico per ogni operazione; gestite la divisione per zero con un messaggio.
+    \item \textbf{\texttt{Bmi.java}}: legge peso (kg) e altezza (m), calcola l'indice di massa corporea $\text{BMI} = \text{peso} / \text{altezza}^2$ in un metodo \texttt{static double bmi(double peso, double altezza)} e stampa la categoria: \emph{sottopeso} se BMI $< 18{,}5$; \emph{normopeso} tra $18{,}5$ e $24{,}9$; \emph{sovrappeso} tra $25$ e $29{,}9$; \emph{obesità} se BMI $\geq 30$.
+    \item \textbf{\texttt{Fizzbuzz.java}}: legge $n$ da \texttt{args} (default 30) e stampa i numeri da 1 a $n$ sostituendo i multipli di 3 con \texttt{Fizz}, di 5 con \texttt{Buzz}, di entrambi con \texttt{FizzBuzz}.
+\end{enumerate}
+
+\vspace{0.2cm}
+\begin{block}{Come funziona}
+Non è obbligatorio, ma fortemente consigliato: martedì prossimo chiederò a qualcuno di aprire il proprio codice e presentarlo alla classe, e lo discutiamo insieme. Tenete i file \texttt{.java} in una cartella \texttt{hw1/} del progetto VS Code; ogni file deve compilare ed eseguire. Nomi di classi, metodi e variabili secondo le convenzioni viste oggi.
+\end{block}
+\end{frame}
+
+% ========================================================================
+\begin{frame}
+\begin{center}
+{\Huge Domande?}\\[1.5em]
+{\Large Buon lavoro!}\\[2em]
+{\normalsize \href{mailto:mattia.fonisto@unina.it}{\texttt{mattia.fonisto@unina.it}}}
+\end{center}
+\end{frame}
+
+\end{document}

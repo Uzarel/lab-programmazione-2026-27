@@ -8,6 +8,7 @@ on:
     paths: ["lezioni/**/*.java"]
 jobs:
   javac:
+    name: Compila esercizi Java
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

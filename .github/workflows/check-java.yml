@@ -1,6 +1,10 @@
 # Compila tutti gli esercizi Java. Gira su OGNI pull request e su ogni push su main,
 # anche quando non tocca file .java: un check richiesto dalla protezione del branch
 # deve sempre riportare un esito, altrimenti la PR resta bloccata in attesa.
+#
+# Ogni sottocartella di primo livello di lezioni/LNN/esercizi/ (es. esempi/, homework/)
+# è compilata per conto suo, ricorsivamente: così due cartelle possono avere classi
+# con lo stesso nome, e dentro una cartella si possono usare i package.
 name: Compila esercizi Java
 on:
   pull_request:
@@ -15,16 +19,27 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-      - name: javac su ogni cartella esercizi
+      - name: javac su ogni cartella di esercizi
         run: |
           set -e
           found=0
-          for d in lezioni/*/esercizi; do
-            files=$(find "$d" -name '*.java' 2>/dev/null)
-            [ -z "$files" ] && continue
+          compile() {
+            files=$(find "$1" -name '*.java')
+            [ -z "$files" ] && return 0
             found=1
-            echo "== $d"
-            out=$(mktemp -d)
-            javac -Xlint:all -Werror -d "$out" $files
+            echo "== $1"
+            javac -Xlint:all -Werror -d "$(mktemp -d)" $files
+          }
+          for ex in lezioni/*/esercizi; do
+            [ -d "$ex" ] || continue
+            # file .java direttamente in esercizi/ (senza sottocartelle)
+            direct=$(find "$ex" -maxdepth 1 -name '*.java')
+            if [ -n "$direct" ]; then
+              found=1; echo "== $ex"; javac -Xlint:all -Werror -d "$(mktemp -d)" $direct
+            fi
+            # ogni sottocartella di primo livello è un progetto a sé
+            for sub in "$ex"/*/; do
+              [ -d "$sub" ] && compile "${sub%/}"
+            done
           done
           [ "$found" = 1 ] || echo "Nessun file .java trovato: niente da compilare."

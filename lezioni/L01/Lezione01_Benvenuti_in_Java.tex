@@ -101,7 +101,7 @@
     \item \textbf{Java: perché e come} \hfill (\emph{25 min})
     \begin{itemize}
         \item ``scrivi una volta, esegui ovunque'': bytecode e JVM
-        \item JDK, JRE, versioni; che cosa installare
+        \item JDK e versioni; installazione su Windows, macOS e Linux
     \end{itemize}
     \item \textbf{Il primo programma} \hfill (\emph{30 min})
     \begin{itemize}
@@ -313,19 +313,13 @@ flowchart LR
 \end{frame}
 
 % ========================================================================
-\begin{frame}{JDK, JRE, versioni: che cosa installare}
+\begin{frame}{JDK e versioni: che cosa installare}
 \begin{columns}[T]
 \column{0.5\textwidth}
 \textbf{JDK -- Java Development Kit}
 \begin{itemize}\itemsep=2pt
-    \item tutto ciò che serve per \textbf{sviluppare}: compilatore \texttt{javac}, JVM \texttt{java}, strumenti (\texttt{jshell}, \texttt{javadoc}, \texttt{jar}\ldots) e la libreria standard
-\end{itemize}
-
-\vspace{0.2cm}
-\textbf{JRE -- Java Runtime Environment}
-\begin{itemize}\itemsep=2pt
-    \item solo la JVM e la libreria: basta per \textbf{eseguire}
-    \item dalla versione 11 non si distribuisce più separatamente: \textbf{installate il JDK}
+    \item tutto ciò che serve per \textbf{sviluppare} ed \textbf{eseguire}: il compilatore \texttt{javac}, la JVM \texttt{java}, gli strumenti (\texttt{jshell}, \texttt{javadoc}, \texttt{jar}\ldots) e la libreria standard
+    \item è l'unica cosa da installare: contiene tutto
 \end{itemize}
 
 \vspace{0.2cm}
@@ -346,6 +340,35 @@ flowchart LR
 \end{frame}
 
 % ========================================================================
+\begin{frame}[fragile]{Installare il JDK 25 (Eclipse Temurin)}
+\small
+\textbf{Windows} -- da \url{https://adoptium.net} scaricare \emph{Temurin 25 (LTS)} come \texttt{.msi}; nell'installer scegliere \emph{Custom} e attivare \textbf{Set JAVA\_HOME} e \textbf{Add to PATH}.
+
+\vspace{0.15cm}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\textbf{macOS} -- prima il chip: menu Apple \textrightarrow{} \emph{Informazioni su questo Mac}: \emph{Apple M1--M4} \textrightarrow{} \textbf{aarch64}, \emph{Intel} \textrightarrow{} \textbf{x64}. Poi da \url{https://adoptium.net} il \texttt{.pkg} per il proprio chip (doppio clic e avanti), oppure con Homebrew:
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+$ brew install --cask temurin@25
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\textbf{Linux} -- il modo più semplice, uguale per tutte le distribuzioni, è \textbf{SDKMAN} (non richiede root):
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+$ curl -s "https://get.sdkman.io" | bash
+$ source ~/.sdkman/bin/sdkman-init.sh
+$ sdk install java 25-tem
+\end{lstlisting}
+In alternativa il pacchetto della distribuzione, se già alla 25: \texttt{sudo apt install openjdk-25-jdk} (Ubuntu/Debian), \texttt{sudo dnf install java-25-openjdk-devel} (Fedora).
+\end{columns}
+
+\vspace{0.15cm}
+\begin{block}{In ogni caso}
+Serve il \textbf{JDK} completo, versione \textbf{25}. Dopo l'installazione aprite un \textbf{nuovo} terminale: quello già aperto non vede i programmi appena installati.
+\end{block}
+\end{frame}
+
+% ========================================================================
 \begin{frame}[fragile]{Verifichiamo l'installazione (adesso, tutti)}
 Da terminale (macOS/Linux) o prompt dei comandi / PowerShell (Windows):
 \begin{lstlisting}[style=shell]
@@ -362,19 +385,17 @@ javac 25.0.2
 \column{0.5\textwidth}
 \textbf{Se \texttt{java} funziona ma \texttt{javac} no}
 \begin{itemize}\itemsep=0pt
-    \item avete un JRE, non un JDK: installate il JDK
+    \item avete installato solo la runtime: serve il JDK completo
 \end{itemize}
+\textbf{Se compare una versione diversa da 25}
+\begin{itemize}\itemsep=0pt
+    \item c'è un altro Java installato che viene trovato per primo: su Windows controllate \texttt{JAVA\_HOME} e l'ordine nel \texttt{PATH}; su macOS \texttt{/usr/libexec/java\_home -V} elenca i JDK presenti
+\end{itemize}
+\column{0.5\textwidth}
 \textbf{Se nessuno dei due funziona}
 \begin{itemize}\itemsep=0pt
     \item JDK non installato, oppure non è nel \texttt{PATH}
-    \item su Windows verificate anche la variabile \texttt{JAVA\_HOME}
-\end{itemize}
-\column{0.5\textwidth}
-\textbf{Download del JDK 25}
-\begin{itemize}\itemsep=0pt
-    \item \url{https://adoptium.net} \textrightarrow{} Temurin 25 (LTS)
-    \item Windows: scegliete l'installer \texttt{.msi} e spuntate \emph{Set JAVA\_HOME} e \emph{Add to PATH}
-    \item macOS: \texttt{.pkg}; Linux: pacchetto della distribuzione (\texttt{openjdk-25-jdk})
+    \item avete riaperto il terminale dopo l'installazione?
 \end{itemize}
 \textbf{IDE}
 \begin{itemize}\itemsep=0pt

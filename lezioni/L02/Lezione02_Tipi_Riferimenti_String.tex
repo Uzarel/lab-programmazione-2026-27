@@ -1,0 +1,1087 @@
+% ============================================================================
+%  Laboratorio di Programmazione -- Lezione 2 (29 settembre 2026)
+%  Compilare con:  pdflatex -shell-escape Lezione02_Tipi_Riferimenti_String.tex
+%  Richiede: mermaid.sty (nel progetto) + Mermaid CLI `mmdc` nel PATH
+%  NB: ogni frame che contiene codice (lstlisting) o un diagramma (mermaid)
+%      deve essere dichiarato [fragile].
+% ============================================================================
+\documentclass[10pt,aspectratio=169]{beamer}
+\usetheme{Madrid}
+\usecolortheme{default}
+
+% `provide=*` carica la localizzazione italiana dai file .ini di babel: funziona anche
+% su installazioni TeX prive di texlive-lang-italian; con una TeX Live completa e`
+% equivalente al classico \usepackage[italian]{babel}.
+\usepackage[italian,provide=*]{babel}
+\usepackage[utf8]{inputenc}
+
+% Localizzazione dei nomi dei blocchi Beamer
+\uselanguage{italian}
+\languagepath{italian}
+\deftranslation[to=italian]{Definition}{Definizione}
+\deftranslation[to=italian]{Theorem}{Teorema}
+\deftranslation[to=italian]{Example}{Esempio}
+\deftranslation[to=italian]{Proof}{Dimostrazione}
+\deftranslation[to=italian]{Corollary}{Corollario}
+\deftranslation[to=italian]{Lemma}{Lemma}
+
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{mermaid}
+
+% Mermaid: sfondo trasparente e dimensione massima adatta a una slide 16:9
+\MermaidRendererOptions{-b transparent}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+% Configurazione colori per il codice
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\definecolor{keywordblue}{rgb}{0.0,0.0,0.7}
+
+% Stile per snippet Java
+\lstdefinestyle{javastyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen}\itshape,
+    keywordstyle=\color{keywordblue}\bfseries,
+    numberstyle=\scriptsize\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=none,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    language=Java,
+    literate={à}{{\`a}}1 {è}{{\`e}}1 {é}{{\'e}}1 {ì}{{\`i}}1
+             {ò}{{\`o}}1 {ù}{{\`u}}1 {È}{{\`E}}1
+}
+\lstset{style=javastyle}
+
+% Stile per righe di terminale
+\lstdefinestyle{shell}{
+    language=bash,
+    backgroundcolor=\color{black!85},
+    basicstyle=\ttfamily\footnotesize\color{white},
+    keywordstyle=\color{white},
+    stringstyle=\color{white},
+    commentstyle=\color{green!70},
+    numbers=none,
+    frame=none,
+    showstringspaces=false
+}
+
+\title[Lezione 2 -- Tipi, riferimenti, String]{Lezione 2 -- Tipi, riferimenti, \texttt{String}}
+\subtitle{Il sistema dei tipi di Java e le stringhe}
+\author[Mattia Fonisto]{Mattia Fonisto}
+\institute[Lab.\ di Programmazione]{Laboratorio di Programmazione -- Ingegneria Informatica, II anno\\
+           Università degli Studi di Napoli Federico II -- Sede di San Giovanni a Teduccio}
+\date{29 settembre 2026}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% ========================================================================
+\begin{frame}{Agenda della lezione (2h)}
+\begin{enumerate}
+    \item \textbf{Ripasso e Homework 1} \hfill (\emph{15 min})
+    \begin{itemize}
+        \item uno di voi alla lavagna con \texttt{Calcolatrice}, \texttt{Bmi} o \texttt{Fizzbuzz}: lo commentiamo insieme
+        \item un minuto su stack e heap
+    \end{itemize}
+    \item \textbf{Il sistema dei tipi} \hfill (\emph{20 min})
+    \begin{itemize}
+        \item tipi primitivi, letterali, costanti; divisione intera e overflow
+        \item riferimenti: cosa contiene davvero una variabile; \texttt{null}
+    \end{itemize}
+    \item \textbf{Le stringhe} \hfill (\emph{20 min})
+    \begin{itemize}
+        \item \texttt{String}: letterali, pool, \texttt{==} vs \texttt{equals}, metodi principali, immutabilità
+        \item concatenazione; scorrere una stringa; \texttt{StringBuilder}
+    \end{itemize}
+    \item \textbf{Esercitazione} -- tutti insieme \hfill (\emph{55 min})
+    \begin{itemize}
+        \item \emph{Commentiamo insieme}: \texttt{AnalisiParola}
+        \item \emph{Insieme, passo passo}: il cifrario di Cesare
+        \item un esperimento: \texttt{String} contro \texttt{StringBuilder} in un ciclo
+    \end{itemize}
+    \item \textbf{Wrap-up e Homework 2} \hfill (\emph{10 min})
+\end{enumerate}
+\end{frame}
+
+% ========================================================================
+\section{Ripasso: la memoria}
+
+\begin{frame}[fragile]{Un minuto di ripasso: stack e heap}
+Due zone di memoria, con regole diverse.
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{Stack}
+\small
+\begin{itemize}\itemsep=2pt
+    \item \textbf{variabili locali} e \textbf{parametri} dei metodi
+    \item spazio riservato quando il metodo \emph{inizia}, liberato quando \emph{termina}: automatico
+    \item dimensione \textbf{fissa}, nota al compilatore
+\end{itemize}
+\end{block}
+
+\begin{block}{Heap}
+\small
+\begin{itemize}\itemsep=2pt
+    \item dati creati \textbf{a tempo di esecuzione} su richiesta del programma: \texttt{malloc} in C, \texttt{new} in Java
+    \item dimensione anche non nota in anticipo
+    \item \textbf{sopravvivono} al metodo che li ha creati, finché qualcuno li usa
+\end{itemize}
+\end{block}
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+int n = 5;                       // solo stack
+String s = new String("ciao");   // stack + heap
+\end{lstlisting}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.36\textheight,center}
+\begin{mermaid}
+flowchart LR
+  n["<b>stack</b><br/>n<br/>5"]
+  s["<b>stack</b><br/>s<br/>●"]
+  o["<b>heap</b><br/>oggetto String<br/>&quot;ciao&quot;"]
+  n ~~~ s
+  s --> o
+  style n fill:#fef3c7,stroke:#b45309
+  style s fill:#fef3c7,stroke:#b45309
+  style o fill:#dbeafe,stroke:#1d4ed8
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\small
+\texttt{n} \textbf{è} il numero 5. \texttt{s} non è la stringa: è un \textbf{riferimento}, l'indirizzo del punto dello heap dove la stringa è stata creata. Quale dei due casi vale, lo decide il \textbf{tipo}: l'argomento di oggi.
+\end{columns}
+\end{frame}
+
+
+% ========================================================================
+\section{Il sistema dei tipi}
+
+\begin{frame}[fragile]{Java è fortemente tipizzato: due famiglie di tipi}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.55\textheight,center}
+\begin{mermaid}
+flowchart TB
+  T["<b>Tipi di Java</b>"]
+  P["<b>Tipi primitivi</b> (8)<br/>la variabile contiene <i>il valore</i><br/>dimensione fissa, nello stack"]
+  R["<b>Tipi riferimento</b><br/>la variabile contiene <i>l'indirizzo</i> di un oggetto<br/>l'oggetto vive nello heap, creato con new"]
+  T --> P
+  T --> R
+  P --> P1["interi<br/>byte · short<br/>int · long"]
+  P --> P2["reali<br/>float · double"]
+  P --> P3["char"]
+  P --> P4["boolean"]
+  R --> R1["classi<br/>String, Scanner,<br/>StringBuilder, …"]
+  R --> R2["array (lezione 3)<br/>String[] args"]
+  style P fill:#fef3c7,stroke:#b45309
+  style R fill:#dbeafe,stroke:#1d4ed8
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+\begin{block}{Fortemente tipizzato}
+Ogni variabile, parametro e valore ha un tipo \textbf{noto al compilatore}, che rifiuta le operazioni incompatibili \emph{prima} che il programma giri: \texttt{int n = "ciao";} non compila, \texttt{if (12)} nemmeno.
+\end{block}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Gli 8 tipi primitivi}
+\begin{center}\small
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{llll}
+\toprule
+\textbf{Tipo} & \textbf{Bit} & \textbf{Valori} & \textbf{Letterale} \\
+\midrule
+\texttt{boolean} & -- & \texttt{true}, \texttt{false} & \texttt{true} \\
+\texttt{char} & 16 & un carattere Unicode, da \texttt{'\textbackslash u0000'} a \texttt{'\textbackslash uFFFF'} & \texttt{'M'}, \texttt{'\textbackslash n'} \\
+\texttt{byte} & 8 & da $-128$ a $127$ & \texttt{100} \\
+\texttt{short} & 16 & da $-2^{15}$ a $2^{15}-1$ & \texttt{30000} \\
+\texttt{int} & 32 & da $-2^{31}$ a $2^{31}-1$ ($\approx \pm 2{,}1$ miliardi) & \texttt{42}, \texttt{1\_000\_000} \\
+\texttt{long} & 64 & da $-2^{63}$ a $2^{63}-1$ & \texttt{42L} \\
+\texttt{float} & 32 & IEEE 754, $\approx 7$ cifre significative & \texttt{3.14f} \\
+\texttt{double} & 64 & IEEE 754, $\approx 15$ cifre significative & \texttt{3.14}, \texttt{1e-3} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\small
+\begin{itemize}\itemsep=2pt
+    \item le dimensioni sono \textbf{fisse}, uguali su ogni macchina (in C dipendono dall'architettura)
+    \item i letterali interi sono \texttt{int}, quelli reali \texttt{double}: \texttt{42L} e \texttt{3.14f} per gli altri
+    \item apici \textbf{singoli} per i \texttt{char}, \textbf{doppi} per le \texttt{String}
+\end{itemize}
+\column{0.5\textwidth}
+\small
+\begin{itemize}\itemsep=2pt
+    \item \texttt{1\_000\_000}: il trattino basso è solo per chi legge
+    \item una \textbf{variabile locale} va inizializzata prima dell'uso: altrimenti \emph{errore di compilazione}, non ``valore casuale'' come in C
+    \item nel corso useremo quasi solo \texttt{int}, \texttt{double}, \texttt{char} e \texttt{boolean}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Variabili, letterali e i limiti degli interi -- \texttt{TipiPrimitivi.java}}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+int abitanti = 913_000;
+long distanzaKm = 149_600_000L;   // suffisso L
+double pi = 3.14159;
+float tasso = 0.035f;             // suffisso f
+char iniziale = 'M';
+boolean iscritto = true;
+
+int massimo = Integer.MAX_VALUE;  // 2147483647
+System.out.println(massimo + 1);  // overflow!
+
+int a = 7, b = 2;
+System.out.println(a / b);        // 3
+System.out.println(a % b);        // 1
+System.out.println(7.0 / b);      // 3.5
+
+// int x;
+// System.out.println(x);  // ERRORE: x non
+//                         // inizializzata
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+-2147483648
+3
+1
+3.5
+\end{lstlisting}
+
+\column{0.45\textwidth}
+\small
+\textbf{Overflow.} Un \texttt{int} ha 32 bit: dopo $2^{31}-1$ si ``riparte'' da $-2^{31}$. Nessun errore, nessun avviso: il risultato è semplicemente sbagliato. Con numeri grandi si usa \texttt{long}.
+
+\vspace{0.2cm}
+\textbf{Divisione.} Fra due interi il risultato è \textbf{intero} (troncato, non arrotondato); \texttt{\%} dà il resto. Basta che \emph{uno} dei due operandi sia reale perché la divisione sia reale: è il motivo per cui in \texttt{Media.java} la somma era \texttt{double}.
+
+\vspace{0.2cm}
+\begin{alertblock}{Regola}
+\texttt{int / int} è la fonte numero uno di risultati ``inspiegabili''. Quando vedete \texttt{3.0} dove aspettavate \texttt{3.5}, cercate una divisione fra interi.
+\end{alertblock}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Costanti: \texttt{final} e la classe \texttt{Math} -- \texttt{Costanti.java}}
+\begin{columns}[T]
+\column{0.58\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+import static java.lang.Math.PI;  // solo PI
+
+public class Costanti {
+    public static double areaCerchio(double r) {
+        return PI * r * r;      // e non Math.PI
+    }
+
+    public static void main(String[] args) {
+        final double IVA = 0.22;  // non cambia piu`
+        final int MAX_TENTATIVI;  // inizializzata dopo
+        MAX_TENTATIVI = 3;        // ...UNA sola volta
+        // IVA = 0.10;            // ERRORE
+
+        double conIva = 100.0 * (1 + IVA);
+        System.out.printf("%.2f%n", conIva);
+        System.out.printf("%.4f%n", areaCerchio(2.0));
+        System.out.println(Math.sqrt(2));    // 1.414..
+        System.out.println(Math.pow(2, 10)); // 1024.0
+        System.out.println(Math.round(2.5)); // 3
+    }
+}
+\end{lstlisting}
+
+\column{0.42\textwidth}
+\small
+\textbf{\texttt{final}}: la variabile può ricevere \textbf{un solo} assegnamento; il compilatore blocca ogni tentativo successivo. Nome in \texttt{UPPER\_SNAKE\_CASE}.
+
+\vspace{0.2cm}
+\textbf{Perché usarle}: un numero ``nudo'' (\texttt{0.22}) non dice cosa rappresenta, \texttt{IVA} sì; se cambia, si cambia in un punto solo.
+
+\vspace{0.2cm}
+\textbf{\texttt{Math}} (in \texttt{java.lang}, sempre disponibile): costanti \texttt{PI}, \texttt{E}; metodi \texttt{static} \texttt{sqrt}, \texttt{pow}, \texttt{abs}, \texttt{max}, \texttt{min}, \texttt{round}, \texttt{floor}, \texttt{ceil}, \texttt{random}\ldots
+
+\vspace{0.2cm}
+\texttt{import static} permette di scrivere \texttt{PI} al posto di \texttt{Math.PI}: comodo, ma con parsimonia (chi legge deve capire da dove arriva \texttt{PI}).
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Riferimenti: cosa contiene davvero una variabile}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.42\textheight,center}
+\begin{mermaid}
+flowchart TB
+  subgraph STACK["Stack: le variabili"]
+    direction LR
+    x["int x<br/><b>5</b>"]
+    y["int y<br/><b>5</b>"]
+    s["String s<br/><i>riferimento</i> ●"]
+    t["String t<br/><i>riferimento</i> ●"]
+    n["String n<br/><b>null</b>"]
+  end
+  subgraph HEAP["Heap: gli oggetti (creati con new)"]
+    direction LR
+    o1["oggetto String<br/>&quot;JAVA&quot;"]
+    o2["oggetto String<br/>&quot;JAVA&quot;"]
+  end
+  s --> o1
+  t --> o2
+  style x fill:#fef3c7,stroke:#b45309
+  style y fill:#fef3c7,stroke:#b45309
+  style s fill:#dbeafe,stroke:#1d4ed8
+  style t fill:#dbeafe,stroke:#1d4ed8
+  style n fill:#dbeafe,stroke:#1d4ed8
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+int x = 5;
+int y = x;                     // copia il VALORE
+String s = new String("JAVA"); // crea un oggetto
+String t = new String("JAVA"); // ne crea un ALTRO
+String n = null;               // nessun oggetto
+\end{lstlisting}
+\column{0.45\textwidth}
+\small
+\begin{itemize}\itemsep=2pt
+    \item una variabile \textbf{primitiva} contiene il valore
+    \item una variabile \textbf{riferimento} contiene ``l'indirizzo'' di un oggetto: come un puntatore del C, ma senza aritmetica e senza \texttt{*}/\texttt{\&}
+    \item in Java \textbf{non esistono} variabili ``di tipo oggetto'': solo riferimenti a oggetti
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Le conseguenze: assegnazione, confronto, oggetti orfani}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.36\textheight,center}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\centering\textbf{Prima di \texttt{q = p}}
+\begin{mermaid}
+flowchart LR
+  p["String p"] --> a["&quot;Mario&quot;"]
+  q["String q"] --> b["&quot;Laura&quot;"]
+  style p fill:#dbeafe,stroke:#1d4ed8
+  style q fill:#dbeafe,stroke:#1d4ed8
+\end{mermaid}
+\column{0.5\textwidth}
+\centering\textbf{Dopo \texttt{q = p}}
+\begin{mermaid}
+flowchart LR
+  p["String p"] --> a["&quot;Mario&quot;"]
+  q["String q"] --> a
+  b["&quot;Laura&quot;<br/><i>orfano → garbage collector</i>"]
+  style p fill:#dbeafe,stroke:#1d4ed8
+  style q fill:#dbeafe,stroke:#1d4ed8
+  style b fill:#fee2e2,stroke:#b91c1c,stroke-dasharray: 5 5
+\end{mermaid}
+\end{columns}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\small
+\textbf{Assegnazione} \texttt{q = p}: copia il \emph{riferimento}, non l'oggetto. Ora \texttt{p} e \texttt{q} indicano lo \textbf{stesso} oggetto.
+
+\vspace{0.15cm}
+\textbf{Confronto} \texttt{p == q}: confronta i \emph{riferimenti}: \texttt{true} solo se indicano lo stesso oggetto. Due oggetti con lo stesso contenuto sono \texttt{==}? \textbf{No.} Per il contenuto serve un metodo: \texttt{equals}.
+
+\column{0.5\textwidth}
+\small
+\textbf{Oggetti orfani.} \texttt{"Laura"} non è più raggiungibile da nessuna variabile: è \emph{garbage}. Il \textbf{garbage collector} della JVM lo libera da solo, prima o poi. Niente \texttt{free}, niente \texttt{delete}.
+
+\vspace{0.15cm}
+\textbf{Parametri.} Passare un oggetto a un metodo significa passare (una copia del) riferimento: il metodo lavora sullo \emph{stesso} oggetto del chiamante. Vale per \texttt{String}, per gli array, per tutto.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{\texttt{null} e il confronto fra riferimenti -- \texttt{Riferimenti.java}}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+String str1 = new String("JAVA"); // oggetto 1
+String str2 = new String("JAVA"); // oggetto 2
+String str3 = str1;               // = oggetto 1
+
+System.out.println(str1.equals(str2));  // true
+System.out.println(str1 == str2);       // false
+System.out.println(str1 == str3);       // true
+
+String nessuno = null;
+System.out.println(nessuno);            // null
+System.out.println(nessuno == null);    // true
+System.out.println(nessuno.length());   // BOOM
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Exception in thread "main"
+java.lang.NullPointerException: Cannot invoke
+"String.length()" because "nessuno" is null
+    at Riferimenti.main(Riferimenti.java:18)
+\end{lstlisting}
+
+\column{0.45\textwidth}
+\small
+\textbf{\texttt{null}} è il valore di un riferimento che \textbf{non indica alcun oggetto}. Non è $0$, non è $-1$: è una parola riservata.
+
+\vspace{0.2cm}
+Assegnare \texttt{null} a una variabile ``lascia andare'' l'oggetto che indicava, che può diventare garbage.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Le stringhe}
+
+\begin{frame}[fragile]{\texttt{String}: letterali, oggetti e il \emph{pool}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+Una stringa è una \textbf{sequenza di caratteri}: un \textbf{oggetto} della classe \texttt{String} (\texttt{java.lang}).
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+String a = "ciao";             // letterale
+String b = "ciao";             // stesso di a!
+String c = new String("ciao"); // oggetto nuovo
+System.out.println(a == b);      // true
+System.out.println(a == c);      // false
+System.out.println(a.equals(c)); // true
+\end{lstlisting}
+\small
+\begin{itemize}\itemsep=2pt
+    \item i \textbf{letterali} uguali sono \emph{un solo oggetto}, conservato nello \textbf{string pool}; condividerlo è sicuro perché \texttt{String} è \textbf{immutabile} (fra poco)
+    \item \texttt{new String(...)} crea sempre un oggetto \emph{nuovo}: quasi mai necessario, \textbf{usate i letterali}
+\end{itemize}
+\column{0.5\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.46\textheight,center}
+\begin{mermaid}
+flowchart LR
+  subgraph STACK["Stack"]
+    a["String a"]
+    b["String b"]
+    c["String c"]
+  end
+  subgraph HEAP["Heap"]
+    subgraph POOL["String pool"]
+      o1["&quot;ciao&quot;"]
+    end
+    o2["&quot;ciao&quot;<br/>(da new)"]
+  end
+  a --> o1
+  b --> o1
+  c --> o2
+  style a fill:#dbeafe,stroke:#1d4ed8
+  style b fill:#dbeafe,stroke:#1d4ed8
+  style c fill:#dbeafe,stroke:#1d4ed8
+  style o1 fill:#dcfce7,stroke:#15803d
+  style o2 fill:#fef3c7,stroke:#b45309
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\end{columns}
+\begin{block}{E per i tipi primitivi?}
+\small Nessun pool, e non serve: con \texttt{int a = 1, b = 1;} ogni variabile contiene la \emph{propria copia} del valore, e \texttt{a == b} è \texttt{true} perché confronta direttamente i \textbf{valori}. Il pool riguarda solo i letterali \texttt{String}.
+\end{block}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Confrontare stringhe: \texttt{equals}, \texttt{equalsIgnoreCase}, \texttt{compareTo}}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+String u = "diego";
+u.equals("Diego")             // false
+u.equalsIgnoreCase("Diego")   // true
+
+"abc".compareTo("abd")      // -1: abc < abd
+"b".compareTo("a")          //  1: b > a
+"abc".compareTo("abc")      //  0: uguali
+"Zoe".compareTo("anna")     // -7: 'Z'=90 < 'a'=97
+\end{lstlisting}
+
+\vspace{0.2cm}
+\small
+Il confronto è \textbf{lessicografico}: carattere per carattere, secondo il \emph{codice} Unicode di ciascuno. Le maiuscole (\texttt{'A'}=65\ldots) vengono \emph{prima} delle minuscole (\texttt{'a'}=97\ldots): per un ordine ``da dizionario'' si confrontano le versioni \texttt{toLowerCase()}.
+
+\column{0.45\textwidth}
+\begin{alertblock}{L'errore classico}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+String risposta = in.next();
+if (risposta == "si") { ... }   // NO!
+if (risposta.equals("si")) { ... }
+\end{lstlisting}
+\small La stringa letta da tastiera è un oggetto \emph{nuovo}: \texttt{==} con il letterale \texttt{"si"} è \texttt{false} anche se l'utente ha scritto proprio \texttt{si}. A volte \texttt{==} ``funziona'' per caso (grazie al pool): non fidatevi.
+\end{alertblock}
+
+\small
+\textbf{\texttt{compareTo}} restituisce un \texttt{int}: $<0$, $0$ o $>0$. Serve per \emph{ordinare}: lo ritroveremo nella lezione~12 con \texttt{Comparable}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{I metodi principali di \texttt{String} -- \texttt{MetodiString.java}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+String s = " Diego Armando Maradona ";
+String t = s.trim();  // senza spazi ai bordi
+t.length()            // 22
+t.charAt(0)           // 'D'
+t.charAt(t.length() - 1)  // 'a'
+t.indexOf("Arm")      // 6
+t.indexOf('a')        // 9 (la prima 'a')
+t.indexOf("Pele")     // -1 (non c'e`)
+t.substring(6, 13)    // "Armando" (13 escluso)
+t.substring(14)       // "Maradona"
+t.toUpperCase()       // "DIEGO ARMANDO MARADONA"
+t.replace('a', '4')   // "Diego Arm4ndo M4r4don4"
+t.contains("go")      // true
+t.startsWith("Di")    // true
+\end{lstlisting}
+
+\column{0.48\textwidth}
+\scriptsize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{ll}
+\toprule
+\textbf{Domanda} & \textbf{Metodo} \\
+\midrule
+quanto è lunga? & \texttt{length()} \\
+il carattere in posizione $i$? & \texttt{charAt(i)} \\
+dove compare\ldots? & \texttt{indexOf(x)}, \texttt{indexOf(x, da)} \\
+contiene\ldots? & \texttt{contains}, \texttt{startsWith}, \texttt{endsWith} \\
+una parte & \texttt{substring(i, j)}, \texttt{substring(i)} \\
+una copia modificata & \texttt{toUpperCase}, \texttt{toLowerCase}, \\
+ & \texttt{trim}, \texttt{replace}, \texttt{concat} \\
+è uguale a\ldots? & \texttt{equals}, \texttt{equalsIgnoreCase} \\
+viene prima di\ldots? & \texttt{compareTo} \\
+\bottomrule
+\end{tabular}
+\small
+\vspace{0.15cm}
+\begin{itemize}\itemsep=1pt
+    \item gli indici partono da \textbf{0}; l'ultimo è \texttt{length() - 1}; \texttt{charAt(22)} su 22 caratteri ferma il programma (\texttt{StringIndexOutOfBoundsException})
+    \item \texttt{indexOf} restituisce $-1$ se non trova nulla: \textbf{controllatelo}
+    \item l'elenco completo: documentazione \emph{Java SE 25 API}, classe \texttt{String}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Le stringhe sono immutabili: il risultato ``perso'' -- \texttt{Immutabile.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+String nome = "diego";
+
+nome.toUpperCase();       // calcolato e perso
+System.out.println(nome); // diego
+
+String m = nome.toUpperCase();  // salvato
+System.out.println(m);    // DIEGO
+System.out.println(nome); // diego (intatto)
+
+nome = nome.toUpperCase();  // riassegno
+System.out.println(nome); // DIEGO
+
+String saluto = "ciao";
+saluto.concat(" a tutti");  // perso
+System.out.println(saluto); // ciao
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\begin{block}{Immutabile}
+Una volta creato, un oggetto \texttt{String} \textbf{non cambia mai}. Nessun metodo modifica la stringa su cui è chiamato: \texttt{toUpperCase}, \texttt{trim}, \texttt{replace}, \texttt{substring}, \texttt{concat}\ldots\ \textbf{restituiscono una nuova stringa}.
+\end{block}
+
+\small
+\textbf{Quindi} il valore restituito va \emph{sempre} usato: assegnato a una variabile, stampato, passato a un metodo. Una chiamata ``da sola'' su una riga è quasi certamente un errore.
+
+\vspace{0.2cm}
+\textbf{Perché è fatta così?} Il pool funziona solo perché nessuno può modificare l'oggetto condiviso; una stringa passata a un metodo torna \emph{intatta}; e come per i numeri, \texttt{3 + 4} non cambia il \texttt{3}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Concatenazione con \texttt{+}: da tutto a stringa -- \texttt{Concatenazione.java}}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+String nome = "Anna";  int esami = 7;
+String riga = nome + " ha " + esami + " esami";
+// "Anna ha 7 esami"
+
+System.out.println("" + 1 + 2);        // 12
+System.out.println(1 + 2 + "");        // 3
+System.out.println("S: " + (1 + 2));   // S: 3
+
+String s = "a";
+s += "b";                              // "ab"
+s += 3;                                // "ab3"
+
+String daNumero = String.valueOf(42);  // "42"
+int daStringa = Integer.parseInt("42");
+System.out.println(daNumero + 1);      // 421
+System.out.println(daStringa + 1);     // 43
+\end{lstlisting}
+
+\column{0.45\textwidth}
+\small
+\textbf{La regola.} Se \emph{almeno uno} dei due operandi di \texttt{+} è una \texttt{String}, l'altro viene convertito in stringa e i due vengono concatenati. Altrimenti \texttt{+} è la somma.
+
+\vspace{0.2cm}
+\textbf{L'ordine conta.} \texttt{+} si valuta da sinistra a destra: in \texttt{"" + 1 + 2} il primo \texttt{+} è già una concatenazione; in \texttt{1 + 2 + ""} il primo è una somma. Le parentesi risolvono ogni dubbio.
+
+\vspace{0.2cm}
+\textbf{Conversioni esplicite.} \texttt{String.valueOf(x)} da qualunque valore a stringa; \texttt{Integer.parseInt(s)} e \texttt{Double.parseDouble(s)} da stringa a numero (è ciò che \texttt{Scanner.nextInt()} fa per voi).
+
+\vspace{0.2cm}
+\texttt{s += x} crea una \textbf{nuova} stringa e la riassegna a \texttt{s}: comodo, ma dentro un ciclo lungo costa caro. Lo misureremo.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Scorrere una stringa carattere per carattere -- \texttt{ScorriStringa.java}}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Quante vocali contiene s? */
+public static int contaVocali(String s) {
+    int vocali = 0;
+    for (int i = 0; i < s.length(); i++) {
+        char c = s.charAt(i);
+        if ("aeiouAEIOU".indexOf(c) >= 0) {
+            vocali++;
+        }
+    }
+    return vocali;
+}
+
+/** Quante volte c compare in s? */
+public static int conta(String s, char c) {
+    int n = 0;
+    for (int i = 0; i < s.length(); i++) {
+        if (s.charAt(i) == c) {  // fra char: ok
+            n++;
+        }
+    }
+    return n;
+}
+\end{lstlisting}
+
+\column{0.45\textwidth}
+\small
+\textbf{Il pattern} che userete decine di volte:
+\begin{enumerate}\itemsep=2pt
+    \item \texttt{for} da \texttt{0} a \texttt{s.length() - 1}
+    \item \texttt{char c = s.charAt(i)}
+    \item una decisione su \texttt{c}
+\end{enumerate}
+
+\vspace{0.2cm}
+\textbf{Due trucchi}
+\begin{itemize}\itemsep=2pt
+    \item \texttt{"aeiou".indexOf(c) >= 0} chiede ``\texttt{c} è una delle vocali?'' senza cinque confronti
+    \item \texttt{char} è un tipo \textbf{primitivo}: fra \texttt{char} il confronto \texttt{==} è corretto (è fra \texttt{String} che non va bene)
+\end{itemize}
+
+\vspace{0.2cm}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+vocali in "Programmare in Java": 7
+'a' compare 4 volte
+' ' compare 2 volte
+\end{lstlisting}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{\texttt{StringBuilder}: quando la stringa deve cambiare -- \texttt{UsaStringBuilder.java}}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+StringBuilder sb = new StringBuilder("Diego");
+sb.length()                   // 5
+sb.capacity()                 // 21 = 5 + 16
+sb.append(" 10");             // "Diego 10"
+sb.insert(0, "Don ");         // "Don Diego 10"
+sb.setCharAt(0, 'd');         // "don Diego 10"
+sb.deleteCharAt(11);          // "don Diego 1"
+sb.reverse();                 // "1 ogeiD nod"
+String r = sb.toString();     // torna una String
+
+StringBuilder alfabeto = new StringBuilder();
+for (char c = 'a'; c <= 'z'; c++) {
+    alfabeto.append(c);
+}
+System.out.println(alfabeto); // abc...xyz
+\end{lstlisting}
+
+\column{0.45\textwidth}
+\small
+Una sequenza di caratteri \textbf{modificabile}: i metodi cambiano l'oggetto \emph{in place} e restituiscono l'oggetto stesso (si possono concatenare: \texttt{sb.append(x).reverse()}).
+
+\vspace{0.2cm}
+\textbf{Capacità}: spazio riservato (lunghezza iniziale $+16$); quando finisce, cresce da sola. Se sapete quanto sarà lunga: \texttt{new StringBuilder(n)}.
+
+\vspace{0.2cm}
+\textbf{Metodi}: \texttt{append} (per ogni tipo), \texttt{insert}, \texttt{delete}, \texttt{deleteCharAt}, \texttt{setCharAt}, \texttt{reverse}, \texttt{replace}; \texttt{length}, \texttt{charAt} come in \texttt{String}; \texttt{toString} per ottenere la \texttt{String} finale.
+
+\vspace{0.2cm}
+\begin{block}{Quando usarlo}
+Quando \textbf{costruite} una stringa pezzo per pezzo, di solito in un ciclo. Per tutto il resto, \texttt{String}.
+\end{block}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Esercitazione}
+
+\begin{frame}[fragile]{Obiettivo dell'esercitazione}
+Tre programmi, tutti insieme, tutti sulla stessa idea: \textbf{leggere una stringa, scorrerla, costruirne un'altra}.
+
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.3\textheight,center}
+\begin{mermaid}
+flowchart LR
+  I["Scanner<br/>in.next() / in.nextLine()"] --> S["<b>String</b> letta<br/>(immutabile)"]
+  S -->|"for + charAt"| C["decisione<br/>su ogni char"]
+  C -->|"append"| B["<b>StringBuilder</b><br/>(modificabile)"]
+  B -->|"toString"| O["<b>String</b> risultato<br/>→ printf"]
+  style S fill:#dcfce7,stroke:#15803d
+  style B fill:#fef3c7,stroke:#b45309
+  style O fill:#dcfce7,stroke:#15803d
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+\begin{enumerate}\itemsep=4pt
+    \item \textbf{Commentiamo insieme} (15') -- \texttt{AnalisiParola.java}: lo leggiamo riga per riga; contiene tutto ciò che serve dopo.
+    \item \textbf{Insieme, passo passo} (30') -- \texttt{Cesare.java}: io al PC proiettato, voi in VS Code. Prima decidiamo il disegno, poi scriviamo.
+    \item \textbf{Un esperimento} (10') -- \texttt{ConfrontoConcatenazione.java}: quanto costa davvero \texttt{s += x} in un ciclo?
+\end{enumerate}
+
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{AnalisiParola.java}}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+import java.util.Scanner;
+
+public class AnalisiParola {
+
+    public static int contaVocali(String s) {
+        int n = 0;
+        for (int i = 0; i < s.length(); i++) {
+            if ("aeiou".indexOf(s.charAt(i)) >= 0) { n++; }
+        }
+        return n;
+    }
+
+    public static String rovescia(String s) {
+        StringBuilder sb = new StringBuilder(s);
+        return sb.reverse().toString();
+    }
+
+    public static boolean isPalindroma(String s) {
+        return s.equals(rovescia(s));        // equals, non ==
+    }
+
+    public static void main(String[] args) { /* prossima slide */ }
+}
+\end{lstlisting}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- il \texttt{main}}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    public static void main(String[] args) {
+        Scanner in = new Scanner(System.in);
+        System.out.print("Scrivi una parola: ");
+        String parola = in.next().toLowerCase();   // una parola, tutta minuscola
+        in.close();
+
+        int lunghezza = parola.length();
+        char prima = parola.charAt(0);
+        char ultima = parola.charAt(lunghezza - 1);
+
+        System.out.printf("Parola:      %s%n", parola);
+        System.out.printf("Lunghezza:   %d%n", lunghezza);
+        System.out.printf("Maiuscolo:   %s%n", parola.toUpperCase());
+        System.out.printf("Iniziale:    %c   Finale: %c%n", prima, ultima);
+        System.out.printf("Vocali:      %d   Consonanti: %d%n",
+                          contaVocali(parola), lunghezza - contaVocali(parola));
+        System.out.printf("Rovesciata:  %s%n", rovescia(parola));
+        System.out.printf("Palindroma?  %b%n", isPalindroma(parola));
+        System.out.printf("Stessi estremi? %b%n", prima == ultima);
+    }
+\end{lstlisting}
+\small Tre variabili locali (\texttt{lunghezza}, \texttt{prima}, \texttt{ultima}) calcolate una volta e riusate; poi una riga di output per ogni domanda sulla parola. Ogni \texttt{printf} usa lo specificatore giusto per il \textbf{tipo}: \texttt{\%s} per \texttt{String}, \texttt{\%d} per \texttt{int}, \texttt{\%c} per \texttt{char}, \texttt{\%b} per \texttt{boolean}.
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- eseguiamo e discutiamo}
+\begin{columns}[T]
+\column{0.42\textwidth}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+$ javac AnalisiParola.java
+$ java AnalisiParola
+Scrivi una parola: Anna
+Parola:      anna
+Lunghezza:   4
+Maiuscolo:   ANNA
+Iniziale:    a   Finale: a
+Vocali:      2   Consonanti: 2
+Rovesciata:  anna
+Palindroma?  true
+Stessi estremi? true
+\end{lstlisting}
+
+\small
+\textbf{Poi proviamo}: cosa succede con \texttt{Anna Maria}? Con \texttt{JAVA}? E premendo Invio senza scrivere nulla?
+
+\column{0.58\textwidth}
+\small
+\textbf{Leggiamolo dall'alto, e rispondiamo:}
+\begin{enumerate}\itemsep=3pt
+    \item \texttt{in.next().toLowerCase()}: due chiamate in fila. Quale oggetto riceve \texttt{toLowerCase}? Cosa contiene \texttt{parola}?
+    \item perché l'ultimo carattere è in \texttt{lunghezza - 1} e non in \texttt{lunghezza}?
+    \item \texttt{prima == ultima}: qui \texttt{==} è corretto. Perché? (Che tipo hanno \texttt{prima} e \texttt{ultima}?)
+    \item in \texttt{isPalindroma}, cosa cambierebbe con \texttt{==} al posto di \texttt{equals}?
+    \item \texttt{rovescia} crea uno \texttt{StringBuilder} e lo rovescia: la \texttt{parola} originale è cambiata?
+    \item \texttt{contaVocali} è chiamato \emph{due volte} con lo stesso argomento: come lo evitereste?
+\end{enumerate}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo (30 min) -- il cifrario di Cesare}
+\textbf{Il problema.} Leggere un testo e una chiave $k$ ($0 \le k \le 25$); stampare il testo cifrato sostituendo ogni lettera con quella $k$ posizioni più avanti nell'alfabeto (dopo la \texttt{z} si ricomincia dalla \texttt{a}); gli altri caratteri restano invariati. Poi decifrarlo e verificare che torni uguale.
+
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.26\textheight,center}
+\begin{mermaid}
+flowchart LR
+  c["char c = 'y'"] -->|"ALFABETO.indexOf(c)"| p["posizione = 24"]
+  p -->|"(24 + 3) % 26"| n["nuova = 1"]
+  n -->|"ALFABETO.charAt(nuova)"| r["char r = 'b'"]
+  style c fill:#dcfce7,stroke:#15803d
+  style r fill:#dcfce7,stroke:#15803d
+  style p fill:#fef3c7,stroke:#b45309
+  style n fill:#fef3c7,stroke:#b45309
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+\begin{columns}[T]
+\column{0.55\textwidth}
+\small
+\textbf{Prima di scrivere codice, decidiamo insieme:}
+\begin{enumerate}\itemsep=2pt
+    \item come ``spostare'' una lettera senza fare conti sui caratteri? \\ \textrightarrow{} una costante \texttt{ALFABETO = "abc...z"}: \texttt{indexOf} dà la posizione, \texttt{charAt} la lettera nella nuova posizione
+    \item come tornare a capo dopo la \texttt{z}? \textrightarrow{} l'operatore \texttt{\%}
+    \item quali \textbf{metodi}: \texttt{sposta(char, int)}, \texttt{cifra(String, int)}, \texttt{decifra(String, int)}
+    \item cosa fa il \texttt{main}: legge, chiama, stampa
+\end{enumerate}
+\column{0.45\textwidth}
+\begin{block}{Come procediamo}
+Una riga alla volta: io al PC proiettato, voi sul vostro portatile in VS Code. Prima \texttt{sposta} (e la proviamo subito su una lettera), poi \texttt{cifra}, poi il \texttt{main}. Compiliamo ed eseguiamo \textbf{da terminale} almeno una volta.
+\end{block}
+\small Domanda da tenere a mente: decifrare è un'operazione \emph{nuova} o è ancora cifrare, con un'altra chiave?
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione -- \texttt{Cesare.java} (1/2)}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class Cesare {
+
+    public static final String ALFABETO = "abcdefghijklmnopqrstuvwxyz";
+
+    public static char sposta(char c, int chiave) {
+        int posizione = ALFABETO.indexOf(c);
+        if (posizione < 0) {                       // non e` una lettera minuscola
+            return c;                              // resta com'e`
+        }
+        int nuova = (posizione + chiave) % 26;     // "torna a capo" dopo la z
+        return ALFABETO.charAt(nuova);
+    }
+
+    public static String cifra(String testo, int chiave) {
+        StringBuilder risultato = new StringBuilder();
+        for (int i = 0; i < testo.length(); i++) {
+            risultato.append(sposta(testo.charAt(i), chiave));
+        }
+        return risultato.toString();
+    }
+\end{lstlisting}
+\footnotesize \textbf{\texttt{static final}}: una costante di classe, condivisa da tutti i metodi. \textbf{\texttt{sposta}} fa \emph{una cosa sola} ed è facile da provare da sola: \texttt{sposta('y', 3)} deve dare \texttt{'b'}, \texttt{sposta('!', 3)} deve dare \texttt{'!'}. \textbf{\texttt{cifra}} è il pattern di oggi: \texttt{for} + \texttt{charAt} + \texttt{append} + \texttt{toString}; non tocca \texttt{testo}, non potrebbe nemmeno volendo.
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione -- \texttt{Cesare.java} (2/2)}
+\begin{columns}[T]
+\column{0.62\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    // Decifrare = cifrare con la chiave complementare
+    public static String decifra(String testo, int chiave) {
+        return cifra(testo, 26 - chiave % 26);
+    }
+
+    public static void main(String[] args) {
+        Scanner in = new Scanner(System.in);
+        System.out.print("Testo da cifrare: ");
+        String testo = in.nextLine().toLowerCase();
+        System.out.print("Chiave (0-25):    ");
+        int chiave = in.nextInt();
+        in.close();
+
+        String cifrato = cifra(testo, chiave);
+        String decifrato = decifra(cifrato, chiave);
+        boolean uguale = decifrato.equals(testo);
+        System.out.println("Cifrato:   " + cifrato);
+        System.out.println("Decifrato: " + decifrato);
+        System.out.println("Uguale? " + uguale);
+    }
+}
+\end{lstlisting}
+
+\column{0.38\textwidth}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Testo da cifrare: attaccare all'alba!
+Chiave (0-25):    3
+Cifrato:   dwwdffduh doo'doed!
+Decifrato: attaccare all'alba!
+Uguale? true
+\end{lstlisting}
+\small
+\textbf{Decifrare non è un'operazione nuova}: spostare indietro di $k$ equivale a spostare avanti di $26-k$: una riga che \emph{riusa} \texttt{cifra}.
+
+\vspace{0.15cm}
+\textbf{\texttt{nextLine()} e non \texttt{next()}}: il testo contiene spazi. \texttt{toLowerCase()} subito, così \texttt{sposta} conosce solo le minuscole.
+
+\vspace{0.15cm}
+\textbf{Se avanza tempo}: conservare le maiuscole; chiave negativa o $> 25$: cosa fa \texttt{\%}?; \emph{forza bruta}: le 26 decifrature possibili di un testo con chiave ignota.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Un esperimento -- \texttt{String} contro \texttt{StringBuilder} in un ciclo}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static String conPiu(int n) {
+    String s = "";
+    for (int i = 0; i < n; i++) {
+        s += i % 10;   // NUOVA stringa ogni volta
+    }
+    return s;
+}
+
+public static String conStringBuilder(int n) {
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < n; i++) {
+        sb.append(i % 10);  // modifica in place
+    }
+    return sb.toString();
+}
+
+long t0 = System.nanoTime();
+String a = conPiu(n);
+long t1 = System.nanoTime();
+String b = conStringBuilder(n);
+long t2 = System.nanoTime();
+// (t1 - t0) / 1e6 = millisecondi di conPiu
+\end{lstlisting}
+
+\column{0.45\textwidth}
+\small
+\textbf{Sulla macchina del docente} (\texttt{java ConfrontoConcatenazione 100000}):
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+n = 100000 caratteri
+String +=     :   1077.9 ms
+StringBuilder :      5.2 ms
+stesso contenuto? true
+\end{lstlisting}
+
+\textbf{Perché 200 volte tanto?} Al giro $i$, \texttt{s += x} crea una nuova stringa e vi \emph{copia} gli $i$ caratteri di \texttt{s}: in tutto $1 + 2 + \dots + n \approx n^2/2$ copie. \texttt{StringBuilder} scrive nel proprio spazio: $\approx n$ operazioni.
+
+\vspace{0.2cm}
+\textbf{Provate voi} con $n = 10^4, 10^5, 10^6$: come cresce ciascun tempo quando $n$ cresce di 10 volte?
+
+\vspace{0.1cm}
+\textbf{Ma \texttt{+} non è vietato}: per unire \emph{poche} stringhe (\texttt{"Ciao " + nome}) è perfetto. Il problema è \textbf{dentro un ciclo}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Wrap-up}
+
+\begin{frame}{Riepilogo: cosa abbiamo trattato}
+\small
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Concetto (unità di riferimento)} & \textbf{Dove compare oggi} \\
+\hline
+Tipi primitivi, letterali, dimensioni fisse (U8) & tabella degli 8 tipi; \texttt{TipiPrimitivi} \\
+\hline
+Divisione intera, \texttt{\%}, overflow (U8) & \texttt{TipiPrimitivi}; \texttt{\%} in \texttt{Cesare} \\
+\hline
+Costanti \texttt{final}, \texttt{Math}, \texttt{import static} (U8) & \texttt{Costanti}; \texttt{ALFABETO} in \texttt{Cesare} \\
+\hline
+Riferimenti, stack/heap, assegnazione, orfani, GC (U8) & diagrammi di memoria; \texttt{Riferimenti} \\
+\hline
+\texttt{null}, \texttt{NullPointerException} (U8) & \texttt{Riferimenti} \\
+\hline
+Letterali vs \texttt{new}, string pool (U12) & diagramma del pool \\
+\hline
+\texttt{==} vs \texttt{equals}, \texttt{compareTo} (U8, U12) & \texttt{Riferimenti}; \texttt{isPalindroma}; ``Torna uguale?'' \\
+\hline
+Metodi di \texttt{String}, indici da 0 (U12) & \texttt{MetodiString}; \texttt{AnalisiParola}; \texttt{Cesare} \\
+\hline
+Immutabilità, il risultato ``perso'' (U12) & \texttt{Immutabile}; \texttt{rovescia} non tocca la parola \\
+\hline
+Concatenazione, \texttt{valueOf}, \texttt{parseInt} (U12) & \texttt{Concatenazione} \\
+\hline
+\texttt{StringBuilder} e il suo perché (U12) & \texttt{UsaStringBuilder}; \texttt{cifra}; l'esperimento \\
+\hline
+\end{tabular}
+\end{center}
+
+\vspace{0.2cm}
+\textbf{Prossima lezione (L3)}: metodi -- passaggio per valore, riferimenti come parametri, overloading -- e \textbf{array} mono e bidimensionali: finalmente potremo tenere insieme \emph{molti} valori.
+\end{frame}
+
+% ========================================================================
+\begin{frame}{Homework 2 (da svolgere entro la prossima lezione)}
+\begin{enumerate}\itemsep=4pt
+    \item \textbf{\texttt{ContaCaratteri.java}}: legge una frase (\texttt{nextLine}) e stampa quante vocali, consonanti, cifre, spazi e altri caratteri contiene, più il numero (approssimato) di parole. Un metodo \texttt{static boolean} per ogni categoria: \texttt{isVocale(char)}, \texttt{isLettera(char)}, \texttt{isCifra(char)}. \small Suggerimento: \texttt{c >= 'a' \&\& c <= 'z'}.\normalsize
+    \item \textbf{\texttt{Palindromo.java}}: legge una frase e dice se è palindroma \emph{ignorando} spazi, maiuscole e punteggiatura (\emph{``I topi non avevano nipoti''} lo è). Un metodo \texttt{soloLettere(String)} che costruisce con \texttt{StringBuilder} la versione ``pulita'', poi la logica di \texttt{AnalisiParola}.
+    \item \textbf{\texttt{Acronimo.java}}: legge una frase e stampa le iniziali delle parole in maiuscolo: \emph{``java virtual machine''} \textrightarrow{} \texttt{JVM}. Deve funzionare anche con spazi doppi o ai bordi (\texttt{trim}).
+\end{enumerate}
+
+\vspace{0.2cm}
+\small Usate solo ciò che abbiamo visto finora: niente array, niente \texttt{Character}. Se vi sembra di averne bisogno, probabilmente state complicando il problema.
+\end{frame}
+
+% ========================================================================
+\begin{frame}
+\begin{center}
+{\Huge Domande?}\\[2.5em]
+{\normalsize \href{mailto:mattia.fonisto@unina.it}{\texttt{mattia.fonisto@unina.it}}}
+\end{center}
+\end{frame}
+
+\end{document}

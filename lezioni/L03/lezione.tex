@@ -1,0 +1,1095 @@
+% ============================================================================
+%  Laboratorio di Programmazione -- Lezione 3 (30 settembre 2026)
+%  Compilare con:  pdflatex -shell-escape Lezione03_Metodi_Overloading_Array.tex
+%  Richiede: mermaid.sty (nel progetto) + Mermaid CLI `mmdc` nel PATH
+%  NB: ogni frame che contiene codice (lstlisting) o un diagramma (mermaid)
+%      deve essere dichiarato [fragile].
+% ============================================================================
+\documentclass[10pt,aspectratio=169]{beamer}
+\usetheme{Madrid}
+\usecolortheme{default}
+
+% `provide=*` carica la localizzazione italiana dai file .ini di babel: funziona anche
+% su installazioni TeX prive di texlive-lang-italian; con una TeX Live completa e`
+% equivalente al classico \usepackage[italian]{babel}.
+\usepackage[italian,provide=*]{babel}
+\usepackage[utf8]{inputenc}
+
+% Localizzazione dei nomi dei blocchi Beamer
+\uselanguage{italian}
+\languagepath{italian}
+\deftranslation[to=italian]{Definition}{Definizione}
+\deftranslation[to=italian]{Theorem}{Teorema}
+\deftranslation[to=italian]{Example}{Esempio}
+\deftranslation[to=italian]{Proof}{Dimostrazione}
+\deftranslation[to=italian]{Corollary}{Corollario}
+\deftranslation[to=italian]{Lemma}{Lemma}
+
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{mermaid}
+
+% Mermaid: sfondo trasparente e dimensione massima adatta a una slide 16:9
+\MermaidRendererOptions{-b transparent}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+% Configurazione colori per il codice
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\definecolor{keywordblue}{rgb}{0.0,0.0,0.7}
+
+% Stile per snippet Java
+\lstdefinestyle{javastyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen}\itshape,
+    keywordstyle=\color{keywordblue}\bfseries,
+    numberstyle=\scriptsize\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=none,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    language=Java,
+    literate={à}{{\`a}}1 {è}{{\`e}}1 {é}{{\'e}}1 {ì}{{\`i}}1
+             {ò}{{\`o}}1 {ù}{{\`u}}1 {È}{{\`E}}1
+}
+\lstset{style=javastyle}
+
+% Stile per righe di terminale
+\lstdefinestyle{shell}{
+    language=bash,
+    backgroundcolor=\color{black!85},
+    basicstyle=\ttfamily\footnotesize\color{white},
+    keywordstyle=\color{white},
+    stringstyle=\color{white},
+    commentstyle=\color{green!70},
+    numbers=none,
+    frame=none,
+    showstringspaces=false
+}
+
+\title[Lezione 3 -- Metodi, overloading, array]{Lezione 3 -- Metodi, overloading, array}
+\subtitle{Sottoprogrammi, passaggio dei parametri, vettori e matrici}
+\author[Mattia Fonisto]{Mattia Fonisto}
+\institute[Lab.\ di Programmazione]{Laboratorio di Programmazione -- Ingegneria Informatica, II anno\\
+           Università degli Studi di Napoli Federico II -- Sede di San Giovanni a Teduccio}
+\date{30 settembre 2026}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% ========================================================================
+\begin{frame}{Agenda della lezione (2h)}
+\begin{enumerate}
+    \item \textbf{Ripasso e Homework 2} \hfill (\emph{15 min})
+    \begin{itemize}
+        \item uno di voi alla lavagna con \texttt{ContaCaratteri}, \texttt{Palindromo} o \texttt{Acronimo}: lo commentiamo insieme
+    \end{itemize}
+    \item \textbf{I metodi} \hfill (\emph{20 min})
+    \begin{itemize}
+        \item anatomia e chiamata; variabili locali e blocchi; passaggio dei parametri (sempre per valore)
+        \item overloading: stesso nome, firme diverse; conversioni implicite
+    \end{itemize}
+    \item \textbf{Gli array} \hfill (\emph{25 min})
+    \begin{itemize}
+        \item vettori: creazione, \texttt{length}, for potenziato, copia e confronto, array come parametri
+        \item riempimento; array di riferimenti (\texttt{String[]}); matrici
+    \end{itemize}
+    \item \textbf{Esercitazione} -- tutti insieme \hfill (\emph{50 min})
+    \begin{itemize}
+        \item \emph{Commentiamo insieme}: \texttt{Vettori}, una libreria di funzioni su array
+        \item \emph{Insieme, passo passo}: \texttt{Matrici} -- lettura, stampa, trasposta, somma
+    \end{itemize}
+    \item \textbf{Wrap-up e Homework 3} \hfill (\emph{10 min})
+\end{enumerate}
+\end{frame}
+
+% ========================================================================
+\section{I metodi}
+
+\begin{frame}[fragile]{Anatomia di un metodo -- \texttt{Somma.java}}
+\begin{columns}[T]
+\column{0.58\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+// modificatori  tipo   nome  (parametri formali)
+public static double somma(double a, double b) {
+    double c;          // variabile locale
+    c = a + b;
+    return c;          // del tipo dell'intestazione
+}
+
+// "procedura": tipo void, nessun valore restituito
+public static void stampa(String et, double v) {
+    System.out.printf("%s = %.2f%n", et, v);
+}
+
+public static void main(String[] args) {
+    double ris = somma(3.5, 4);      // espressione
+    stampa("somma", ris);            // istruzione
+    stampa("doppia", somma(ris, ris));
+}
+\end{lstlisting}
+
+\column{0.42\textwidth}
+\small
+In Java i sottoprogrammi si chiamano \textbf{metodi} e vivono sempre \emph{dentro una classe}. Sono tutti \textbf{funzioni}: le ``procedure'' sono funzioni di tipo \texttt{void}.
+
+\vspace{0.2cm}
+\textbf{Intestazione}: modificatori (\texttt{public}, \texttt{static}), tipo del risultato, nome, lista dei parametri formali (anche vuota: \texttt{()}).
+
+\vspace{0.2cm}
+\textbf{Corpo}: un blocco \texttt{\{ \}} con dichiarazioni, istruzioni e, se il tipo non è \texttt{void}, un \texttt{return} con un'espressione \emph{di quel tipo}.
+
+\vspace{0.2cm}
+\textbf{Chiamata}: se il metodo restituisce un valore, la chiamata è un'\emph{espressione} di quel tipo (si può assegnare, stampare, passare a un altro metodo); se è \texttt{void}, è un'\emph{istruzione}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Chiamare un metodo: tre modi, e cosa succede}
+\begin{columns}[T]
+\column{0.58\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class Chiamate {
+
+    public static int quadrato(int x) {
+        return x * x;
+    }
+
+    public static void main(String[] args) {
+        String s = "laboratorio";
+        int n = s.length();        // 1. OGGETTO
+        double r = Math.sqrt(2.0); // 2. CLASSE
+        int q = quadrato(7);       // 3. nome da solo
+    }
+}
+\end{lstlisting}
+\footnotesize
+\begin{enumerate}\itemsep=1pt
+    \item metodo applicato a un \textbf{oggetto} con il punto (dalla lezione 5)
+    \item metodo \texttt{static} di \textbf{un'altra classe}: \texttt{NomeClasse.metodo(...)}
+    \item metodo \texttt{static} della \textbf{stessa classe} in cui siamo (\texttt{quadrato} è definito in \texttt{Chiamate}, come \texttt{main}): basta il nome, come in C. Funziona anche \texttt{Chiamate.quadrato(7)}
+\end{enumerate}
+
+\column{0.42\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.5\textheight,center}
+\begin{mermaid}
+sequenceDiagram
+  participant M as main
+  participant S as quadrato(x)
+  M->>S: quadrato(7)
+  Note over S: x = 7<br/>x * x = 49
+  S-->>M: return 49
+  Note over M: q = 49
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\small Alla chiamata il controllo passa al metodo; al \texttt{return} torna al chiamante, insieme al valore.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Variabili locali e visibilità dei blocchi -- \texttt{Visibilita.java}}
+\begin{columns}[T]
+\column{0.58\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static int raddoppia(int x) { // x: locale
+    int y = x * 2;                   // y: locale
+    // int x = 0;   // ERRORE: x esiste gia`
+    x = 0;          // ok: assegna al parametro
+    return y;
+}
+
+public static void main(String[] args) {
+    int totale = 0;                  // tutto il main
+    for (int i = 1; i <= 3; i++) {   // i: solo nel for
+        int parziale = raddoppia(i); // idem
+        totale += parziale;
+    }
+    // System.out.println(i);  // ERRORE: i non c'e`
+    // System.out.println(y);  // ERRORE: y e` altrove
+    System.out.println("totale = " + totale);   // 12
+}
+\end{lstlisting}
+
+\column{0.42\textwidth}
+\small
+Una variabile dichiarata in un \textbf{blocco} \texttt{\{ \}} esiste \emph{solo} lì dentro: nasce alla dichiarazione, muore alla graffa di chiusura.
+
+\vspace{0.2cm}
+\begin{itemize}\itemsep=3pt
+    \item i \textbf{parametri} sono variabili locali del metodo, inizializzate dalla chiamata
+    \item \texttt{int x = 0;} è una \textbf{dichiarazione}: crea una nuova variabile, e \texttt{x} esiste già \textrightarrow{} errore di compilazione. \texttt{x = 0;} è un'\textbf{assegnazione}: cambia il valore del parametro, lecito (anche se qui inutile)
+    \item la variabile di controllo di un \texttt{for} dichiarata nel \texttt{for} vive solo nel ciclo
+    \item due metodi possono usare lo stesso nome per variabili diverse: non si vedono
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Il passaggio dei parametri: sempre per valore -- \texttt{PerValore.java}}
+\begin{columns}[T]
+\column{0.46\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static void azzera(int i) {
+    i = 0;                // copia!
+}
+
+public static void maiuscola(String s) {
+    s = s.toUpperCase();  // copia!
+}
+
+public static void main(String[] args) {
+    int n = 30;
+    azzera(n);
+    System.out.println(n);      // 30
+
+    String nome = new String("diego");
+    maiuscola(nome);
+    System.out.println(nome);   // diego
+}
+\end{lstlisting}
+
+\column{0.54\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.26\textheight,center}
+\begin{mermaid}
+flowchart LR
+  nome["<b>main</b>: nome ●"] --> d["<b>heap</b>: &quot;diego&quot;"]
+  s["<b>maiuscola</b>: s ●<br/>copia di nome"] -. "alla chiamata" .-> d
+  s -- "dopo s = s.toUpperCase()" --> D["<b>heap</b>: &quot;DIEGO&quot;"]
+  style nome fill:#fef3c7,stroke:#b45309
+  style s fill:#fef3c7,stroke:#b45309
+  style d fill:#dbeafe,stroke:#1d4ed8
+  style D fill:#dbeafe,stroke:#1d4ed8
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+In Java il parametro formale riceve \textbf{sempre una copia} del parametro effettivo (niente scelta valore/riferimento come in C).
+\begin{itemize}\itemsep=1pt
+    \item \textbf{primitivo}: copia del valore. \texttt{azzera} azzera la sua \texttt{i}; \texttt{n} resta 30
+    \item \textbf{riferimento}: copia del riferimento. Alla chiamata \texttt{s} è una seconda variabile nello stack che punta allo \emph{stesso} oggetto \texttt{"diego"} di \texttt{nome}. \texttt{toUpperCase} crea \texttt{"DIEGO"} e \texttt{s = ...} fa puntare lì \emph{solo la copia}: \texttt{nome} non è stato toccato
+    \item con la copia del riferimento un metodo può però \emph{modificare l'oggetto} puntato, se è modificabile: fra poco, con gli array
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Overloading: stesso nome, firme diverse -- \texttt{Overloading.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static int quadrato(int x) {
+    return x * x;
+}
+
+public static double quadrato(double x) {
+    return x * x;
+}
+
+// ERRORE: stessa firma di quadrato(int)
+// public static double quadrato(int x)
+
+quadrato(3)      // 9      -> quadrato(int)
+quadrato(3.5)    // 12.25  -> quadrato(double)
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\small
+Più metodi possono avere lo \textbf{stesso nome}, purché abbiano \textbf{liste di parametri diverse}: il compilatore sceglie in base agli argomenti della chiamata.
+
+\vspace{0.2cm}
+\begin{block}{Firma (\emph{signature}) di un metodo}
+nome + numero, tipo e ordine dei parametri.\\
+Il \textbf{tipo restituito non ne fa parte}: due metodi che differiscono solo per quello non compilano.
+\end{block}
+
+\vspace{0.2cm}
+\textbf{Quando usarlo}: la stessa operazione, concettualmente, su tipi diversi (\texttt{quadrato} di un intero o di un reale; \texttt{media} di un \texttt{int[]} o di un \texttt{double[]}: lo faremo oggi). Non per operazioni diverse che per caso hanno lo stesso nome.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Overloading e conversioni implicite}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static void stampa(int x) {
+    System.out.println("int: " + x);
+}
+public static void stampa(double x) {
+    System.out.println("double: " + x);
+}
+public static void stampa(String s) {
+    System.out.println("String: " + s);
+}
+
+stampa(42);       // int: 42
+stampa(4.2);      // double: 4.2
+stampa("42");     // String: 42
+char c = 'A';
+stampa(c);        // int: 65
+stampa(3.14f);    // double: 3.14...
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\small
+Se esiste un metodo con \textbf{esattamente} i tipi degli argomenti, vince quello. Altrimenti il compilatore cerca il metodo raggiungibile con le \textbf{conversioni implicite} (\emph{widening}) dei tipi primitivi:
+\begin{center}
+\texttt{char} \textrightarrow{} \texttt{int} \textrightarrow{} \texttt{double}
+\end{center}
+\begin{itemize}\itemsep=2pt
+    \item \texttt{stampa('A')}: non c'è \texttt{stampa(char)}, il primo tipo raggiungibile è \texttt{int}
+    \item senza \texttt{quadrato(double)}, \texttt{quadrato(3.5)} \textbf{non compila}: da \texttt{double} a \texttt{int} non si scende da soli
+\end{itemize}
+
+\vspace{0.1cm}
+Se due metodi sono raggiungibili ``allo stesso modo'', la chiamata è \textbf{ambigua} e non compila. Le conversioni esplicite le vedremo la prossima lezione.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Gli array}
+
+\begin{frame}[fragile]{Che cos'è un array}
+\begin{columns}[T]
+\column{0.5\textwidth}
+Una sequenza di variabili \textbf{dello stesso tipo}, contigue in memoria, raggiunte tramite \emph{un solo riferimento} e un \textbf{indice}.
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+int[] a = new int[5];   // 5 int, tutti a 0
+a[0] = 42;              // primo elemento
+a[4] = 7;               // ultimo: length - 1
+// a[5] = 1;            // ferma il programma!
+\end{lstlisting}
+\small
+\begin{itemize}\itemsep=2pt
+    \item gli array sono \textbf{oggetti}: si creano con \texttt{new}, vivono nello heap, la variabile è un riferimento
+    \item gli elementi sono \textbf{inizializzati}: \texttt{0} per i numeri, \texttt{false} per i \texttt{boolean}, \texttt{null} per i riferimenti
+    \item indici da \texttt{0} a \texttt{length - 1}; a differenza del C, l'accesso fuori dai limiti viene \textbf{sempre} rilevato (\texttt{ArrayIndexOutOfBoundsException})
+    \item la dimensione si decide alla creazione e \textbf{non cambia più}
+\end{itemize}
+\column{0.5\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.45\textheight,center}
+\begin{mermaid}
+flowchart LR
+  a["<b>stack</b><br/>int[] a<br/>●"]
+  o["<b>heap</b> · oggetto array, length = 5<br/><table border='1' cellpadding='4'><tr><td>[0]</td><td>[1]</td><td>[2]</td><td>[3]</td><td>[4]</td></tr><tr><td>42</td><td>0</td><td>0</td><td>0</td><td>7</td></tr></table>"]
+  a --> o
+  style a fill:#fef3c7,stroke:#b45309
+  style o fill:#dbeafe,stroke:#1d4ed8
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\small
+\texttt{int[] a} dichiara il \emph{riferimento}; \texttt{new int[5]} crea l'\emph{oggetto} e ne restituisce l'indirizzo. \texttt{a.length} è il numero di elementi (è una variabile, non un metodo: niente parentesi).
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Inizializzazione, \texttt{length} e i due \texttt{for} -- \texttt{Vettore.java}}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+int[] voti = {28, 30, 24, 27, 30};  // new implicito
+System.out.println(voti.length);     // 5
+
+for (int i = 0; i < voti.length; i++) { // indice
+    System.out.printf("%d: %d%n", i, voti[i]);
+}
+
+double somma = 0;
+for (int v : voti) {          // for potenziato
+    somma += v;               // v: copia di voti[i]
+}
+System.out.println(somma / voti.length);   // 27.8
+
+voti[4] = 18;
+System.out.println(voti[voti.length - 1]); // 18
+\end{lstlisting}
+
+\column{0.45\textwidth}
+\small
+\textbf{Inizializzazione con le graffe}: il compilatore conta gli elementi e fa la \texttt{new} per voi.
+
+\vspace{0.2cm}
+\textbf{\texttt{for} potenziato} (\emph{for-each}): \texttt{for (tipo x : array)} scorre \emph{tutti} gli elementi, dal primo all'ultimo; \texttt{x} è una \textbf{copia} dell'elemento corrente.
+
+\vspace{0.2cm}
+\begin{block}{Quale \texttt{for}?}
+\begin{itemize}\itemsep=2pt
+    \item \textbf{potenziato}: devo solo \emph{leggere} tutti gli elementi (somme, conteggi, ricerche)
+    \item \textbf{classico}: mi serve l'\emph{indice}, devo \emph{modificare} gli elementi (\texttt{x = 0} non tocca l'array!), o non li scorro tutti
+\end{itemize}
+\end{block}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Copia e confronto: \texttt{=} e \texttt{==} lavorano sui riferimenti}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+int[] a = {4, 5, 1, 13, 0};
+
+int[] alias = a;       // NON copia: stesso array
+alias[0] = 99;
+System.out.println(a[0]);  // 99 !
+
+int[] b = new int[a.length];   // copia vera:
+for (int i = 0; i < a.length; i++) {
+    b[i] = a[i];        // elemento per elemento
+}
+b[0] = 4;
+System.out.println(a[0]);  // 99: a non cambia
+
+int[] c = {99, 5, 1, 13, 0};
+System.out.println(a == alias);  // true
+System.out.println(a == c);      // false !
+\end{lstlisting}
+
+\column{0.48\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.36\textheight,center}
+\begin{mermaid}
+flowchart LR
+  a["int[] a"] --> o1["{99, 5, 1, 13, 0}"]
+  al["int[] alias"] --> o1
+  b["int[] b"] --> o2["{4, 5, 1, 13, 0}"]
+  c["int[] c"] --> o3["{99, 5, 1, 13, 0}"]
+  style a fill:#fef3c7,stroke:#b45309
+  style al fill:#fef3c7,stroke:#b45309
+  style b fill:#fef3c7,stroke:#b45309
+  style c fill:#fef3c7,stroke:#b45309
+  style o1 fill:#dbeafe,stroke:#1d4ed8
+  style o2 fill:#dbeafe,stroke:#1d4ed8
+  style o3 fill:#dbeafe,stroke:#1d4ed8
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\small
+Esattamente come per le stringhe: \texttt{=} copia il riferimento, \texttt{==} confronta i riferimenti. \texttt{a} e \texttt{c} hanno lo stesso contenuto ma sono \textbf{due oggetti}.
+
+\vspace{0.15cm}
+Per copiare o confrontare il \emph{contenuto} serve un ciclo, elemento per elemento (nell'esempio completo c'è anche il confronto). La prossima lezione vedremo che la libreria standard offre scorciatoie.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Array come parametri e come risultato -- \texttt{ArrayParametro.java}}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static void azzeraPrimo(int[] v) {
+    v[0] = 0;                  // modifica
+}
+public static void sostituisci(int[] v) {
+    v = new int[] {7, 7, 7};   // nessun effetto
+}
+public static int[] raddoppiato(int[] v) {   // crea
+    int[] r = new int[v.length];
+    for (int i = 0; i < v.length; i++) {
+        r[i] = 2 * v[i];
+    }
+    return r;
+}
+
+public static void main(String[] args) {
+    int[] a = {30, 20, 10};
+    azzeraPrimo(a);
+    System.out.println(a[0]);      // 0
+    sostituisci(a);
+    System.out.println(a[0]);      // 0
+    int[] d = raddoppiato(a);
+    System.out.println(d[1] + " " + a[1]);  // 40 20
+}
+\end{lstlisting}
+
+\column{0.45\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.34\textheight,center}
+\begin{mermaid}
+flowchart LR
+  a["<b>main</b>: a ●"] --> o["<b>heap</b>: {0, 20, 10}"]
+  v["<b>azzeraPrimo</b>: v ●<br/>(copia di a)"] -- "v[0] = 0" --> o
+  w["<b>sostituisci</b>: v ●<br/>(copia di a, poi riassegnata)"] -- "v = new int[]{7,7,7}" --> o2["<b>heap</b>: {7, 7, 7}<br/>nuovo, nessun altro lo vede"]
+  style a fill:#fef3c7,stroke:#b45309
+  style v fill:#fef3c7,stroke:#b45309
+  style w fill:#fef3c7,stroke:#b45309
+  style o fill:#dbeafe,stroke:#1d4ed8
+  style o2 fill:#dbeafe,stroke:#1d4ed8
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+Il parametro \texttt{v} è una \emph{copia del riferimento}: punta allo \textbf{stesso array} del chiamante.
+\begin{itemize}\itemsep=1pt
+    \item \texttt{v[0] = 0} modifica l'oggetto condiviso: il chiamante \textbf{lo vede}
+    \item \texttt{v = new int[]\{...\}} fa puntare la copia altrove: il chiamante \textbf{non se ne accorge}
+    \item un metodo può \textbf{restituire} un array: crea l'oggetto, ne ritorna il riferimento. Il nome deve dire se \emph{modifica} o \emph{crea}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Dimensione massima e riempimento -- \texttt{Riempimento.java}}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+final int MAX = 200;
+int[] a = new int[MAX];   // dimensione MASSIMA
+int n;                    // riempimento
+
+System.out.print("Quanti elementi? ");
+n = in.nextInt();
+for (int i = 0; i < n; i++) {   // n elementi su MAX
+    a[i] = in.nextInt();
+}
+
+int somma = 0;
+for (int i = 0; i < n; i++) {   // NON a.length!
+    somma += a[i];
+}
+
+// alternativa: dimensione decisa a run-time
+int[] esatto = new int[n];   // n e` una variabile
+\end{lstlisting}
+
+\column{0.45\textwidth}
+\small
+La dimensione di un array è fissa, ma spesso quanti dati arriveranno \emph{non si sa in anticipo}. Due strade:
+
+\vspace{0.2cm}
+\textbf{Riempimento} (come in C): array grande ``a sufficienza'' più una variabile \texttt{n} che dice quanti elementi sono \emph{davvero} in uso. Da lì in poi ogni ciclo va da \texttt{0} a \texttt{n - 1}, \textbf{non} a \texttt{length - 1}.
+
+\vspace{0.2cm}
+\textbf{Dimensione a tempo di esecuzione}: \texttt{new int[n]} con \texttt{n} letto dall'utente. Funziona quando il numero di elementi si conosce \emph{prima} di leggerli.
+
+\vspace{0.2cm}
+Il \texttt{for} potenziato scorre \emph{tutto} l'array: con il riempimento non si può usare.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Array di riferimenti: \texttt{String[]}, cioè \texttt{args} -- \texttt{ArrayDiStringhe.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+String[] nomi = new String[3];   // 3 null
+System.out.println(nomi[0]);     // null
+// nomi[0].length();  // NullPointerException
+
+nomi[0] = "Anna";
+nomi[1] = "Luca";
+nomi[2] = "Marta";
+
+String[] colori = {"rosso", "verde", "blu"};
+for (String c : colori) {
+    System.out.print(c.toUpperCase() + " ");
+}
+
+// args e` esattamente un String[]
+for (int i = 0; i < args.length; i++) {
+    System.out.println(i + ": " + args[i]);
+}
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.34\textheight,center}
+\begin{mermaid}
+flowchart LR
+  n["String[] nomi"] --> arr["[0] ● &nbsp; [1] ● &nbsp; [2] ●"]
+  arr --> s0["&quot;Anna&quot;"]
+  arr --> s1["&quot;Luca&quot;"]
+  arr --> s2["&quot;Marta&quot;"]
+  style n fill:#fef3c7,stroke:#b45309
+  style arr fill:#dbeafe,stroke:#1d4ed8
+  style s0 fill:#dcfce7,stroke:#15803d
+  style s1 fill:#dcfce7,stroke:#15803d
+  style s2 fill:#dcfce7,stroke:#15803d
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\small
+Un array di tipo riferimento contiene \textbf{riferimenti}, non oggetti: dopo la \texttt{new} sono tutti \texttt{null}, e gli oggetti vanno creati (o assegnati) uno per uno.
+
+\vspace{0.15cm}
+Il \texttt{String[] args} del \texttt{main} è proprio questo: un array con una stringa per ogni parola scritta dopo il nome della classe. \texttt{java Prova uno due} \textrightarrow{} \texttt{args.length == 2}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Array bidimensionali: matrici -- \texttt{Matrice.java}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+int[][] m1 = new int[2][3];     // 2 x 3, tutti 0
+int[][] m2 = {{4, 5, 9}, {1, 13, 0}}; // 2 x 3
+int[][] m3 = {{4, 5}, {8}, {1, 13, 0}};
+
+m1[1][2] = 7;                // riga 1, colonna 2
+
+for (int r = 0; r < m2.length; r++) {    // righe
+    for (int c = 0; c < m2[r].length; c++) {
+        System.out.printf("%4d", m2[r][c]);
+    }
+    System.out.println();
+}
+
+int[][] m4 = new int[2][];  // 2 righe
+m4[0] = new int[5];
+m4[1] = new int[3];
+\end{lstlisting}
+
+\column{0.48\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.34\textheight,center}
+\begin{mermaid}
+flowchart LR
+  m["int[][] m3"] --> r["[0] ●<br/>[1] ●<br/>[2] ●"]
+  r --> r0["{4, 5}"]
+  r --> r1["{8}"]
+  r --> r2["{1, 13, 0}"]
+  style m fill:#fef3c7,stroke:#b45309
+  style r fill:#dbeafe,stroke:#1d4ed8
+  style r0 fill:#dbeafe,stroke:#1d4ed8
+  style r1 fill:#dbeafe,stroke:#1d4ed8
+  style r2 fill:#dbeafe,stroke:#1d4ed8
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\small
+Una matrice in Java è un \textbf{array di array}: \texttt{m[r]} è la riga \texttt{r}, a sua volta un \texttt{int[]}.
+\begin{itemize}\itemsep=2pt
+    \item \texttt{m.length}: numero di righe; \texttt{m[r].length}: colonne della riga \texttt{r}
+    \item le righe possono avere lunghezze \textbf{diverse} (array ``frastagliati'')
+    \item si scorre con due \texttt{for} annidati: prima le righe, poi le colonne
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Esercitazione}
+
+\begin{frame}[fragile]{Obiettivo dell'esercitazione}
+Due programmi, tutti insieme, sulla stessa idea: \textbf{ogni operazione su un array è un metodo} con un compito solo, e il \texttt{main} li mette in fila.
+
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.36\textheight,center}
+\begin{mermaid}
+flowchart LR
+  I["dati<br/>(letterale o Scanner)"] --> A["<b>array</b><br/>int[] · int[][]"]
+  A -->|"metodi che <b>leggono</b><br/>somma, media, massimo, indiceDi"| R["un valore<br/>int · double · boolean"]
+  A -->|"metodi che <b>creano</b><br/>invertito, trasposta, somma"| B["un array <b>nuovo</b>"]
+  A -->|"metodi che <b>modificano</b><br/>inverti"| C["lo stesso array,<br/>cambiato"]
+  style A fill:#dbeafe,stroke:#1d4ed8
+  style B fill:#dbeafe,stroke:#1d4ed8
+  style C fill:#fef3c7,stroke:#b45309
+  style R fill:#dcfce7,stroke:#15803d
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+\begin{enumerate}\itemsep=4pt
+    \item \textbf{Commentiamo insieme} (20') -- \texttt{Vettori.java}: una piccola libreria di funzioni su \texttt{int[]}. La leggiamo metodo per metodo, distinguendo i tre tipi: \emph{legge}, \emph{modifica}, \emph{crea}.
+    \item \textbf{Insieme, passo passo} (30') -- \texttt{Matrici.java}: leggere due matrici, stamparle, calcolare trasposta e somma. Io al PC proiettato, voi in VS Code.
+\end{enumerate}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{Vettori.java} (1/3): i metodi che \emph{leggono}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static void stampa(int[] v) {
+    System.out.print("[");
+    for (int i = 0; i < v.length; i++) {
+        if (i > 0) {
+            System.out.print(", ");
+        }
+        System.out.print(v[i]);
+    }
+    System.out.println("]");
+}
+
+public static int somma(int[] v) {
+    int s = 0;
+    for (int x : v) {
+        s += x;
+    }
+    return s;
+}
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static int massimo(int[] v) {
+    int max = v[0];
+    for (int i = 1; i < v.length; i++) {
+        if (v[i] > max) {
+            max = v[i];
+        }
+    }
+    return max;
+}
+\end{lstlisting}
+\small
+\textbf{Da notare, leggendo:}
+\begin{itemize}\itemsep=3pt
+    \item \texttt{stampa}: serve il \texttt{for} classico per l'\texttt{if (i > 0)}, la virgola va \emph{prima} di ogni elemento tranne il primo
+    \item \texttt{somma}: solo lettura di tutti gli elementi \textrightarrow{} \texttt{for} potenziato
+    \item \texttt{massimo}: parte da \texttt{v[0]} e da \texttt{i = 1}. Cosa succede con un array vuoto?
+    \item nessuno dei tre tocca \texttt{v}: sono metodi che \emph{leggono}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{Vettori.java} (2/3): overloading e ricerca}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Pre: v.length > 0 */
+public static double media(int[] v) {
+    double s = somma(v);   // double!
+    return s / v.length;
+}
+
+/** Stesso nome, firma diversa */
+public static double media(double[] v) {
+    double s = 0;
+    for (double x : v) {
+        s += x;
+    }
+    return s / v.length;
+}
+\end{lstlisting}
+\small
+\texttt{media(int[])} \emph{riusa} \texttt{somma}; \texttt{media(double[])} non può: \texttt{somma} accetta solo \texttt{int[]}. Il compilatore sceglie l'una o l'altra guardando il tipo dell'argomento.
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Indice della prima occorrenza, o -1 */
+public static int indiceDi(int[] v, int x) {
+    for (int i = 0; i < v.length; i++) {
+        if (v[i] == x) {
+            return i;      // esce subito
+        }
+    }
+    return -1;             // non trovato
+}
+\end{lstlisting}
+\small
+\textbf{Ricerca lineare}: un \texttt{return} dentro il ciclo termina il metodo alla prima occorrenza; il \texttt{return -1} finale si raggiunge solo se il ciclo arriva in fondo.
+
+\vspace{0.15cm}
+Perché $-1$ e non $0$? Perché $0$ è un indice valido: il valore ``non trovato'' deve essere uno che \emph{nessun} indice può assumere.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{Vettori.java} (3/3): modificare o creare}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Inverte SUL POSTO l'array del chiamante */
+public static void inverti(int[] v) {
+    for (int i = 0; i < v.length / 2; i++) {
+        int tmp = v[i];
+        v[i] = v[v.length - 1 - i];
+        v[v.length - 1 - i] = tmp;
+    }
+}
+\end{lstlisting}
+\small
+Scambia \texttt{v[i]} con il simmetrico \texttt{v[length-1-i]} e si ferma a metà: \texttt{length / 2} è una divisione intera, con 5 elementi il centrale resta dov'è. Tipo \texttt{void}: l'effetto è \emph{sull'argomento}.
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Restituisce un array NUOVO invertito */
+public static int[] invertito(int[] v) {
+    int[] r = new int[v.length];
+    for (int i = 0; i < v.length; i++) {
+        r[i] = v[v.length - 1 - i];
+    }
+    return r;
+}
+\end{lstlisting}
+\small
+Stessa idea, ma scrive in un array \texttt{r} nuovo e lo restituisce: l'argomento resta intatto.
+\end{columns}
+
+\vspace{0.2cm}
+\begin{block}{Due stili, una scelta}
+Modificare l'argomento (\texttt{inverti}) o restituire un nuovo array (\texttt{invertito})? Entrambi sono corretti; il nome del metodo deve dire quale dei due fa, e il chiamante deve saperlo: dopo \texttt{inverti(v)} l'originale non c'è più.
+\end{block}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- eseguiamo e discutiamo}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+int[] v = {12, 7, 3, 21, 7, 9};
+stampa(v);
+System.out.println(somma(v));
+System.out.println(media(v));
+System.out.println(massimo(v));
+System.out.println(indiceDi(v, 7));
+System.out.println(indiceDi(v, 8));
+int[] w = invertito(v);
+stampa(w);
+stampa(v);            // intatto
+inverti(v);
+stampa(v);            // modificato
+double[] d = {1.5, 2.5, 3.0};
+System.out.println(media(d));
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+[12, 7, 3, 21, 7, 9]
+59
+9.833333333333334
+21
+1
+-1
+[9, 7, 21, 3, 7, 12]
+[12, 7, 3, 21, 7, 9]
+[9, 7, 21, 3, 7, 12]
+2.3333333333333335
+\end{lstlisting}
+\small
+\textbf{Rispondiamo insieme:}
+\begin{enumerate}\itemsep=2pt
+    \item \texttt{media(v)} e \texttt{media(d)}: quale dei due metodi viene chiamato, e chi lo decide?
+    \item \texttt{indiceDi(v, 7)} dà 1 e non 4: quale riga lo garantisce?
+    \item cosa succede con \texttt{massimo(new int[0])}? E con \texttt{media(new int[0])}?
+\end{enumerate}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo (30 min) -- \texttt{Matrici.java}}
+\textbf{Il problema.} Leggere da tastiera il numero di righe e di colonne, poi due matrici di interi di quelle dimensioni. Stampare la prima, la sua trasposta e la somma delle due.
+
+\vspace{0.2cm}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\small
+\textbf{Prima di scrivere codice, decidiamo insieme:}
+\begin{enumerate}\itemsep=3pt
+    \item quali \textbf{metodi}, e per ciascuno: \emph{legge}, \emph{modifica} o \emph{crea}? \\ \textrightarrow{} \texttt{leggi} (crea), \texttt{stampa} (legge), \texttt{trasposta} (crea), \texttt{somma} (crea), \texttt{stesseDimensioni} (legge)
+    \item le \textbf{firme}: cosa riceve e cosa restituisce ciascuno? \\ \textrightarrow{} \texttt{int[][] trasposta(int[][] m)}
+    \item la trasposta di una $r \times c$ è $c \times r$: \texttt{t[c][r] = m[r][c]}
+    \item il \texttt{main}: legge le dimensioni, chiama \texttt{leggi} due volte, stampa i risultati
+\end{enumerate}
+
+\vspace{0.1cm}
+Da tenere a mente: chi controlla che le due matrici abbiano le stesse dimensioni, \texttt{somma} o il \texttt{main}?
+
+\column{0.45\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.6\textheight,center}
+\begin{mermaid}
+flowchart TB
+  A["<b>A</b> (2 x 3)<br/>1 2 3<br/>4 5 6"]
+  T["<b>trasposta(A)</b> (3 x 2)<br/>1 4<br/>2 5<br/>3 6"]
+  S["<b>somma(A, B)</b> (2 x 3)<br/>11 22 33<br/>44 55 66"]
+  B["<b>B</b> (2 x 3)<br/>10 20 30<br/>40 50 60"]
+  A --> T
+  A --> S
+  B --> S
+  style A fill:#dbeafe,stroke:#1d4ed8
+  style B fill:#dbeafe,stroke:#1d4ed8
+  style T fill:#dcfce7,stroke:#15803d
+  style S fill:#dcfce7,stroke:#15803d
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione -- \texttt{Matrici.java} (1/3): leggere e stampare}
+\begin{columns}[T]
+\column{0.6\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    /** Legge una matrice righe x colonne. */
+    public static int[][] leggi(Scanner in,
+                                int righe, int colonne) {
+        int[][] m = new int[righe][colonne];
+        for (int r = 0; r < righe; r++) {
+            for (int c = 0; c < colonne; c++) {
+                m[r][c] = in.nextInt();
+            }
+        }
+        return m;
+    }
+
+    public static void stampa(int[][] m) {
+        for (int r = 0; r < m.length; r++) {
+            for (int c = 0; c < m[r].length; c++) {
+                System.out.printf("%4d", m[r][c]);
+            }
+            System.out.println();
+        }
+    }
+\end{lstlisting}
+
+\column{0.4\textwidth}
+\small
+\textbf{\texttt{leggi}} riceve lo \texttt{Scanner} già aperto dal \texttt{main} (uno solo per tutto il programma), \emph{crea} la matrice e la restituisce. Le dimensioni sono parametri: il metodo non chiede nulla all'utente, legge soltanto i numeri.
+
+\vspace{0.2cm}
+\textbf{\texttt{stampa}} \emph{legge} e basta. Usa \texttt{m.length} e \texttt{m[r].length}, non le dimensioni: funziona con qualunque matrice, anche a righe di lunghezza diversa. \texttt{\%4d} allinea le colonne.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione -- \texttt{Matrici.java} (2/3): trasporre e sommare}
+\begin{columns}[T]
+\column{0.6\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    /** t[c][r] = m[r][c]: dimensioni scambiate */
+    public static int[][] trasposta(int[][] m) {
+        int[][] t = new int[m[0].length][m.length];
+        for (int r = 0; r < m.length; r++) {
+            for (int c = 0; c < m[0].length; c++) {
+                t[c][r] = m[r][c];
+            }
+        }
+        return t;
+    }
+
+    /** Somma elemento per elemento. Pre: stesse dim. */
+    public static int[][] somma(int[][] a, int[][] b) {
+        int[][] s = new int[a.length][a[0].length];
+        for (int r = 0; r < a.length; r++) {
+            for (int c = 0; c < a[r].length; c++) {
+                s[r][c] = a[r][c] + b[r][c];
+            }
+        }
+        return s;
+    }
+\end{lstlisting}
+
+\column{0.4\textwidth}
+\small
+\textbf{\texttt{trasposta}} \emph{crea} \texttt{t} con le dimensioni \textbf{scambiate} (\texttt{m[0].length} righe, \texttt{m.length} colonne) e scambia gli indici nell'assegnazione. \texttt{m} non viene toccata.
+
+\vspace{0.2cm}
+\textbf{\texttt{somma}} \emph{crea} \texttt{s} e si \emph{fida} della precondizione scritta nel commento: non controlla nulla. Con dimensioni diverse \texttt{b[r][c]} uscirebbe dai limiti e il programma si fermerebbe. Il controllo lo fa il chiamante, prima di chiamare: stesso pattern di \texttt{media} e del suo \texttt{v.length > 0}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione -- \texttt{Matrici.java} (3/3): il \texttt{main}}
+\begin{columns}[T]
+\column{0.58\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    public static boolean stesseDimensioni(int[][] a,
+                                           int[][] b) {
+        return a.length == b.length
+            && a[0].length == b[0].length;
+    }
+
+    public static void main(String[] args) {
+        Scanner in = new Scanner(System.in);
+        System.out.print("Righe e colonne: ");
+        int righe = in.nextInt();
+        int colonne = in.nextInt();
+        int[][] a = leggi(in, righe, colonne);
+        int[][] b = leggi(in, righe, colonne);
+        in.close();
+
+        stampa(a);
+        stampa(trasposta(a));
+        if (stesseDimensioni(a, b)) {
+            stampa(somma(a, b));
+        }
+    }
+\end{lstlisting}
+
+\column{0.42\textwidth}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Righe e colonne: 2 3
+1 2 3
+4 5 6
+10 20 30
+40 50 60
+   1   2   3
+   4   5   6
+   1   4
+   2   5
+   3   6
+  11  22  33
+  44  55  66
+\end{lstlisting}
+\small
+\textbf{\texttt{stesseDimensioni}} restituisce un \texttt{boolean}: si usa direttamente come condizione dell'\texttt{if}. Qui le dimensioni sono uguali per costruzione, ma il controllo costa poco e documenta l'intenzione.
+
+\vspace{0.15cm}
+\texttt{stampa(trasposta(a))}: il risultato di un metodo passato direttamente a un altro, senza variabile intermedia.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Wrap-up}
+
+\begin{frame}{Riepilogo: cosa abbiamo trattato}
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Concetto (unità di riferimento)} & \textbf{Dove compare oggi} \\
+\hline
+Intestazione, corpo, \texttt{return}, \texttt{void} (U7) & \texttt{Somma}; ogni metodo di \texttt{Vettori} e \texttt{Matrici} \\
+\hline
+Tre modi di chiamare un metodo (U7) & \texttt{Chiamate}; \texttt{media} che riusa \texttt{somma} \\
+\hline
+Variabili locali, parametri, blocchi (U7) & \texttt{Visibilita}; \texttt{tmp} in \texttt{inverti} \\
+\hline
+Passaggio per valore, riferimenti come parametri (U7) & \texttt{PerValore}, \texttt{ArrayParametro}; \texttt{inverti} / \texttt{invertito} \\
+\hline
+Overloading, firma, conversioni implicite (U7) & \texttt{Overloading}; le due \texttt{media} \\
+\hline
+Array: creazione, default, \texttt{length}, limiti (U9) & \texttt{Vettore}; \texttt{new int[righe][colonne]} in \texttt{leggi} \\
+\hline
+\texttt{for} potenziato: quando sì, quando no (U9) & \texttt{somma} (sì); \texttt{stampa}, \texttt{inverti} (no) \\
+\hline
+Copia e confronto elemento per elemento (U9) & \texttt{CopiaConfronto}; \texttt{invertito} \\
+\hline
+Dimensione massima e riempimento (U9) & \texttt{Riempimento} \\
+\hline
+Array di riferimenti, \texttt{args} (U9) & \texttt{ArrayDiStringhe} \\
+\hline
+Matrici, array di array, righe diverse (U9) & \texttt{Matrice}; \texttt{trasposta}, \texttt{somma} \\
+\hline
+\end{tabular}
+\end{center}
+
+\vspace{0.2cm}
+\textbf{Prossima lezione (L4)}: casting esplicito, \texttt{char} e Unicode, classi wrapper, la classe \texttt{Arrays} (le scorciatoie per copiare, confrontare, ordinare), argomenti a lunghezza variabile; e la programmazione modulare.
+\end{frame}
+
+% ========================================================================
+\begin{frame}{Homework 3 (da svolgere entro la prossima lezione)}
+\begin{enumerate}\itemsep=5pt
+    \item \textbf{\texttt{Statistiche.java}}: legge quanti voti si vogliono inserire, li mette in un array e stampa minimo, massimo, media (2 decimali) e quanti voti sono sopra la media. Un metodo per ogni statistica: \texttt{minimo(int[])}, \texttt{massimo(int[])}, \texttt{media(int[])}, \texttt{quantiSopra(int[], double)}.
+    \item \textbf{\texttt{Istogramma.java}}: legge $n$ cifre (da 0 a 9) in un array e stampa, per ogni cifra, quante volte compare, con una riga di asterischi. Un metodo \texttt{int[] contaCifre(int[] dati)} che restituisce un array di 10 conteggi (\emph{il valore letto diventa un indice}) e un metodo \texttt{stampaIstogramma(int[] conteggi)}.
+    \item \textbf{\texttt{Simmetrica.java}}: legge $n$ e una matrice $n \times n$; dice se è simmetrica (\texttt{m[r][c] == m[c][r]} per ogni \texttt{r}, \texttt{c}), stampa la traccia (la somma della diagonale) e la somma di ogni riga e di ogni colonna. Metodi \texttt{boolean isSimmetrica(int[][])}, \texttt{int traccia(int[][])}, \texttt{int[] sommeRighe(int[][])}, \texttt{int[] sommeColonne(int[][])}.
+\end{enumerate}
+
+\vspace{0.3cm}
+\small Per ogni metodo, decidete e scrivete in un commento se \emph{legge}, \emph{modifica} o \emph{crea}. Usate solo ciò che abbiamo visto finora: niente \texttt{java.util.Arrays}, niente casting esplicito.
+\end{frame}
+
+% ========================================================================
+\begin{frame}
+\begin{center}
+{\Huge Domande?}\\[2.5em]
+{\normalsize \href{mailto:mattia.fonisto@unina.it}{\texttt{mattia.fonisto@unina.it}}}
+\end{center}
+\end{frame}
+
+\end{document}

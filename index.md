@@ -16,9 +16,9 @@ Lezioni il **martedì**, 2 ore, fino al 15 dicembre 2026 (8 dicembre festivo).
 
 | # | Data | Argomenti | Unità | Slide | Sorgenti | Esercizi |
 |---|------|-----------|-------|-------|----------|----------|
-| 1 | 25 set | Benvenuti in Java: JVM, HelloWorld, `Scanner`, metodi `static` | U0, U1, U2, U6 | [PDF](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L01/Lezione01_Benvenuti_in_Java.pdf) | [tex](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L01/Lezione01_Benvenuti_in_Java.tex) | [cartella](https://github.com/Uzarel/lab-programmazione-2026-27/tree/main/lezioni/L01/esercizi) |
-| 2 | 29 set | Tipi primitivi e stringhe | U8, U12 | [PDF](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L02/Lezione02_Tipi_Riferimenti_String.pdf) | [tex](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L02/Lezione02_Tipi_Riferimenti_String.tex) | [cartella](https://github.com/Uzarel/lab-programmazione-2026-27/tree/main/lezioni/L02/esercizi) |
-| 3 | TBD | Metodi, overloading, array | U7, U9 | — | — | — |
+| 1 | 25 set | Benvenuti in Java: JVM, HelloWorld, `Scanner`, metodi `static` | U0, U1, U2, U6 | [PDF](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L01/lezione.pdf) | [tex](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L01/lezione.tex) | [cartella](https://github.com/Uzarel/lab-programmazione-2026-27/tree/main/lezioni/L01/esercizi) |
+| 2 | 29 set | Tipi primitivi e stringhe | U8, U12 | [PDF](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L02/lezione.pdf) | [tex](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L02/lezione.tex) | [cartella](https://github.com/Uzarel/lab-programmazione-2026-27/tree/main/lezioni/L02/esercizi) |
+| 3 | 30 set | Metodi, overloading, array | U7, U9 | — | — | — |
 | 4 | TBD | Array avanzati, programmazione modulare | U11, U3 | — | — | — |
 | 5 | TBD | Concetti OO, classi in Java | U4, U5 | — | — | — |
 | 6 | TBD | Classi: aspetti avanzati | U10 | — | — | — |

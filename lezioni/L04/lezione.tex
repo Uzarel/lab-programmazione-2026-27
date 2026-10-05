@@ -1,0 +1,1186 @@
+% ============================================================================
+%  Laboratorio di Programmazione -- Lezione 4 (6 ottobre 2026)
+%  Compilare con:  pdflatex -shell-escape Lezione04_Casting_Wrapper_Arrays_Modularita.tex
+%  Richiede: mermaid.sty (nel progetto) + Mermaid CLI `mmdc` nel PATH
+%  NB: ogni frame che contiene codice (lstlisting) o un diagramma (mermaid)
+%      deve essere dichiarato [fragile].
+% ============================================================================
+\documentclass[10pt,aspectratio=169]{beamer}
+\usetheme{Madrid}
+\usecolortheme{default}
+
+% `provide=*` carica la localizzazione italiana dai file .ini di babel: funziona anche
+% su installazioni TeX prive di texlive-lang-italian; con una TeX Live completa e`
+% equivalente al classico \usepackage[italian]{babel}.
+\usepackage[italian,provide=*]{babel}
+\usepackage[utf8]{inputenc}
+
+% Localizzazione dei nomi dei blocchi Beamer
+\uselanguage{italian}
+\languagepath{italian}
+\deftranslation[to=italian]{Definition}{Definizione}
+\deftranslation[to=italian]{Theorem}{Teorema}
+\deftranslation[to=italian]{Example}{Esempio}
+\deftranslation[to=italian]{Proof}{Dimostrazione}
+\deftranslation[to=italian]{Corollary}{Corollario}
+\deftranslation[to=italian]{Lemma}{Lemma}
+
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{mermaid}
+
+% Mermaid: sfondo trasparente e dimensione massima adatta a una slide 16:9
+\MermaidRendererOptions{-b transparent}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+% Configurazione colori per il codice
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\definecolor{keywordblue}{rgb}{0.0,0.0,0.7}
+
+% Stile per snippet Java
+\lstdefinestyle{javastyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen}\itshape,
+    keywordstyle=\color{keywordblue}\bfseries,
+    numberstyle=\scriptsize\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=none,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    language=Java,
+    literate={à}{{\`a}}1 {è}{{\`e}}1 {é}{{\'e}}1 {ì}{{\`i}}1
+             {ò}{{\`o}}1 {ù}{{\`u}}1 {È}{{\`E}}1
+}
+\lstset{style=javastyle}
+
+% Stile per righe di terminale
+\lstdefinestyle{shell}{
+    language=bash,
+    backgroundcolor=\color{black!85},
+    basicstyle=\ttfamily\footnotesize\color{white},
+    keywordstyle=\color{white},
+    stringstyle=\color{white},
+    commentstyle=\color{green!70},
+    numbers=none,
+    frame=none,
+    showstringspaces=false
+}
+
+\title[Lezione 4 -- Casting, wrapper, Arrays, modularità]{Lezione 4 -- Casting, wrapper, \texttt{Arrays}, modularità}
+\subtitle{Conversioni di tipo, classi wrapper, la classe \texttt{Arrays} e la programmazione modulare}
+\author[Mattia Fonisto]{Mattia Fonisto}
+\institute[Lab.\ di Programmazione]{Laboratorio di Programmazione -- Ingegneria Informatica, II anno\\
+           Università degli Studi di Napoli Federico II -- Sede di San Giovanni a Teduccio}
+\date{6 ottobre 2026}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% ========================================================================
+\begin{frame}{Agenda della lezione (2h)}
+\begin{enumerate}
+    \item \textbf{Ripasso e Homework 3} \hfill (\emph{15 min})
+    \begin{itemize}
+        \item uno di voi alla lavagna con \texttt{Statistiche}, \texttt{Istogramma} o \texttt{Simmetrica}: lo commentiamo insieme
+    \end{itemize}
+    \item \textbf{Tipi: aspetti avanzati} \hfill (\emph{20 min})
+    \begin{itemize}
+        \item conversioni implicite e cast esplicito; \texttt{char} come numero (Unicode)
+        \item classi wrapper, autoboxing e auto-unboxing; la classe \texttt{Character}
+    \end{itemize}
+    \item \textbf{\texttt{Arrays} e varargs} \hfill (\emph{10 min})
+    \begin{itemize}
+        \item stampare, copiare, confrontare, ordinare, cercare; argomenti a lunghezza variabile
+    \end{itemize}
+    \item \textbf{Programmazione modulare} \hfill (\emph{15 min})
+    \begin{itemize}
+        \item astrazione, modulo (interfaccia e corpo), information hiding, coesione e accoppiamento
+    \end{itemize}
+    \item \textbf{Esercitazione} -- tutti insieme \hfill (\emph{50 min})
+    \begin{itemize}
+        \item \emph{Commentiamo insieme}: \texttt{Statistiche}, un modulo con \texttt{Arrays} e varargs
+        \item \emph{Insieme, passo passo}: \texttt{Frequenze} -- da un \texttt{main} che fa tutto a moduli coesi
+    \end{itemize}
+    \item \textbf{Wrap-up e Homework 4} \hfill (\emph{10 min})
+\end{enumerate}
+\end{frame}
+
+% ========================================================================
+\section{Casting e char}
+
+\begin{frame}[fragile]{Conversioni implicite (\emph{widening}) -- \texttt{Widening.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static double meta(double x) {
+    return x / 2;
+}
+
+public static void main(String[] args) {
+    char c = 'A';
+    int i = c;       // char -> int: 65
+    double d = i;    // int -> double: 65.0
+    System.out.println(i + " " + d);
+
+    System.out.println(c + 1);     // 66
+    System.out.println(i + 0.5);   // 65.5
+    System.out.println(7 / 2);     // 3
+    System.out.println(7 / 2.0);   // 3.5
+    System.out.println(meta(7));   // 3.5
+
+    // int n = d;    // ERRORE: double -> int
+    // char k = i;   // ERRORE: int -> char
+}
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.16\textheight,center}
+\begin{mermaid}
+flowchart LR
+  c["<b>char</b><br/>16 bit"] ==>|"implicita"| i["<b>int</b><br/>32 bit"]
+  i ==>|"implicita"| d["<b>double</b><br/>64 bit"]
+  style c fill:#dcfce7,stroke:#15803d
+  style i fill:#dbeafe,stroke:#1d4ed8
+  style d fill:#fef3c7,stroke:#b45309
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\small
+Verso un tipo che contiene \emph{tutti} i valori di quello di partenza la conversione è automatica:
+\begin{itemize}\itemsep=2pt
+    \item nell'\textbf{assegnazione}: \texttt{int i = c}, \texttt{double d = i}
+    \item nelle \textbf{espressioni}: con operandi di tipo diverso vince il tipo più \textbf{capiente}. \texttt{char + int} è un \texttt{int}; \texttt{int + double} è un \texttt{double}
+    \item nella \textbf{chiamata}: \texttt{meta(7)} riceve \texttt{7.0}
+\end{itemize}
+\vspace{0.1cm}
+Nel verso opposto il compilatore si rifiuta. \texttt{boolean} non si converte in nessun altro tipo, in nessun modo.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Il cast esplicito (\emph{narrowing}) -- \texttt{Narrowing.java}}
+\begin{columns}[T]
+\column{0.57\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+double prezzo = 9.99;
+int euro = (int) prezzo;            // 9: tronca
+int vicino = (int) (prezzo + 0.5);  // 10
+System.out.println(euro + " " + vicino);
+System.out.println((int) -9.99);    // -9
+
+int somma = 59;
+int n = 6;
+System.out.println(somma / n);             // 9
+System.out.println((double) somma / n);    // 9.83...
+System.out.println((double) (somma / n));  // 9.0
+
+System.out.println((int) 3e10);     // 2147483647
+char strano = (char) 2000000000;
+System.out.println((int) strano);   // 37888
+\end{lstlisting}
+\small
+\texttt{(tipo) espressione}: la conversione la chiedo io, e la perdita di informazione è una mia responsabilità.
+
+\column{0.43\textwidth}
+\small
+\textbf{Da \texttt{double} a \texttt{int}} la parte decimale viene \textbf{troncata} (verso lo zero), non arrotondata. Per l'intero più vicino a un numero positivo: \texttt{(int) (x + 0.5)}.
+
+\vspace{0.2cm}
+\textbf{Il cast agisce su ciò che lo segue.} \texttt{(double) somma / n} converte \texttt{somma} e poi divide: divisione reale. \texttt{(double) (somma / n)} divide fra interi e converte il risultato: troppo tardi.
+
+\vspace{0.2cm}
+\textbf{Fuori dai limiti} nessun errore, nessun avviso:
+\begin{itemize}\itemsep=2pt
+    \item \texttt{double} \textrightarrow{} \texttt{int}: si ottiene il limite, \texttt{Integer.MAX\_VALUE}
+    \item \texttt{int} \textrightarrow{} \texttt{char}: restano i 16 bit meno significativi
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{\texttt{char} è un numero: il codice Unicode -- \texttt{Caratteri.java}}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+char c = 'a';
+System.out.println((int) c);          // 97
+System.out.println((char) 98);        // b
+System.out.println(c + 1);            // 98: int
+System.out.println((char) (c + 1));   // b
+
+// c = c + 1;   // ERRORE: int -> char
+c++;            // ok: ora c vale 'b'
+c += 2;         // ok: ora c vale 'd'
+System.out.println(c);                // d
+
+char accentata = '\u00E8';   // la e accentata
+System.out.println((int) accentata);  // 232
+
+System.out.println('7' - '0');        // 7
+System.out.println('e' - 'a');        // 4
+System.out.println((char) ('a' + 4)); // e
+System.out.println((char) ('e' - 'a' + 'A')); // E
+\end{lstlisting}
+
+\column{0.46\textwidth}
+\small
+Un \texttt{char} è un intero senza segno a 16 bit: il \textbf{codice Unicode} del carattere. \texttt{'a'} e \texttt{97} sono lo stesso valore.
+
+\begin{center}\footnotesize
+\begin{tabular}{lll}
+\toprule
+\texttt{'0'}\ldots\texttt{'9'} & \texttt{'A'}\ldots\texttt{'Z'} & \texttt{'a'}\ldots\texttt{'z'} \\
+48\ldots 57 & 65\ldots 90 & 97\ldots 122 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{itemize}\itemsep=2pt
+    \item cifre e lettere hanno codici \textbf{consecutivi}: \texttt{c - '0'} è il valore di una cifra, \texttt{c - 'a'} la posizione di una lettera, \texttt{(char) ('a' + k)} la lettera di posizione \texttt{k}
+    \item \texttt{c + 1} è un \texttt{int}: per riavere un \texttt{char} serve il cast. \texttt{c++} e \texttt{c += 2} lo contengono già
+    \item \texttt{'\textbackslash uXXXX'}: un carattere scritto con il suo codice, in esadecimale
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Classi wrapper}
+
+\begin{frame}[fragile]{Le classi wrapper -- \texttt{Wrapper.java}}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+int n = 10;                       // il valore
+Integer w = Integer.valueOf(10);  // un oggetto
+
+// metodi di istanza: w e` un oggetto
+System.out.println(w.intValue() + n);       // 20
+System.out.println(w.doubleValue() / 4);    // 2.5
+System.out.println(w.toString().length());  // 2
+
+// costanti e metodi static: il corredo del tipo
+int max = Integer.MAX_VALUE;   // 2147483647
+int k = Integer.parseInt("42");           // 42
+double x = Double.parseDouble("2.5");     // 2.5
+String t = Integer.toString(42);          // "42"
+String bin = Integer.toBinaryString(10);  // "1010"
+System.out.println(max + " " + k + " " + x);
+System.out.println(t + 1 + " " + bin);  // 421 1010
+\end{lstlisting}
+\small
+Sono \textbf{immutabili}, come \texttt{String}: nessun metodo cambia il valore contenuto.
+
+\column{0.45\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.2\textheight,center}
+\begin{mermaid}
+flowchart LR
+  n["<b>stack</b><br/>int n<br/>10"]
+  w["<b>stack</b><br/>Integer w<br/>●"]
+  o["<b>heap</b><br/>oggetto Integer<br/>10"]
+  n ~~~ w
+  w --> o
+  style n fill:#fef3c7,stroke:#b45309
+  style w fill:#fef3c7,stroke:#b45309
+  style o fill:#dbeafe,stroke:#1d4ed8
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\small
+Ogni tipo primitivo ha la sua classe \emph{wrapper} (in \texttt{java.lang}): \texttt{Boolean}, \texttt{Character}, \texttt{Integer}, \texttt{Double}, e così per gli altri quattro.
+
+\vspace{0.1cm}
+\textbf{A cosa servono}
+\begin{itemize}\itemsep=2pt
+    \item a usare un valore primitivo dove sono ammessi solo \textbf{oggetti} (le strutture dati delle lezioni 11 e 12)
+    \item i primitivi non hanno metodi: costanti e metodi \texttt{static} che li riguardano stanno nel wrapper
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Autoboxing e auto-unboxing -- \texttt{Boxing.java}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static void azzera(Integer x) {
+    x = 0;    // cambia solo la copia
+}
+
+public static void main(String[] args) {
+    Integer w = 10;     // boxing
+    int n = w;          // unboxing
+    Integer s = w + n;  // unboxing e boxing
+    System.out.println(s);             // 20
+
+    azzera(w);
+    System.out.println(w);             // 10
+
+    Integer a = 1000;
+    Integer b = 1000;
+    System.out.println(a == b);        // false
+    System.out.println(a.equals(b));   // true
+
+    Integer[] voti = new Integer[3];  // 3 null!
+    voti[0] = 28;                     // boxing
+    int primo = voti[0];              // unboxing
+    System.out.println(primo);        // 28
+    // int x = voti[1];   // NullPointerException
+}
+\end{lstlisting}
+
+\column{0.48\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.2\textheight,center}
+\begin{mermaid}
+flowchart LR
+  v["voti ●"] --> arr["[0] ● &nbsp; [1] null &nbsp; [2] null"]
+  arr --> o["Integer<br/>28"]
+  style v fill:#fef3c7,stroke:#b45309
+  style arr fill:#dbeafe,stroke:#1d4ed8
+  style o fill:#dcfce7,stroke:#15803d
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+Il compilatore converte da solo fra primitivo e wrapper: \textbf{boxing} (\texttt{Integer.valueOf(10)}) e \textbf{unboxing} (\texttt{w.intValue()}).
+\begin{itemize}\itemsep=2pt
+    \item restano \textbf{oggetti}: \texttt{==} confronta i riferimenti, il valore si confronta con \texttt{equals}. Fra $-128$ e $127$ \texttt{==} fra \texttt{Integer} dà \texttt{true} (una cache, come il pool delle \texttt{String}); fra \texttt{Double} mai. Fra primitivi \texttt{==} resta corretto
+    \item un \texttt{Integer[]} nasce pieno di \texttt{null}, non di zeri (un \texttt{int[]} sì): l'unboxing di \texttt{null} ferma il programma
+    \item \texttt{azzera} non cambia \texttt{w}: riceve una copia del riferimento, e \texttt{x = 0} la fa puntare a un altro oggetto
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{La classe \texttt{Character} -- \texttt{InfoCarattere.java}}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+String s = "Aula T2, ore 9:30";
+int lettere = 0;
+int cifre = 0;
+int maiuscole = 0;
+for (int i = 0; i < s.length(); i++) {
+    char c = s.charAt(i);
+    if (Character.isLetter(c)) {
+        lettere++;
+    }
+    if (Character.isDigit(c)) {
+        cifre++;
+    }
+    if (Character.isUpperCase(c)) {
+        maiuscole++;
+    }
+}
+System.out.println(lettere + " lettere, " + cifre
+        + " cifre, " + maiuscole + " maiuscole");
+
+char m = Character.toUpperCase('a');       // 'A'
+char r = Character.toUpperCase('7');       // '7'
+System.out.println(m + " " + r);
+\end{lstlisting}
+
+\column{0.46\textwidth}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+8 lettere, 4 cifre, 2 maiuscole
+A 7
+\end{lstlisting}
+\small
+Il wrapper di \texttt{char}. Quasi tutti i suoi metodi sono \texttt{static} e ricevono il carattere come argomento:
+
+\begin{center}\scriptsize
+\begin{tabular}{@{}ll@{}}
+\toprule
+lettera? cifra? & \texttt{isLetter}, \texttt{isDigit} \\
+lettera o cifra? & \texttt{isLetterOrDigit} \\
+maiuscola? minuscola? & \texttt{isUpperCase}, \texttt{isLowerCase} \\
+spazio, tabulazione, a capo? & \texttt{isWhitespace} \\
+conversione & \texttt{toUpperCase}, \texttt{toLowerCase} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{itemize}\itemsep=2pt
+    \item \texttt{toUpperCase} restituisce l'argomento stesso se non esiste una maiuscola corrispondente
+    \item \texttt{isLetter} conosce \emph{tutte} le lettere Unicode, accentate comprese; \texttt{c >= 'a' \&\& c <= 'z'} solo quelle 26
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Arrays e varargs}
+
+\begin{frame}[fragile]{\texttt{java.util.Arrays}: stampare, copiare, confrontare -- \texttt{UsaArrays.java}}
+\begin{columns}[T]
+\column{0.56\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+import java.util.Arrays;
+
+int[] a = {4, 5, 1, 13, 0};
+System.out.println(a);            // riferimento!
+System.out.println(Arrays.toString(a));
+
+int[] b = Arrays.copyOf(a, a.length);  // copia vera
+b[0] = 99;
+System.out.println(a[0]);         // a non cambia
+int[] lungo = Arrays.copyOf(a, 7);
+System.out.println(Arrays.toString(lungo));
+
+int[] c = {4, 5, 1, 13, 0};
+System.out.println(a == c);
+System.out.println(a.equals(c));  // come ==
+System.out.println(Arrays.equals(a, c));
+
+int[] d = new int[4];
+Arrays.fill(d, 7);
+System.out.println(Arrays.toString(d));
+\end{lstlisting}
+\small
+\texttt{Arrays} \textbf{non è un wrapper}: è una classe di soli metodi \texttt{static}, che lavorano sugli array ricevuti come argomento.
+
+\column{0.44\textwidth}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+[I@659e0bfd
+[4, 5, 1, 13, 0]
+4
+[4, 5, 1, 13, 0, 0, 0]
+false
+false
+true
+[7, 7, 7, 7]
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=1pt
+    \item \texttt{toString}: il contenuto come stringa
+    \item \texttt{copyOf(a, n)}: un array \emph{nuovo} di \texttt{n} elementi (zeri in coda se \texttt{n} è maggiore)
+    \item \texttt{Arrays.equals(a, c)}: confronta il contenuto
+    \item \texttt{fill}: lo stesso valore in ogni elemento
+\end{itemize}
+\vspace{0.05cm}
+\textbf{Perché \texttt{a.equals(c)} dà \texttt{false}?} \texttt{equals} confronta il contenuto solo nelle classi che lo definiscono così, come \texttt{String} e i wrapper. Gli array non lo fanno: il loro \texttt{equals} si comporta come \texttt{==}. Per questo esiste \texttt{Arrays.equals}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{\texttt{Arrays}: ordinare e cercare -- \texttt{OrdinaCerca.java}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+int[] v = {12, 7, 3, 21, 9};
+Arrays.sort(v);        // MODIFICA v
+System.out.println(Arrays.toString(v));
+System.out.println(Arrays.binarySearch(v, 12));
+System.out.println(Arrays.binarySearch(v, 8));
+
+String[] nomi = {"Marta", "anna", "Luca"};
+Arrays.sort(nomi);     // usa compareTo
+System.out.println(Arrays.toString(nomi));
+
+int[][] m = {{1, 2}, {3, 4}};
+System.out.println(Arrays.toString(m));
+System.out.println(Arrays.deepToString(m));
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+[3, 7, 9, 12, 21]
+3
+-3
+[Luca, Marta, anna]
+[[I@15db9742, [I@6d06d69c]
+[[1, 2], [3, 4]]
+\end{lstlisting}
+
+\column{0.48\textwidth}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \texttt{sort} ordina in senso crescente, \textbf{sul posto}: è \texttt{void} e modifica l'array del chiamante, attraverso la copia del riferimento (come \texttt{inverti} nella lezione~3). Con \texttt{String} e i wrapper, immutabili, nessun metodo può farlo
+    \item per conservare l'ordine originale: \texttt{copyOf}, poi \texttt{sort} sulla copia
+    \item \texttt{binarySearch} vuole un array \textbf{ordinato}: come cercare una parola nel dizionario, si apre a metà e si prosegue nella metà giusta. Restituisce l'indice, o un numero negativo se l'elemento non c'è (lezione~11)
+    \item per le matrici: \texttt{deepToString} e \texttt{deepEquals}
+\end{itemize}
+
+\begin{center}\footnotesize
+\begin{tabular}{ll}
+\toprule
+\emph{leggono} & \texttt{toString}, \texttt{equals}, \texttt{binarySearch} \\
+\emph{modificano} & \texttt{sort}, \texttt{fill} \\
+\emph{creano} & \texttt{copyOf} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Argomenti a lunghezza variabile (\emph{varargs}) -- \texttt{Varargs.java}}
+\begin{columns}[T]
+\column{0.53\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Pre: almeno un numero. */
+public static double media(double... numeri) {
+    double somma = 0;
+    for (double x : numeri) {   // un double[]
+        somma += x;
+    }
+    return somma / numeri.length;
+}
+
+/** Il primo argomento (a) e` obbligatorio. */
+public static int massimo(int a, int... altri) {
+    int max = a;
+    for (int x : altri) {
+        if (x > max) {
+            max = x;
+        }
+    }
+    return max;
+}
+\end{lstlisting}
+\small
+\texttt{tipo...\ nome}: il metodo accetta \textbf{zero o più} argomenti di quel tipo. Dentro il metodo \texttt{nome} è un normale array.
+
+\column{0.47\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+double[] voti = {28, 30, 24};
+double a = media(10, 40);          // 25.0
+double b = media(10, 40, 50, 75);  // 43.75
+double c = media(voti);            // 27.33
+double d = media();                // NaN
+int m = massimo(3, 9, 4);          // 9
+// massimo();    // ERRORE: manca il primo
+System.out.println(a + " " + b + " " + c);
+System.out.println(d + " " + m);
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item variabile è il \textbf{numero di argomenti}, non l'array: a ogni chiamata il compilatore ne crea uno della lunghezza giusta, che poi, come ogni array, non cambia più. Se ne può anche passare uno già pronto
+    \item un solo parametro varargs, e \textbf{per ultimo}
+    \item \texttt{media()} compila, e \texttt{0.0 / 0} dà \texttt{NaN}: un parametro normale davanti, come in \texttt{massimo}, rende obbligatorio il primo argomento
+    \item \texttt{printf} è un metodo varargs
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Programmazione modulare}
+
+\begin{frame}[fragile]{Programmazione modulare: suddividere un sistema in parti}
+\begin{columns}[T]
+\column{0.57\textwidth}
+Un sistema software complesso non si scrive, né si capisce, tutto insieme: lo si \textbf{suddivide} in parti più piccole, i \emph{moduli}, ciascuna con un compito ben definito, e si stabilisce come queste parti sono collegate fra loro. L'insieme delle parti e dei loro collegamenti è l'\emph{architettura} del sistema.
+
+\vspace{0.15cm}
+\small
+Ne usate dalla prima lezione: \texttt{Scanner}, \texttt{Math}, \texttt{String} sono moduli scritti da altri. Sapete cosa fanno e come si chiamano i loro metodi; il loro codice non l'avete mai letto.
+
+\vspace{0.15cm}
+\textbf{Che cosa si guadagna}
+\begin{itemize}\itemsep=2pt
+    \item \textbf{riuso}: lo stesso modulo serve a più programmi
+    \item \textbf{modificabilità}: si corregge o si migliora un modulo senza toccare gli altri
+    \item \textbf{leggibilità}: si capisce, e si prova, un pezzo alla volta
+    \item \textbf{sviluppo separato}: più persone lavorano insieme, ciascuna sul suo modulo
+\end{itemize}
+
+\column{0.43\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.36\textheight,center}
+\begin{mermaid}
+flowchart TB
+  P["<b>Playlist</b>"] ---|"usa"| R["<b>Riproduttore audio</b>"]
+  P ---|"è composta da"| B["<b>Brano</b>"]
+  style P fill:#dbeafe,stroke:#1d4ed8
+  style R fill:#dcfce7,stroke:#15803d
+  style B fill:#fef3c7,stroke:#b45309
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\small
+Un lettore musicale suddiviso in tre moduli, e i due modi in cui due moduli possono essere collegati:
+\begin{itemize}\itemsep=2pt
+    \item \textbf{usa}: la playlist si serve del riproduttore audio per suonare
+    \item \textbf{è composta da}: la playlist è fatta di brani
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Programmazione modulare: astrarre}
+\begin{columns}[T]
+\column{0.6\textwidth}
+\begin{block}{Astrazione}
+Considerare le proprietà \emph{rilevanti} di un'entità, ignorando i dettagli non essenziali.
+\end{block}
+
+\small
+La stessa persona ha una vista \emph{anagrafica} (nome, data di nascita, residenza) e una vista \emph{clinica} (peso, pressione, temperatura). Nessuna delle due è ``tutta'' la persona: ciascuna tiene ciò che serve a chi la usa.
+\begin{itemize}\itemsep=3pt
+    \item \textbf{astrazione sul controllo}: una funzionalità, separata dai dettagli di come è realizzata. Sono i metodi: di \texttt{Arrays.sort} sapete \emph{cosa} fa, non \emph{come}
+    \item \textbf{astrazione sui dati}: un dato, separato dai dettagli di come è memorizzato. Di una \texttt{String} sapete \emph{cosa} rappresenta (una sequenza di caratteri) e quali operazioni permette (\texttt{length}, \texttt{charAt}\ldots), non \emph{come} i caratteri sono tenuti in memoria. Sono i tipi: i nostri li definiremo con le classi
+\end{itemize}
+
+\column{0.4\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.42\textheight,center}
+\begin{mermaid}
+flowchart TB
+  P["<b>una persona</b>"] -- "per l'anagrafe" --> A["<b>vista anagrafica</b><br/>nome<br/>data di nascita<br/>residenza"]
+  P -- "per il medico" --> C["<b>vista clinica</b><br/>peso<br/>pressione<br/>temperatura"]
+  style P fill:#fef3c7,stroke:#b45309
+  style A fill:#dbeafe,stroke:#1d4ed8
+  style C fill:#dcfce7,stroke:#15803d
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\small
+L'astrazione fondamentale dei linguaggi procedurali, come il C, è quella sul controllo; quella dei linguaggi a oggetti, come Java, è l'astrazione sui dati.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Programmazione modulare: il modulo}
+\begin{columns}[T]
+\column{0.64\textwidth}
+\begin{block}{Modulo}
+Una delle parti in cui il sistema è suddiviso: realizza un'astrazione. Chi lo usa, un altro modulo o un programma, è un suo \textbf{client}.
+\end{block}
+
+\small
+L'astrazione può essere solo sul controllo (\texttt{Math}: operazioni) oppure sui dati e sul controllo insieme (\texttt{String}: un dato con le sue operazioni).
+
+\vspace{0.08cm}
+Un modulo \textbf{esporta} metodi e costanti, cioè li mette a disposizione dei client, e può \textbf{importare} quelli di altri moduli. È composto da due parti, tenute separate:
+\begin{itemize}\itemsep=2pt
+    \item l'\textbf{interfaccia}: \emph{cosa} fa il modulo e \emph{come si usa}. È la sola parte visibile ai client. Di \texttt{Math.sqrt} è \texttt{double sqrt(double a)}
+    \item il \textbf{corpo}: \emph{come} l'astrazione è realizzata. Nascosto e protetto. Di \texttt{Math.sqrt} sono le istruzioni che calcolano la radice
+\end{itemize}
+
+\textbf{Information hiding}: al corpo si accede soltanto attraverso l'interfaccia, che espone lo stretto necessario e resta \textbf{stabile}. Finché non cambia, il corpo si può riscrivere senza toccare i client.
+
+\column{0.36\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.57\textheight,center}
+\begin{mermaid}
+flowchart TB
+  C["<b>Client</b><br/>chi usa il modulo"] -- "usa" --> I
+  subgraph M[" "]
+    I["<b>Interfaccia del modulo</b><br/>cosa fa, come si usa<br/><i>visibile ai client</i>"]
+    B["<b>Corpo del modulo</b><br/>come è realizzato<br/><i>nascosto e protetto</i>"]
+    I --- B
+  end
+  style C fill:#fef3c7,stroke:#b45309
+  style I fill:#dcfce7,stroke:#15803d
+  style B fill:#e5e7eb,stroke:#4b5563
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+Java ha anche una parola chiave \texttt{interface}: un costrutto specifico (lezione~9).
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Un modulo in Java, oggi -- \texttt{Voti.java} e \texttt{ProvaVoti.java}}
+\begin{columns}[T]
+\column{0.53\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Modulo: i voti d'esame in trentesimi. */
+public class Voti {
+
+    public static final int MINIMO = 18;
+    public static final int MASSIMO = 30;
+
+    /** true se v e` un voto valido. */
+    public static boolean isValido(int v) {
+        return v >= MINIMO && v <= MASSIMO;
+    }
+
+    /** La media riportata in 110-esimi. */
+    public static int baseLaurea(double media) {
+        return arrotonda(media * 110 / MASSIMO);
+    }
+
+    // corpo: visibile solo dentro Voti
+    private static int arrotonda(double x) {
+        return (int) (x + 0.5);
+    }
+}
+\end{lstlisting}
+
+\column{0.47\textwidth}
+{\footnotesize Nel \texttt{main} di \texttt{ProvaVoti}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+boolean ok = Voti.isValido(31);    // false
+int base = Voti.baseLaurea(27.4);  // 100
+System.out.println(ok + " " + base);
+System.out.println(Voti.MASSIMO);  // 30
+// Voti.arrotonda(2.5);  // ERRORE: private
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+$ javac ProvaVoti.java
+$ java ProvaVoti
+false 100
+30
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item un modulo: una \textbf{classe} di metodi \texttt{static} nel suo file, \textbf{senza \texttt{main}}
+    \item \texttt{public} è l'interfaccia: di ogni metodo al client bastano la firma e il commento \texttt{/** */}
+    \item \textbf{\texttt{private}} è il corpo: si usa solo dentro la classe
+    \item il client, qui \texttt{ProvaVoti}, scrive \texttt{Voti.metodo(...)}
+    \item i due file stanno nella stessa cartella: compilando \texttt{ProvaVoti.java}, \texttt{javac} compila anche \texttt{Voti.java}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Programmazione modulare: coesione e accoppiamento}
+\begin{columns}[T]
+\column{0.47\textwidth}
+\begin{block}{Coesione (dentro un modulo)}
+\small Un modulo è \textbf{fortemente coeso} se racchiude caratteristiche omogenee: realizza \emph{una sola} astrazione. \texttt{Voti} sa tutto dei voti e nient'altro; \texttt{Math} solo di matematica.
+\end{block}
+\column{0.47\textwidth}
+\begin{block}{Accoppiamento (fra moduli)}
+\small Misura quanto un modulo dipende dagli altri. Due moduli sono \textbf{debolmente accoppiati} se ciascuno conosce dell'altro solo l'interfaccia: gli passa dei parametri e ne riceve un risultato. Sono fortemente accoppiati se lavorano sugli stessi dati: non si può cambiarne uno senza toccare l'altro.
+\end{block}
+\end{columns}
+
+\vspace{0.2cm}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.2\textheight,center}
+\begin{columns}[T]
+\column{0.47\textwidth}
+\centering\small accoppiamento \textbf{forte}
+\begin{mermaid}
+flowchart LR
+  A["Modulo A"] <--> G["dati<br/>condivisi"]
+  G <--> B["Modulo B"]
+  style G fill:#fee2e2,stroke:#b91c1c
+  style A fill:#dbeafe,stroke:#1d4ed8
+  style B fill:#dbeafe,stroke:#1d4ed8
+\end{mermaid}
+\column{0.47\textwidth}
+\centering\small accoppiamento \textbf{debole}
+\begin{mermaid}
+flowchart LR
+  A["Modulo A"] -- "parametri" --> B["Modulo B"]
+  B -. "risultato" .-> A
+  style A fill:#dbeafe,stroke:#1d4ed8
+  style B fill:#dbeafe,stroke:#1d4ed8
+\end{mermaid}
+\end{columns}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+\vspace{0.15cm}
+\small L'obiettivo è \textbf{alta coesione e basso accoppiamento}, ma i due criteri tirano in direzioni opposte: moduli piccolissimi sono molto coesi, ma per fare qualcosa devono usarsi a vicenda di continuo. Le dipendenze si moltiplicano e l'accoppiamento cresce. Va cercato un compromesso.
+\end{frame}
+
+% ========================================================================
+\section{Esercitazione}
+
+\begin{frame}[fragile]{Obiettivo dell'esercitazione}
+Due programmi, tutti insieme, sulla stessa idea: \textbf{ogni file è un modulo con un compito solo}, e chi lo usa ne conosce soltanto l'interfaccia.
+
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.4\textheight,center}
+\begin{mermaid}
+flowchart LR
+  PS["<b>ProvaStatistiche</b><br/>main"] -- "usa" --> S["<b>Statistiche</b><br/>somma · media · minimo<br/>massimo · mediana"]
+  F["<b>Frequenze</b><br/>main: solo ingresso e uscita"] -- "usa" --> S
+  F -- "usa" --> L["<b>Lettere</b><br/>conta · lettera"]
+  S -- "usa" --> A["<b>java.util.Arrays</b><br/>copyOf · sort"]
+  style PS fill:#fef3c7,stroke:#b45309
+  style F fill:#fef3c7,stroke:#b45309
+  style S fill:#dcfce7,stroke:#15803d
+  style L fill:#dcfce7,stroke:#15803d
+  style A fill:#e5e7eb,stroke:#4b5563
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+\begin{enumerate}\itemsep=4pt
+    \item \textbf{Commentiamo insieme} (20') -- \texttt{Statistiche.java} e \texttt{ProvaStatistiche.java}: un modulo di statistiche su interi, con varargs, \texttt{Arrays} e cast. Lo leggiamo distinguendo interfaccia e corpo.
+    \item \textbf{Insieme, passo passo} (30') -- \texttt{Frequenze}: partiamo da un \texttt{main} che fa tutto da solo e lo riscriviamo a moduli, riusando \texttt{Statistiche}. Io al PC proiettato, voi in VS Code.
+\end{enumerate}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{Statistiche.java} (1/2)}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+import java.util.Arrays;
+
+/**
+ * Modulo: statistiche su sequenze di interi.
+ * Tutti i metodi LEGGONO gli argomenti.
+ * Precondizione comune: almeno un valore.
+ */
+public class Statistiche {
+
+    public static int somma(int... v) {
+        int s = 0;
+        for (int x : v) {
+            s += x;
+        }
+        return s;
+    }
+
+    public static double media(int... v) {
+        return (double) somma(v) / v.length;
+    }
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    public static int minimo(int... v) {
+        int min = v[0];
+        for (int x : v) {
+            if (x < min) {
+                min = x;
+            }
+        }
+        return min;
+    }
+
+    public static int massimo(int... v) {
+        int max = v[0];
+        for (int x : v) {
+            if (x > max) {
+                max = x;
+            }
+        }
+        return max;
+    }
+\end{lstlisting}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{Statistiche.java} (2/2)}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    /** Il valore centrale dei dati ordinati. */
+    public static double mediana(int... v) {
+        int[] o = ordinata(v);
+        int meta = o.length / 2;
+        if (o.length % 2 == 1) {
+            return o[meta];   // int -> double
+        }
+        return (o[meta - 1] + o[meta]) / 2.0;
+    }
+
+    // corpo: CREA una copia ordinata di v
+    private static int[] ordinata(int[] v) {
+        int[] copia = Arrays.copyOf(v, v.length);
+        Arrays.sort(copia);
+        return copia;
+    }
+}
+\end{lstlisting}
+
+\column{0.46\textwidth}
+\small
+\textbf{Da notare, leggendo:}
+\begin{itemize}\itemsep=3pt
+    \item \texttt{int...\ v}: ogni metodo si chiama con un array oppure con un elenco di valori
+    \item \texttt{media}: il cast è su \texttt{somma(v)}, prima della divisione
+    \item \texttt{mediana}: \texttt{return o[meta]} restituisce un \texttt{int} dove è atteso un \texttt{double} (conversione implicita); con un numero pari di valori, la media dei due centrali: \texttt{/ 2.0} e non \texttt{/ 2}
+    \item \texttt{ordinata} è \texttt{private}: appartiene al corpo. \texttt{Arrays.sort} \emph{modifica}, il modulo promette di \emph{leggere}: si ordina una copia
+    \item l'interfaccia: cinque metodi \texttt{public} e il commento iniziale
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{ProvaStatistiche.java}}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+int[] voti = {28, 30, 24, 27, 30, 18};
+
+System.out.println(Statistiche.somma(voti));
+System.out.println(Statistiche.media(voti));
+System.out.println(Statistiche.minimo(voti));
+System.out.println(Statistiche.massimo(voti));
+System.out.println(Statistiche.mediana(voti));
+System.out.println(Arrays.toString(voti));
+
+System.out.println(Statistiche.media(18, 30));
+System.out.println(Statistiche.mediana(5, 1, 3));
+int vicina = (int) (Statistiche.media(voti) + 0.5);
+System.out.println(vicina);
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+157
+26.166666666666668
+18
+30
+27.5
+[28, 30, 24, 27, 30, 18]
+24.0
+3.0
+26
+\end{lstlisting}
+
+\column{0.45\textwidth}
+\small
+\textbf{Rispondiamo insieme:}
+\begin{enumerate}\itemsep=4pt
+    \item \texttt{Statistiche.media(18, 30)}: chi costruisce l'array? Che tipo ha \texttt{v} dentro \texttt{media}?
+    \item dopo \texttt{mediana(voti)} l'array \texttt{voti} è ancora nell'ordine originale: quale riga del modulo lo garantisce?
+    \item se in \texttt{media} togliamo \texttt{(double)}, cosa stampa la seconda riga?
+    \item possiamo scrivere qui \texttt{Statistiche.ordinata(voti)}? Perché?
+    \item \texttt{Statistiche.media()} compila? E \texttt{Statistiche.minimo()}? Cosa succede eseguendoli?
+\end{enumerate}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo (30 min) -- \texttt{FrequenzeMonolite.java}}
+\small
+\textbf{Il problema.} Contare quante volte compare ogni lettera di un testo, in percentuale, e segnalare la più frequente.
+
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Scanner in = new Scanner(System.in);
+System.out.print("Testo: ");
+String testo = in.nextLine().toLowerCase();
+in.close();
+String alfabeto = "abcdefghijklmnopqrstuvwxyz";
+int[] conteggi = new int[26];
+int totale = 0;
+for (int i = 0; i < testo.length(); i++) {
+    int p = alfabeto.indexOf(testo.charAt(i));
+    if (p >= 0) {
+        conteggi[p]++;
+        totale++;
+    }
+}
+\end{lstlisting}
+\small
+Questo \texttt{main} funziona, ed è scritto con i soli strumenti delle lezioni 1--3. Ma fa \emph{tutto}: legge, conta le lettere, cerca il massimo, calcola le percentuali, stampa. Nessuna di queste parti si può riusare altrove, né provare da sola.
+
+\column{0.48\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+int max = conteggi[0];
+for (int i = 1; i < 26; i++) {
+    if (conteggi[i] > max) {
+        max = conteggi[i];
+    }
+}
+for (int i = 0; i < 26; i++) {
+    int n = conteggi[i];
+    if (n > 0) {
+        double perc = 100.0 * n / totale;
+        System.out.printf("%c %3d %5.1f%%",
+            alfabeto.charAt(i), n, perc);
+        if (n == max) {
+            System.out.print("  <-- max");
+        }
+        System.out.println();
+    }
+}
+\end{lstlisting}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo -- dal \texttt{main} che fa tutto ai moduli}
+\small
+\textbf{Prima di scrivere codice, decidiamo insieme:}
+\begin{enumerate}\itemsep=3pt
+    \item quanti \textbf{compiti} diversi ha quel \texttt{main}? \textrightarrow{} ingresso e uscita; contare le lettere; sommare e trovare il massimo
+    \item quali \textbf{moduli}? \textrightarrow{} \texttt{Lettere} (nuovo): trasforma le lettere in indici e le conta; \texttt{Statistiche}: è già pronto, lo \textbf{riusiamo}; \texttt{Frequenze}: il \texttt{main}, solo ingresso e uscita
+    \item l'\textbf{interfaccia} di \texttt{Lettere}: cosa serve al client? \textrightarrow{} \texttt{int[] conta(String s)} e \texttt{char lettera(int indice)}; il resto è corpo, \texttt{private}
+    \item cosa cambia con gli strumenti di oggi? \textrightarrow{} \texttt{c - 'a'} al posto di \texttt{alfabeto.indexOf(c)}; \texttt{(char) ('a' + i)} al posto di \texttt{alfabeto.charAt(i)}; il cast al posto di \texttt{100.0 *}
+\end{enumerate}
+
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.2\textheight,center}
+\begin{mermaid}
+flowchart LR
+  c["char c = 'e'"] -->|"c - 'a'"| i["indice 4"]
+  i -->|"conteggi[4]++"| a["int[26] conteggi"]
+  a -->|"(char) ('a' + i)"| r["la lettera<br/>da stampare"]
+  style c fill:#dcfce7,stroke:#15803d
+  style r fill:#dcfce7,stroke:#15803d
+  style i fill:#fef3c7,stroke:#b45309
+  style a fill:#dbeafe,stroke:#1d4ed8
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+Da tenere a mente: il programma nuovo deve stampare \emph{esattamente} ciò che stampa il vecchio.
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione (1/2) -- il modulo \texttt{Lettere.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Modulo: le 26 lettere come indici. */
+public class Lettere {
+
+    public static final int QUANTE = 26;
+
+    /** L'indice 0 e` 'a', il 25 e` 'z'. */
+    public static char lettera(int indice) {
+        return (char) ('a' + indice);
+    }
+
+    /** CREA l'array dei 26 conteggi. */
+    public static int[] conta(String s) {
+        int[] conteggi = new int[QUANTE];
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            c = Character.toLowerCase(c);
+            if (isLettera(c)) {
+                conteggi[indice(c)]++;
+            }
+        }
+        return conteggi;
+    }
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    // corpo: solo le minuscole da 'a' a 'z'
+    private static boolean isLettera(char c) {
+        return c >= 'a' && c <= 'z';
+    }
+
+    // 'a' -> 0, 'b' -> 1, ..., 'z' -> 25
+    private static int indice(char c) {
+        return c - 'a';
+    }
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item interfaccia: \texttt{QUANTE}, \texttt{lettera}, \texttt{conta}. \texttt{isLettera} e \texttt{indice} al client non servono: \texttt{private}
+    \item \texttt{c - 'a'} è già un \texttt{int}; \texttt{'a' + indice} anche, e per farne un \texttt{char} serve il cast
+    \item perché non \texttt{Character.isLetter}? Per una \texttt{e} accentata risponde \texttt{true}, e l'indice sarebbe $232 - 97 = 135$: fuori dall'array
+    \item niente \texttt{Scanner} né stampe: il modulo conta e basta
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione (2/2) -- il programma \texttt{Frequenze.java}}
+\begin{columns}[T]
+\column{0.6\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    public static void main(String[] args) {
+        Scanner in = new Scanner(System.in);
+        System.out.print("Testo: ");
+        String testo = in.nextLine();
+        in.close();
+
+        int[] conteggi = Lettere.conta(testo);
+        int totale = Statistiche.somma(conteggi);
+        int max = Statistiche.massimo(conteggi);
+
+        for (int i = 0; i < Lettere.QUANTE; i++) {
+            int n = conteggi[i];
+            if (n > 0) {
+                double perc = (double) n / totale * 100;
+                System.out.printf("%c %3d %5.1f%%",
+                        Lettere.lettera(i), n, perc);
+                if (n == max) {
+                    System.out.print("  <-- max");
+                }
+                System.out.println();
+            }
+        }
+    }
+\end{lstlisting}
+
+\column{0.4\textwidth}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+$ javac Frequenze.java
+$ java Frequenze
+Testo: Java e la JVM
+a   3  30.0%  <-- max
+e   1  10.0%
+j   2  20.0%
+l   1  10.0%
+m   1  10.0%
+v   2  20.0%
+\end{lstlisting}
+\small
+Tre righe al centro del \texttt{main} dicono \emph{cosa} fa il programma; il \emph{come} sta nei moduli.
+
+\vspace{0.15cm}
+\texttt{Statistiche} è nato per i voti e qui lavora sui conteggi delle lettere, senza una modifica: è il \textbf{riuso}.
+
+\vspace{0.15cm}
+Stesso output di \texttt{FrequenzeMonolite}: è cambiata la struttura, non il comportamento.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Wrap-up}
+
+\begin{frame}{Riepilogo: cosa abbiamo trattato}
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Concetto (unità di riferimento)} & \textbf{Dove compare oggi} \\
+\hline
+Conversioni implicite, promozione (U11) & \texttt{Widening}; \texttt{return o[meta]} in \texttt{mediana} \\
+\hline
+Cast esplicito, troncamento (U11) & \texttt{Narrowing}; \texttt{media}; le percentuali in \texttt{Frequenze} \\
+\hline
+\texttt{char} e Unicode, aritmetica dei caratteri (U11) & \texttt{Caratteri}; \texttt{indice} e \texttt{lettera} in \texttt{Lettere} \\
+\hline
+Classi wrapper, costanti e metodi \texttt{static} (U11) & \texttt{Wrapper} \\
+\hline
+Autoboxing, unboxing, \texttt{==} ed \texttt{equals} (U11) & \texttt{Boxing} \\
+\hline
+La classe \texttt{Character} (U11) & \texttt{InfoCarattere}; \texttt{toLowerCase} in \texttt{conta} \\
+\hline
+\texttt{Arrays}: \texttt{toString}, \texttt{copyOf}, \texttt{equals}, \texttt{fill} (U11) & \texttt{UsaArrays}; \texttt{ordinata} in \texttt{Statistiche} \\
+\hline
+\texttt{Arrays}: \texttt{sort}, \texttt{binarySearch} (U11) & \texttt{OrdinaCerca}; \texttt{mediana} \\
+\hline
+Argomenti a lunghezza variabile (U11) & \texttt{Varargs}; tutti i metodi di \texttt{Statistiche} \\
+\hline
+Astrazione, modulo, interfaccia e corpo (U3) & \texttt{Voti} e \texttt{ProvaVoti} \\
+\hline
+Information hiding, \texttt{private} (U3) & \texttt{arrotonda}; \texttt{ordinata}; \texttt{isLettera} e \texttt{indice} \\
+\hline
+Coesione, accoppiamento, riuso (U3) & da \texttt{FrequenzeMonolite} a \texttt{Lettere} + \texttt{Statistiche} + \texttt{Frequenze} \\
+\hline
+\end{tabular}
+\end{center}
+
+\vspace{0.1cm}
+\textbf{Prossima lezione (L5)}: i concetti della programmazione a oggetti e le \textbf{classi} in Java: incapsulamento, costruttori, metodi \texttt{get} e \texttt{set}, ciclo di vita degli oggetti.
+\end{frame}
+
+% ========================================================================
+\begin{frame}{Homework 4 (da svolgere entro la prossima lezione)}
+\begin{enumerate}\itemsep=5pt
+    \item \textbf{\texttt{Anagrammi.java}}: legge due frasi e dice se sono una l'anagramma dell'altra, ignorando spazi, punteggiatura e maiuscole (\emph{``Calendario''} e \emph{``locandiera''} lo sono). Un metodo \texttt{char[] lettereOrdinate(String s)} \emph{crea} l'array delle sole lettere, rese minuscole con \texttt{Character} e ordinate con \texttt{Arrays.sort}; il confronto si fa con \texttt{Arrays.equals}.
+    \item \textbf{\texttt{Pagella.java}}: i voti arrivano dalla riga di comando (\texttt{java Pagella 28 30 24 27 30 18}). Un metodo \texttt{int[] inInteri(String[] testi)} li converte con \texttt{Integer.parseInt}; il programma stampa i voti, i voti ordinati (su una copia), la media con 2 decimali, la mediana, la media arrotondata all'intero e la base di laurea in 110-esimi. Usate il modulo \texttt{Statistiche} di oggi \textbf{senza modificarlo}: copiatelo nella cartella \texttt{homework/}.
+    \item \textbf{\texttt{Cifrario.java}} e \textbf{\texttt{ProvaCifrario.java}}: il cifrario di Cesare come modulo, senza la stringa \texttt{ALFABETO}: solo aritmetica dei \texttt{char} e cast. Interfaccia: \texttt{cifra(String, int)} e \texttt{decifra(String, int)}; nel corpo un metodo \texttt{private} \texttt{sposta(char, int)} che conserva maiuscole e minuscole. Il programma di prova legge testo e chiave, stampa il testo cifrato e quello decifrato, poi le 26 decifrature possibili del testo cifrato (\emph{forza bruta}).
+\end{enumerate}
+
+\vspace{0.2cm}
+\small Per ogni metodo decidete se è interfaccia (\texttt{public}) o corpo (\texttt{private}). Usate solo ciò che abbiamo visto finora.
+\end{frame}
+
+% ========================================================================
+\begin{frame}
+\begin{center}
+{\Huge Domande?}\\[2.5em]
+{\normalsize \href{mailto:mattia.fonisto@unina.it}{\texttt{mattia.fonisto@unina.it}}}
+\end{center}
+\end{frame}
+
+\end{document}

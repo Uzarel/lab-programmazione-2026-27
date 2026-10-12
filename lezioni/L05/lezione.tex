@@ -1,0 +1,1187 @@
+% ============================================================================
+%  Laboratorio di Programmazione -- Lezione 5 (13 ottobre 2026)
+%  Compilare con:  pdflatex -shell-escape Lezione05_Concetti_OO_Classi_in_Java.tex
+%  Richiede: mermaid.sty (nel progetto) + Mermaid CLI `mmdc` nel PATH
+%  NB: ogni frame che contiene codice (lstlisting) o un diagramma (mermaid)
+%      deve essere dichiarato [fragile].
+% ============================================================================
+\documentclass[10pt,aspectratio=169]{beamer}
+\usetheme{Madrid}
+\usecolortheme{default}
+
+% `provide=*` carica la localizzazione italiana dai file .ini di babel: funziona anche
+% su installazioni TeX prive di texlive-lang-italian; con una TeX Live completa e`
+% equivalente al classico \usepackage[italian]{babel}.
+\usepackage[italian,provide=*]{babel}
+\usepackage[utf8]{inputenc}
+
+% Localizzazione dei nomi dei blocchi Beamer
+\uselanguage{italian}
+\languagepath{italian}
+\deftranslation[to=italian]{Definition}{Definizione}
+\deftranslation[to=italian]{Theorem}{Teorema}
+\deftranslation[to=italian]{Example}{Esempio}
+\deftranslation[to=italian]{Proof}{Dimostrazione}
+\deftranslation[to=italian]{Corollary}{Corollario}
+\deftranslation[to=italian]{Lemma}{Lemma}
+
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{mermaid}
+
+% Mermaid: sfondo trasparente e dimensione massima adatta a una slide 16:9
+\MermaidRendererOptions{-b transparent}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+% Configurazione colori per il codice
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\definecolor{keywordblue}{rgb}{0.0,0.0,0.7}
+
+% Stile per snippet Java
+\lstdefinestyle{javastyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen}\itshape,
+    keywordstyle=\color{keywordblue}\bfseries,
+    numberstyle=\scriptsize\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=none,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    language=Java,
+    literate={à}{{\`a}}1 {è}{{\`e}}1 {é}{{\'e}}1 {ì}{{\`i}}1
+             {ò}{{\`o}}1 {ù}{{\`u}}1 {È}{{\`E}}1
+}
+\lstset{style=javastyle}
+
+% Stile per righe di terminale
+\lstdefinestyle{shell}{
+    language=bash,
+    backgroundcolor=\color{black!85},
+    basicstyle=\ttfamily\footnotesize\color{white},
+    keywordstyle=\color{white},
+    stringstyle=\color{white},
+    commentstyle=\color{green!70},
+    numbers=none,
+    frame=none,
+    showstringspaces=false
+}
+
+\title[Lezione 5 -- Concetti OO, classi in Java]{Lezione 5 -- Concetti OO, classi in Java}
+\subtitle{I concetti della programmazione a oggetti e le classi in Java}
+\author[Mattia Fonisto]{Mattia Fonisto}
+\institute[Lab.\ di Programmazione]{Laboratorio di Programmazione -- Ingegneria Informatica, II anno\\
+           Università degli Studi di Napoli Federico II -- Sede di San Giovanni a Teduccio}
+\date{13 ottobre 2026}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% ========================================================================
+\begin{frame}{Agenda della lezione (2h)}
+\begin{enumerate}
+    \item \textbf{Ripasso e Homework 4} \hfill (\emph{15 min})
+    \begin{itemize}
+        \item uno di voi alla lavagna con \texttt{Anagrammi}, \texttt{Pagella} o \texttt{Cifrario}: lo commentiamo insieme
+    \end{itemize}
+    \item \textbf{Programmazione a oggetti: i concetti} \hfill (\emph{15 min})
+    \begin{itemize}
+        \item tipo di dato astratto, classi e oggetti, relazioni tra classi, i tre principi
+    \end{itemize}
+    \item \textbf{Classi in Java} \hfill (\emph{30 min})
+    \begin{itemize}
+        \item dichiarare e usare una classe: variabili di istanza, metodi, \texttt{public} e \texttt{private}
+        \item ciclo di vita di un oggetto, costruttori, metodi \texttt{get} e \texttt{set}, predicati, garbage collector
+    \end{itemize}
+    \item \textbf{Esercitazione} -- tutti insieme \hfill (\emph{50 min})
+    \begin{itemize}
+        \item \emph{Commentiamo insieme}: \texttt{Studente}, una classe completa e il suo programma di prova
+        \item \emph{Insieme, passo passo}: \texttt{ContoBancario} -- dal programma di prova alla classe
+    \end{itemize}
+    \item \textbf{Wrap-up e Homework 5} \hfill (\emph{10 min})
+\end{enumerate}
+\end{frame}
+
+% ========================================================================
+\section{Programmazione a oggetti}
+
+\begin{frame}[fragile]{Programmazione a oggetti: il tipo di dato astratto}
+\begin{columns}[T]
+\column{0.62\textwidth}
+\begin{block}{Tipo di dato astratto (ADT, \emph{Abstract Data Type})}
+\small Una struttura dati \emph{incapsulata}, cioè racchiusa, dalle operazioni consentite su di essa: ai dati si accede, in lettura e in scrittura, soltanto attraverso quelle operazioni.
+\end{block}
+
+\small
+Ne usate uno dalla lezione~2: \texttt{String}. Conoscete le sue operazioni (\texttt{length}, \texttt{charAt}\ldots), non il modo in cui tiene in memoria i caratteri. Un ADT è il modulo che realizza un'\emph{astrazione sui dati} (lezione~4).
+\begin{itemize}\itemsep=2pt
+    \item l'\textbf{interfaccia} è l'elenco delle operazioni: la sola parte che i client usano
+    \item il \textbf{corpo}, o \emph{realizzazione}, è la struttura dati con il codice delle operazioni: lo scrive chi sviluppa l'ADT
+\end{itemize}
+
+\textbf{Che cosa si guadagna}: nessuna operazione scorretta può alterare la struttura dati, e la realizzazione si può modificare senza toccare i client.
+
+\column{0.38\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.5\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 25
+    rankSpacing: 28
+    wrappingWidth: 600
+---
+flowchart TB
+  C["<b>Client</b><br/>chi usa l'ADT"] -- "chiama" --> O
+  subgraph M[" "]
+    O["<b>Operazioni</b><br/>length · charAt · substring …<br/><i>interfaccia: visibile ai client</i>"]
+    D["<b>Struttura dati</b><br/>i caratteri in memoria<br/><i>nascosta e protetta</i>"]
+    O --- D
+  end
+  style C fill:#fef3c7,stroke:#b45309
+  style O fill:#dcfce7,stroke:#15803d
+  style D fill:#e5e7eb,stroke:#4b5563
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+Come chi guida un'automobile: usa volante, pedali e cambio, non mette le mani nel motore.
+
+\vspace{0.1cm}
+Java ha anche una parola chiave \texttt{abstract}: un costrutto specifico (lezione~7).
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Programmazione a oggetti: classi e oggetti}
+\begin{columns}[T]
+\column{0.56\textwidth}
+\begin{block}{Classe}
+\small Descrive un gruppo di oggetti con le stesse proprietà, gli \emph{attributi}, e lo stesso comportamento, i \emph{metodi}. È lo schema da cui gli oggetti vengono creati.
+\end{block}
+\begin{block}{Oggetto}
+\small Un'\emph{istanza}, cioè un esemplare, di una classe. I valori dei suoi attributi sono il suo \emph{stato}.
+\end{block}
+
+\small
+\texttt{String} è una classe; \texttt{"ciao"} e \texttt{"Java"} sono due suoi oggetti: stessi metodi, caratteri diversi.
+\begin{itemize}\itemsep=2pt
+    \item due oggetti della stessa classe si distinguono soltanto per lo stato: il comportamento è identico
+    \item quali attributi servono dipende da chi usa la classe: sceglierli è un'astrazione (lezione~4)
+\end{itemize}
+
+\column{0.44\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.42\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 16
+    rankSpacing: 34
+    wrappingWidth: 600
+---
+flowchart TB
+  K["<b>classe Automobile</b><br/>attributi: targa · colore · cilindrata<br/>metodi: avviati · accelera · frena"]
+  a["<b>oggetto</b><br/>GA123XY<br/>rossa · 1200"]
+  b["<b>oggetto</b><br/>FZ456KL<br/>grigia · 1600"]
+  c["<b>oggetto</b><br/>EB789MN<br/>blu · 1200"]
+  K -- "istanza" --> a
+  K -- "istanza" --> b
+  K -- "istanza" --> c
+  style K fill:#dbeafe,stroke:#1d4ed8
+  style a fill:#fef3c7,stroke:#b45309
+  style b fill:#fef3c7,stroke:#b45309
+  style c fill:#fef3c7,stroke:#b45309
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\small
+\textbf{Programmare a oggetti}: si individuano le classi di oggetti del problema, si realizza ciascuna come un ADT (gli attributi sono la struttura dati, i metodi le operazioni) e si costruisce il programma assemblando oggetti che collaborano, chiamando l'uno i metodi dell'altro.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Programmazione a oggetti: relazioni tra classi}
+\begin{columns}[T]
+\column{0.56\textwidth}
+\small
+Le classi di un programma non sono isolate: fra i loro oggetti esistono tre tipi di relazione.
+\begin{itemize}\itemsep=4pt
+    \item \textbf{Composizione}: un oggetto complesso è composto da oggetti più semplici, i suoi \emph{componenti}. Ogni automobile è composta da un motore e da quattro ruote.
+    \item \textbf{Generalizzazione-specializzazione}: una classe è un caso particolare di un'altra. Uno studente e un lavoratore \emph{sono} persone: hanno in comune il comportamento di ogni persona, e ciascuno vi aggiunge il proprio.
+    \item \textbf{Associazione}: gli oggetti di due classi sono collegati, senza che gli uni siano parte degli altri. Una persona possiede una o più automobili; un libro ha più autori, e un autore ha scritto più libri.
+\end{itemize}
+
+\vspace{0.1cm}
+Nella lezione~4 il lettore musicale aveva già due di queste relazioni: la playlist \emph{è composta da} brani (composizione) e \emph{usa} il riproduttore audio (associazione).
+
+\column{0.44\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.41\textheight,center}
+\begin{mermaid}
+---
+config:
+  class:
+    hideEmptyMembersBox: true
+---
+classDiagram
+  direction TB
+  class Persona
+  class Studente
+  class Lavoratore
+  class Automobile
+  class Motore
+  class Ruota
+  Persona <|-- Studente
+  Persona <|-- Lavoratore
+  Persona "1" -- "0..*" Automobile : possiede
+  Automobile *-- "1" Motore
+  Automobile *-- "4" Ruota
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+Il disegno è un diagramma \textbf{UML} (\emph{Unified Modeling Language}), il linguaggio grafico più usato per descrivere classi e relazioni. Il triangolo indica la generalizzazione, e punta alla classe più generale; il rombo pieno indica la composizione, e sta dalla parte del composto; la linea semplice indica l'associazione. I numeri dicono quanti oggetti partecipano.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}{Programmazione a oggetti: i tre principi}
+\begin{columns}[T]
+\column{0.56\textwidth}
+\begin{block}{Incapsulamento}
+\small Il meccanismo che consente l'accesso a una struttura dati soltanto attraverso le sue operazioni. È ciò che fa di una classe un ADT. \hfill\emph{oggi}
+\end{block}
+\begin{block}{Ereditarietà}
+\small Il meccanismo con cui una classe acquisisce le proprietà di un'altra. Realizza la generalizzazione-specializzazione: \texttt{Studente} eredita da \texttt{Persona}. \hfill\emph{lezione 7}
+\end{block}
+\begin{block}{Polimorfismo}
+\small Un'interfaccia, più realizzazioni: si chiama un metodo senza sapere, fino all'esecuzione, su quale tipo di oggetto agirà. Con \texttt{f.area()} un cerchio calcola $\pi r^2$, un rettangolo base per altezza: decide l'oggetto a cui \texttt{f} si riferisce. \hfill\emph{lezione 7}
+\end{block}
+
+\column{0.41\textwidth}
+\small
+\vspace{0.2cm}
+Tutti i linguaggi a oggetti offrono questi tre meccanismi.
+
+\vspace{0.2cm}
+\textbf{Che cosa si guadagna}, con le parole della lezione~4:
+\begin{itemize}\itemsep=2pt
+    \item \textbf{modularità}: le classi sono i moduli
+    \item \textbf{coesione}: una classe, una sola entità
+    \item \textbf{basso accoppiamento}: i metodi lavorano sui dati del proprio oggetto
+    \item \textbf{information hiding}: dati e algoritmi restano nascosti nell'oggetto
+    \item \textbf{riuso}: con l'ereditarietà
+    \item \textbf{estensibilità}: con il polimorfismo
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Classi in Java}
+
+\begin{frame}[fragile]{Dichiarare una classe in Java -- \texttt{Counter.java} (versione 1)}
+\begin{columns}[T]
+\column{0.47\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class Counter {
+
+    private int value;   // valore corrente
+    private int max;     // valore massimo
+
+    public void increment() {
+        value++;
+    }
+
+    public void decrement() {
+        value--;
+    }
+}
+\end{lstlisting}
+\MermaidAdjustBoxOpts{max width=0.7\linewidth,max height=0.32\textheight,center}
+\begin{mermaid}
+classDiagram
+  class Counter {
+    -value : int
+    -max : int
+    +increment()
+    +decrement()
+  }
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+\column{0.53\textwidth}
+\small
+Il costrutto \texttt{class} definisce un nuovo tipo di dato: la struttura dati e le operazioni consentite su di essa.
+\begin{itemize}\itemsep=3pt
+    \item \textbf{variabili di istanza}: sono gli attributi. Ogni oggetto ha le proprie, e i loro valori sono il suo stato
+    \item \textbf{metodi}: sono \emph{senza} \texttt{static}, e lavorano sulle variabili di istanza dell'oggetto su cui vengono chiamati
+    \item \textbf{\texttt{private}}: le variabili di istanza si usano solo dentro la classe. È l'incapsulamento. Nella lezione~4 \texttt{private} nascondeva un metodo; qui nasconde i dati
+    \item \textbf{\texttt{public}}: l'interfaccia, cioè le operazioni a disposizione dei client
+    \item una classe \texttt{public} per file, con lo stesso nome: \texttt{Counter.java}
+\end{itemize}
+
+\vspace{0.1cm}
+In UML una classe è un rettangolo in tre sezioni: nome, variabili di istanza, metodi. Il segno \texttt{-} indica \texttt{private}, il segno \texttt{+} indica \texttt{public}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Usare una classe -- \texttt{ProvaCounter.java} (versione 1)}
+\begin{columns}[T]
+\column{0.45\textwidth}
+{\footnotesize Nel \texttt{main} di \texttt{ProvaCounter}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Counter c = new Counter();
+Counter d = new Counter();
+
+c.increment();
+c.increment();
+c.increment();
+c.decrement();
+d.increment();
+
+// ERRORE: value e` private
+// c.value = 100;
+// System.out.println(d.value);
+\end{lstlisting}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.26\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 30
+    wrappingWidth: 600
+---
+flowchart LR
+  c["<b>stack</b><br/>main: c ●"] --> o1["<b>heap</b> · oggetto Counter<br/>value 2 &nbsp; max 0"]
+  d["<b>stack</b><br/>main: d ●"] --> o2["<b>heap</b> · oggetto Counter<br/>value 1 &nbsp; max 0"]
+  style c fill:#fef3c7,stroke:#b45309
+  style d fill:#fef3c7,stroke:#b45309
+  style o1 fill:#dbeafe,stroke:#1d4ed8
+  style o2 fill:#dbeafe,stroke:#1d4ed8
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+\column{0.55\textwidth}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \texttt{new Counter()} crea un oggetto nello heap e ne restituisce il riferimento, come \texttt{new int[3]} e \texttt{new Scanner(System.in)}
+    \item ogni oggetto ha le \textbf{sue} variabili di istanza: \texttt{c} e \texttt{d} contano separatamente. Nascono con il valore di default (\texttt{0}, \texttt{0.0}, \texttt{false}, \texttt{null}), come gli elementi di un array; le variabili locali, invece, vanno inizializzate
+    \item un metodo non \texttt{static} si chiama \textbf{su un oggetto}: \texttt{c.increment()}. Finora scrivevamo \texttt{Voti.isValido(31)}, sul nome della classe, perché un metodo \texttt{static} non ha un oggetto su cui lavorare
+    \item \texttt{Counter} non ha un \texttt{main}: da sola non è un programma. \texttt{ProvaCounter}, nella stessa cartella, è un suo client
+\end{itemize}
+
+\vspace{0.1cm}
+\small
+Così com'è, però, \texttt{Counter} è inutile: non possiamo scegliere \texttt{max}, né sapere quanto vale \texttt{value}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Ciclo di vita di un oggetto}
+\small
+Una classe descrive soltanto la struttura e le operazioni comuni a tutti i suoi oggetti. Un oggetto esiste dopo un'operazione di \emph{istanziazione}, che lo crea e lo alloca in memoria; da quel momento attraversa cinque fasi.
+
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.2\textheight,center}
+\begin{mermaid}
+flowchart LR
+  A["<b>1. creazione</b>"] --> B["<b>2. inizializzazione</b>"] --> C["<b>3. definizione di<br/>un riferimento</b>"] --> D["<b>4. utilizzo</b>"] --> E["<b>5. distruzione</b>"]
+  style A fill:#dbeafe,stroke:#1d4ed8
+  style B fill:#dcfce7,stroke:#15803d
+  style C fill:#dcfce7,stroke:#15803d
+  style D fill:#dcfce7,stroke:#15803d
+  style E fill:#dbeafe,stroke:#1d4ed8
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Fase} & \textbf{In} \texttt{Counter c = new Counter(4); c.increment();} & \textbf{Chi se ne occupa} \\
+\midrule
+1. creazione & \texttt{new} riserva nello heap lo spazio per le variabili di istanza & la JVM \\
+2. inizializzazione & \texttt{Counter(4)} chiama un \textbf{costruttore} della classe & chi scrive la classe \\
+3. riferimento & \texttt{Counter c =} conserva il riferimento restituito da \texttt{new} & il client \\
+4. utilizzo & \texttt{c.increment()}: i metodi chiamati attraverso il riferimento & il client \\
+5. distruzione & quando nessun riferimento porta più all'oggetto & la JVM \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{I costruttori -- \texttt{Counter.java} (versione 2)}
+\begin{columns}[T]
+\column{0.42\textwidth}
+{\footnotesize Aggiunti alla versione 1:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    // costruttore senza argomenti
+    public Counter() {
+        max = 10;
+        value = 0;
+    }
+
+    // costruttore con argomenti
+    public Counter(int m) {
+        max = m;
+        value = 0;
+    }
+
+    // costruttore di copia
+    public Counter(Counter c) {
+        max = c.max;
+        value = c.value;
+    }
+\end{lstlisting}
+\footnotesize
+Nel costruttore di copia si legge \texttt{c.max}, benché \texttt{max} sia \texttt{private}. È lecito: una variabile \texttt{private} è \textbf{visibile in tutta la classe} che la dichiara. Il costruttore fa parte di \texttt{Counter} e \texttt{c} è un \texttt{Counter}: vede le variabili di \texttt{c} come vede le proprie.
+
+\column{0.58\textwidth}
+\small
+Un \textbf{costruttore} è un metodo speciale che inizializza l'oggetto appena creato. Lo chiama \texttt{new}.
+\begin{itemize}\itemsep=4pt
+    \item ha lo \textbf{stesso nome della classe} e \textbf{nessun tipo restituito}, nemmeno \texttt{void}
+    \item una classe può averne più di uno, distinti per \emph{overloading}, cioè per numero e tipo dei parametri (lezione~3): \textbf{senza argomenti}, \textbf{con argomenti}, \textbf{di copia}. Quest'ultimo ha per parametro un oggetto della stessa classe
+    \item se una classe non ha costruttori, il compilatore ne fornisce uno \textbf{di default}, senza argomenti, che lascia nelle variabili i valori di default: è quello usato dalla versione~1
+    \item \textbf{attenzione}: basta definire un costruttore, e quello di default non viene più fornito. Senza il primo dei tre, \texttt{new Counter()} non compilerebbe
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Tre modi di creare un contatore -- \texttt{ProvaCounter.java} (versione 2)}
+\begin{columns}[T]
+\column{0.5\textwidth}
+{\footnotesize Nel \texttt{main} di \texttt{ProvaCounter}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Counter b = new Counter();    // max 10
+Counter c = new Counter(4);   // max 4
+c.increment();
+
+Counter d = new Counter(c);   // copia di c
+c.increment();                // d non cambia
+
+// ERRORE: max e` private, non e` visibile
+// fuori dalla classe Counter
+// System.out.println(c.max);
+\end{lstlisting}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.36\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 30
+    wrappingWidth: 600
+---
+flowchart LR
+  b["<b>stack</b><br/>main: b ●"] --> o1["<b>heap</b> · oggetto Counter<br/>value 0 &nbsp; max 10"]
+  c["<b>stack</b><br/>main: c ●"] --> o2["<b>heap</b> · oggetto Counter<br/>value 2 &nbsp; max 4"]
+  d["<b>stack</b><br/>main: d ●"] --> o3["<b>heap</b> · oggetto Counter<br/>value 1 &nbsp; max 4"]
+  style b fill:#fef3c7,stroke:#b45309
+  style c fill:#fef3c7,stroke:#b45309
+  style d fill:#fef3c7,stroke:#b45309
+  style o1 fill:#dbeafe,stroke:#1d4ed8
+  style o2 fill:#dbeafe,stroke:#1d4ed8
+  style o3 fill:#dcfce7,stroke:#15803d
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+\column{0.5\textwidth}
+\small
+\begin{itemize}\itemsep=4pt
+    \item \texttt{new} sceglie il costruttore in base agli argomenti, come in ogni chiamata a metodi in overloading
+    \item il \textbf{costruttore di copia} riceve un riferimento a un oggetto già esistente e ne copia lo stato nel nuovo oggetto, una variabile alla volta. Da quel momento i due oggetti sono indipendenti: il secondo \texttt{c.increment()} non tocca \texttt{d}
+    \item la visibilità \texttt{private} è \textbf{per classe}, non per oggetto. Dentro \texttt{Counter}, \texttt{max} è visibile per ogni oggetto \texttt{Counter}: quello che si sta costruendo e \texttt{c}. Alle altre classi \texttt{max} non è visibile: nel \texttt{main} di \texttt{ProvaCounter}, \texttt{c.max} non compila
+\end{itemize}
+
+\vspace{0.1cm}
+Ora scegliamo lo stato iniziale; non sappiamo ancora leggere \texttt{value}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{I metodi \texttt{get} e \texttt{set} -- \texttt{Counter.java} (versione 3)}
+\begin{columns}[T]
+\column{0.47\textwidth}
+{\footnotesize Aggiunti alla versione 2:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    // metodi get: leggono lo stato
+    public int getValue() {
+        return value;
+    }
+
+    public int getMax() {
+        return max;
+    }
+
+    // metodo set: modifica lo stato
+    public void setMax(int m) {
+        max = m;
+    }
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item un metodo \textbf{get} restituisce il valore di una variabile di istanza; un metodo \textbf{set} lo sostituisce con quello ricevuto
+    \item è la classe a decidere che cosa si può leggere e che cosa si può modificare: \texttt{value} ha solo il \texttt{get}, e cambia soltanto con \texttt{increment} e \texttt{decrement}
+\end{itemize}
+
+\column{0.53\textwidth}
+{\footnotesize Nel \texttt{main} di \texttt{ProvaCounter}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Counter b = new Counter();
+Counter c = new Counter(4);
+c.increment();
+Counter d = new Counter(c);
+c.increment();
+
+System.out.println(b.getMax());     // 10
+System.out.println(c.getValue());   // 2
+System.out.println(d.getValue());   // 1
+
+d.setMax(20);
+System.out.println(d.getMax());     // 20
+System.out.println(c.getMax());     // 4
+
+// c.value = 3;     // ERRORE: private
+// c.setValue(3);   // ERRORE: non esiste
+\end{lstlisting}
+\footnotesize
+I nomi: \texttt{get} o \texttt{set}, seguito dal nome della variabile con l'iniziale maiuscola.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Predicati e precondizioni -- \texttt{Counter.java} (versione 4)}
+\begin{columns}[T]
+\column{0.5\textwidth}
+{\footnotesize Aggiunti alla versione 3:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    // predicati: true se l'operazione
+    // porterebbe value fuori da 0..max
+    public boolean ovf() {
+        return (value + 1) > max;
+    }
+
+    public boolean unf() {
+        return (value - 1) < 0;
+    }
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item un \textbf{predicato} è un metodo che restituisce un \texttt{boolean} sullo stato dell'oggetto: si usa nelle condizioni di \texttt{if} e \texttt{while}
+    \item \texttt{ovf} (\emph{overflow}) e \texttt{unf} (\emph{underflow}) verificano le \textbf{precondizioni} di \texttt{increment} e \texttt{decrement}: il valore non deve superare \texttt{max} né scendere sotto zero
+    \item qui il controllo spetta al \textbf{client}: se dimentica l'\texttt{if}, \texttt{increment} porta \texttt{value} oltre \texttt{max}. Nell'esercitazione lo sposteremo dentro i metodi
+\end{itemize}
+
+\column{0.5\textwidth}
+{\footnotesize Nel \texttt{main} di \texttt{ProvaCounter}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Counter c = new Counter(2);
+while (!c.ovf()) {
+    c.increment();
+}
+System.out.println(c.getValue());   // 2
+
+if (!c.ovf()) {
+    c.increment();
+} else {
+    System.out.println("c al massimo");
+}
+
+c.decrement();
+c.decrement();
+if (!c.unf()) {
+    c.decrement();
+} else {
+    System.out.println("c a zero");
+}
+System.out.println(c.getValue());   // 0
+\end{lstlisting}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Copia, alias e distruzione degli oggetti -- \texttt{Riferimenti.java}}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Counter c = new Counter(4);
+c.increment();
+
+Counter copia = new Counter(c);  // altro oggetto
+Counter alias = c;               // stesso oggetto
+c.increment();
+System.out.println(c.getValue());      // 2
+System.out.println(copia.getValue());  // 1
+System.out.println(alias.getValue());  // 2
+
+c = new Counter(7);   // c cambia oggetto
+alias = null;         // il primo e` orfano
+System.out.println(c.getValue());      // 0
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item \texttt{alias = c} copia il \textbf{riferimento}, non l'oggetto: vale per ogni oggetto, come per gli array della lezione~3. Per avere un secondo oggetto con lo stesso stato serve il costruttore di copia
+    \item un oggetto vive finché almeno un riferimento porta a lui
+\end{itemize}
+
+\column{0.45\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.42\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 30
+    wrappingWidth: 600
+---
+flowchart LR
+  c["<b>stack</b><br/>c ●"] --> o3["<b>heap</b> · oggetto Counter<br/>value 0 &nbsp; max 7"]
+  k["<b>stack</b><br/>copia ●"] --> o2["<b>heap</b> · oggetto Counter<br/>value 1 &nbsp; max 4"]
+  a["<b>stack</b><br/>alias: null"] ~~~ o1["<b>heap</b> · oggetto Counter<br/>value 2 &nbsp; max 4 · <i>orfano</i>"]
+  style c fill:#fef3c7,stroke:#b45309
+  style k fill:#fef3c7,stroke:#b45309
+  style a fill:#fef3c7,stroke:#b45309
+  style o3 fill:#dbeafe,stroke:#1d4ed8
+  style o2 fill:#dcfce7,stroke:#15803d
+  style o1 fill:#fee2e2,stroke:#b91c1c,stroke-dasharray: 5 5
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+La memoria dopo l'ultima riga.
+
+\vspace{0.15cm}
+\small
+Un oggetto \emph{orfano}, cioè senza più riferimenti, non è raggiungibile da nessuna istruzione. Lo dealloca automaticamente il \textbf{garbage collector} della JVM: in Java la distruzione degli oggetti non è responsabilità del programmatore.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{La classe come modulo: client e interfaccia}
+\begin{columns}[T]
+\column{0.4\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.76\textheight,center}
+\begin{mermaid}
+classDiagram
+  direction TB
+  class ProvaCounter {
+    +main(args : String[])$
+  }
+  class Counter {
+    -value : int
+    -max : int
+    +Counter()
+    +Counter(m : int)
+    +Counter(c : Counter)
+    +getValue() int
+    +getMax() int
+    +setMax(m : int)
+    +increment()
+    +decrement()
+    +ovf() boolean
+    +unf() boolean
+  }
+  ProvaCounter ..> Counter : usa
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+\column{0.6\textwidth}
+\small
+Una classe è un modulo, e ha due ruoli possibili: \textbf{client}, quando usa un'altra classe, e classe \textbf{usata} da un client. \texttt{ProvaCounter} è client di \texttt{Counter}.
+
+\vspace{0.1cm}
+I due ruoli non si escludono: la stessa classe può essere client di una classe ed essere usata da un'altra. Nella lezione~4 \texttt{Statistiche} era client di \texttt{Arrays} e, allo stesso tempo, era usata da \texttt{Frequenze}.
+
+\vspace{0.1cm}
+\textbf{Per usare una classe}, un client dichiara un riferimento (\texttt{Counter c}), crea un'istanza con \texttt{new} e chiama i metodi \texttt{public}. Se le due classi stanno nella stessa cartella non serve alcun \texttt{import}.
+
+\vspace{0.1cm}
+\textbf{Lo stato dell'oggetto è incapsulato}: cambia soltanto per effetto dei metodi chiamati sull'oggetto.
+
+\vspace{0.1cm}
+\textbf{L'interfaccia pubblica} di una classe deve essere:
+\begin{itemize}\itemsep=1pt
+    \item \textbf{stabile}: cambiarla significa riscrivere i client
+    \item \textbf{minimale}: espone soltanto ciò che serve ai client
+    \item \textbf{completa}: offre tutte le operazioni che servono ai client
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Esercitazione}
+
+\begin{frame}[fragile]{Commentiamo insieme (20 min) -- il problema}
+\begin{columns}[T]
+\column{0.64\textwidth}
+\small
+\textbf{Il problema.} La segreteria deve tenere traccia della carriera di ogni studente: il nome, la matricola, quanti esami ha superato e con quale media.
+
+\vspace{0.2cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=3pt
+    \item uno studente nasce con un nome e una matricola, e senza esami
+    \item la matricola non cambia mai; il nome si può correggere
+    \item un esame si registra con il suo voto, da 18 a 30; ogni altro voto viene rifiutato
+    \item il numero degli esami e la media cambiano soltanto registrando un esame
+    \item di uno studente si può creare una copia, indipendente dall'originale
+\end{itemize}
+
+\vspace{0.2cm}
+La soluzione è già scritta: la classe \texttt{Studente}, che fa rispettare le regole, e il programma \texttt{ProvaStudente}, che la usa. Le leggiamo insieme, riga per riga, distinguendo interfaccia e corpo.
+
+\column{0.36\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.72\textheight,center}
+\begin{mermaid}
+classDiagram
+  class Studente {
+    -nome : String
+    -matricola : String
+    -esami : int
+    -sommaVoti : int
+    +Studente(String, String)
+    +Studente(Studente)
+    +getNome() String
+    +getMatricola() String
+    +getEsami() int
+    +setNome(String)
+    +registra(int) boolean
+    +media() double
+    -isValido(int) boolean
+  }
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{Studente.java} (1/2)}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Uno studente e i suoi esami. */
+public class Studente {
+
+    private String nome;
+    private String matricola;
+    private int esami;       // quanti esami
+    private int sommaVoti;   // somma dei voti
+
+    /** Un nuovo studente, senza esami. */
+    public Studente(String n, String m) {
+        nome = n;
+        matricola = m;
+        esami = 0;
+        sommaVoti = 0;
+    }
+
+    /** Costruttore di copia. */
+    public Studente(Studente s) {
+        nome = s.nome;
+        matricola = s.matricola;
+        esami = s.esami;
+        sommaVoti = s.sommaVoti;
+    }
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    public String getNome() {
+        return nome;
+    }
+
+    public String getMatricola() {
+        return matricola;
+    }
+
+    public int getEsami() {
+        return esami;
+    }
+
+    public void setNome(String n) {
+        nome = n;
+    }
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item nessun costruttore senza argomenti: uno studente senza nome e senza matricola non ha senso, e \texttt{new Studente()} non compila
+    \item tre \texttt{get}, un solo \texttt{set}: la matricola non cambia mai, e gli esami non si scrivono ``a mano''
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{Studente.java} (2/2)}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    /** false se il voto non e` valido. */
+    public boolean registra(int voto) {
+        if (!isValido(voto)) {
+            return false;
+        }
+        esami++;
+        sommaVoti += voto;
+        return true;
+    }
+
+    /** La media; 0 se non ci sono esami. */
+    public double media() {
+        if (esami == 0) {
+            return 0;
+        }
+        return (double) sommaVoti / esami;
+    }
+
+    // corpo: visibile solo dentro Studente
+    private boolean isValido(int voto) {
+        return voto >= 18 && voto <= 30;
+    }
+}
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\small
+\textbf{Da notare, leggendo:}
+\begin{itemize}\itemsep=3pt
+    \item \texttt{registra} è l'unico modo di cambiare \texttt{esami} e \texttt{sommaVoti}: le due variabili restano coerenti fra loro, e un voto non valido non entra mai nello stato
+    \item \texttt{registra} restituisce un \texttt{boolean}: il client sa se l'operazione è riuscita. In \texttt{Counter} il controllo era del client (\texttt{ovf}); qui è \textbf{dentro il metodo}
+    \item \texttt{media} non è una variabile di istanza: si calcola dallo stato quando serve, con il cast della lezione~4
+    \item \texttt{isValido} è \texttt{private}: appartiene al corpo. \texttt{registra} lo chiama con il solo nome, sullo stesso oggetto
+    \item nel costruttore di copia \texttt{nome = s.nome} copia un riferimento: i due oggetti condividono la stessa \texttt{String}, che però è immutabile
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{ProvaStudente.java}}
+\begin{columns}[T]
+\column{0.6\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** LEGGE lo studente ricevuto e lo stampa. */
+public static void stampa(Studente s) {
+    System.out.println(s.getNome()
+            + ": esami " + s.getEsami()
+            + ", media " + s.media());
+}
+
+public static void main(String[] args) {
+    Studente a = new Studente("Giulia", "N46001234");
+    a.registra(28);
+    a.registra(24);
+    System.out.println(a.registra(31));
+    stampa(a);
+
+    Studente b = a;
+    Studente c = new Studente(a);
+    b.registra(29);
+    c.registra(26);
+    c.setNome("Giulia Russo");
+    stampa(a);
+    stampa(b);
+    stampa(c);
+}
+\end{lstlisting}
+
+\column{0.4\textwidth}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+false
+Giulia: esami 2, media 26.0
+Giulia: esami 3, media 27.0
+Giulia: esami 3, media 27.0
+Giulia Russo: esami 3, media 26.0
+\end{lstlisting}
+\footnotesize
+\textbf{Rispondiamo insieme:}
+\begin{enumerate}\itemsep=2pt
+    \item quanti oggetti \texttt{Studente} esistono alla fine del \texttt{main}? E quanti riferimenti?
+    \item \texttt{registra(29)} è chiamato su \texttt{b}: perché cambia anche la riga stampata per \texttt{a}?
+    \item \texttt{stampa} riceve una copia del riferimento: potrebbe modificare lo studente del \texttt{main}? Con quali istruzioni?
+    \item possiamo scrivere qui \texttt{a.esami = 30}? E \texttt{a.isValido(25)}?
+    \item che cosa restituisce \texttt{media} per uno studente appena creato? A che serve il suo \texttt{if}?
+\end{enumerate}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo (30 min) -- il problema e \texttt{ProvaConto.java}}
+\small
+\textbf{Il problema.} Un conto bancario ha un intestatario, un saldo e il numero dei movimenti riusciti. Il saldo non deve mai diventare negativo. Il programma di prova è già scritto: manca la classe \texttt{ContoBancario}.
+
+\begin{columns}[T]
+\column{0.62\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** LEGGE il conto ricevuto e lo stampa su una riga. */
+public static void stampa(ContoBancario c) {
+    System.out.println(c.getIntestatario()
+            + ": saldo " + c.getSaldo()
+            + ", movimenti " + c.getMovimenti());
+}
+
+public static void main(String[] args) {
+    ContoBancario anna = new ContoBancario("Anna", 500);
+    ContoBancario luca = new ContoBancario("Luca");
+
+    anna.versa(250.50);
+    System.out.println(anna.preleva(1000));
+    System.out.println(anna.versa(-20));
+    System.out.println(anna.trasferisci(luca, 300));
+    System.out.println(luca.trasferisci(anna, 999));
+
+    stampa(anna);
+    stampa(luca);
+}
+\end{lstlisting}
+
+\column{0.38\textwidth}
+{\footnotesize Deve stampare:}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+false
+false
+true
+false
+Anna: saldo 450.5, movimenti 3
+Luca: saldo 300.0, movimenti 1
+\end{lstlisting}
+\small
+Il client viene prima della classe: leggendolo ricaviamo l'\textbf{interfaccia} che \texttt{ContoBancario} deve offrire.
+
+\vspace{0.15cm}
+\texttt{ProvaConto} non contiene un solo \texttt{if}: che un'operazione sia lecita lo decide il conto, e lo comunica con il valore restituito.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo -- dal programma di prova alla classe}
+\begin{columns}[T]
+\column{0.6\textwidth}
+\small
+\textbf{Prima di scrivere codice, decidiamo insieme:}
+\begin{enumerate}\itemsep=4pt
+    \item quali \textbf{variabili di istanza}? \textrightarrow{} \texttt{intestatario}, \texttt{saldo}, \texttt{movimenti}: tutte \texttt{private}
+    \item in quanti modi nasce un conto? \textrightarrow{} due \textbf{costruttori}: solo l'intestatario, oppure l'intestatario e un primo versamento
+    \item quali \texttt{get}, quali \texttt{set}? \textrightarrow{} tre \texttt{get}. Nessun \texttt{setSaldo}, nessun \texttt{setMovimenti}: il saldo cambia soltanto con \texttt{versa}, \texttt{preleva} e \texttt{trasferisci}
+    \item chi controlla gli importi? \textrightarrow{} i \textbf{metodi} stessi: restituiscono \texttt{false}, e non toccano lo stato, se l'importo non è positivo o supera il saldo
+    \item come si scrive \texttt{trasferisci}? \textrightarrow{} con \texttt{preleva} su questo conto e \texttt{versa} sull'altro: i controlli ci sono già
+\end{enumerate}
+
+\vspace{0.1cm}
+Da tenere a mente: nessuna sequenza di chiamate, per quanto sbagliata, deve poter portare il saldo sotto zero.
+
+\column{0.4\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.7\textheight,center}
+\begin{mermaid}
+classDiagram
+  class ContoBancario {
+    -intestatario : String
+    -saldo : double
+    -movimenti : int
+    +ContoBancario(String)
+    +ContoBancario(String, double)
+    +getIntestatario() String
+    +getSaldo() double
+    +getMovimenti() int
+    +versa(double) boolean
+    +preleva(double) boolean
+    +trasferisci(ContoBancario, double) boolean
+  }
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione (1/2) -- \texttt{ContoBancario.java}}
+\begin{columns}[T]
+\column{0.58\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Un conto corrente bancario. */
+public class ContoBancario {
+
+    private String intestatario;
+    private double saldo;
+    private int movimenti;   // operazioni riuscite
+
+    /** Un conto vuoto. */
+    public ContoBancario(String nome) {
+        intestatario = nome;
+        saldo = 0;
+        movimenti = 0;
+    }
+
+    /** Un conto aperto con un primo versamento. */
+    public ContoBancario(String nome, double primo) {
+        intestatario = nome;
+        saldo = 0;
+        movimenti = 0;
+        versa(primo);
+    }
+\end{lstlisting}
+
+\column{0.42\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    public String getIntestatario() {
+        return intestatario;
+    }
+
+    public double getSaldo() {
+        return saldo;
+    }
+
+    public int getMovimenti() {
+        return movimenti;
+    }
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item il secondo costruttore non scrive \texttt{saldo = primo}: chiama \texttt{versa}, che controlla l'importo e conta il movimento
+    \item \texttt{saldo} ha un \texttt{get} e nessun \texttt{set}: il client lo legge quando vuole, ma non lo scrive
+    \item i parametri hanno nomi diversi dalle variabili di istanza: con lo stesso nome, il parametro nasconderebbe la variabile (lezione~6)
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione (2/2) -- \texttt{ContoBancario.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    /** false se l'importo non e` positivo. */
+    public boolean versa(double importo) {
+        if (importo <= 0) {
+            return false;
+        }
+        saldo += importo;
+        movimenti++;
+        return true;
+    }
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    /** false se l'importo non e` positivo
+     *  o supera il saldo. */
+    public boolean preleva(double importo) {
+        if (importo <= 0 || importo > saldo) {
+            return false;
+        }
+        saldo -= importo;
+        movimenti++;
+        return true;
+    }
+\end{lstlisting}
+\end{columns}
+
+\vspace{0.15cm}
+\begin{columns}[T]
+\column{0.74\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    /** false se il prelievo da questo conto fallisce. */
+    public boolean trasferisci(ContoBancario altro, double importo) {
+        if (!preleva(importo)) {
+            return false;
+        }
+        altro.versa(importo);
+        return true;
+    }
+}
+\end{lstlisting}
+
+\column{0.26\textwidth}
+\footnotesize
+\texttt{trasferisci} lavora su due oggetti: \texttt{preleva} agisce sul conto su cui il metodo è chiamato, \texttt{altro.versa} sul conto ricevuto. \texttt{altro} è una copia del riferimento: il versamento modifica l'oggetto del chiamante.
+\end{columns}
+
+\vspace{0.1cm}
+\small
+Ogni metodo controlla \textbf{prima} di modificare: se restituisce \texttt{false}, lo stato è rimasto com'era.
+\end{frame}
+
+% ========================================================================
+\section{Wrap-up}
+
+\begin{frame}{Riepilogo: cosa abbiamo trattato}
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Concetto (unità di riferimento)} & \textbf{Dove compare oggi} \\
+\hline
+Tipo di dato astratto, interfaccia e realizzazione (U4) & \texttt{String}; ogni classe scritta oggi \\
+\hline
+Classi, oggetti, stato (U4) & \texttt{Counter} e i suoi oggetti \texttt{b}, \texttt{c}, \texttt{d} \\
+\hline
+Composizione, gen-spec, associazione; UML (U4) & i diagrammi di \texttt{Persona}, \texttt{Automobile}, \texttt{Counter} \\
+\hline
+Incapsulamento, ereditarietà, polimorfismo (U4) & l'incapsulamento: \texttt{private} in tutte le classi \\
+\hline
+Dichiarazione di classe, variabili di istanza, metodi (U5) & \texttt{Counter} versione 1 \\
+\hline
+\texttt{new}, riferimenti, chiamata su un oggetto (U5) & \texttt{ProvaCounter}; \texttt{ProvaStudente} \\
+\hline
+Ciclo di vita; costruttori e loro overloading (U5) & \texttt{Counter} versione 2; \texttt{Studente}; \texttt{ContoBancario} \\
+\hline
+Costruttore di copia, alias (U5) & \texttt{Riferimenti}; \texttt{b} e \texttt{c} in \texttt{ProvaStudente} \\
+\hline
+Metodi \texttt{get} e \texttt{set} (U5) & \texttt{Counter} versione 3; \texttt{setNome}; nessun \texttt{setSaldo} \\
+\hline
+Predicati e precondizioni (U5) & \texttt{ovf}, \texttt{unf}; \texttt{registra}, \texttt{versa}, \texttt{preleva} \\
+\hline
+Distruzione degli oggetti, garbage collector (U5) & \texttt{Riferimenti} \\
+\hline
+Client e classe usata; interfaccia pubblica (U5) & \texttt{ProvaConto}, scritto prima di \texttt{ContoBancario} \\
+\hline
+\end{tabular}
+\end{center}
+
+\vspace{0.1cm}
+\textbf{Prossima lezione (L6)}: il riferimento \texttt{this}, copia e confronto di oggetti, membri \texttt{static}, variabili di istanza \texttt{final}, classi immutabili.
+\end{frame}
+
+% ========================================================================
+\begin{frame}{Homework 5 (da svolgere entro la prossima lezione)}
+\small
+Tre classi, ciascuna con il suo programma di prova (\texttt{ProvaRettangolo}, \texttt{ProvaOrario}, \texttt{ProvaLibretto}).
+\begin{enumerate}\itemsep=3pt
+    \item \textbf{\texttt{Rettangolo.java}}: base e altezza (\texttt{double}), sempre positive. Tre costruttori: senza argomenti (il rettangolo $1 \times 1$), con base e altezza (un valore non positivo diventa 1), di copia. Metodi \texttt{get}; metodi \texttt{set} che restituiscono \texttt{false}, senza modificare nulla, se il valore non è positivo; \texttt{area()}, \texttt{perimetro()} e il predicato \texttt{isQuadrato()}.
+    \item \textbf{\texttt{Orario.java}}: ore (0--23) e minuti (0--59). Costruttore \texttt{Orario(int o, int m)} (valori fuori intervallo: 00:00) e costruttore di copia; metodi \texttt{get}, nessun \texttt{set}. \texttt{avanza(int m)} sposta l'orario in avanti di \texttt{m} minuti, anche oltre la mezzanotte (23:50 più 20 minuti dà 00:10), e restituisce \texttt{false} se \texttt{m} è negativo; il predicato \texttt{precede(Orario altro)}; \texttt{descrizione()} restituisce una stringa come \texttt{"09:05"}. Il programma di prova legge ora di inizio e durata in minuti di un evento e ne stampa inizio e fine.
+    \item \textbf{\texttt{Libretto.java}}: i voti stanno in un \texttt{int[]} \texttt{private}, con una variabile che conta gli elementi in uso. Costruttore \texttt{Libretto(int capienza)}; \texttt{aggiungi(int voto)} restituisce \texttt{false} se il voto non è fra 18 e 30 o il libretto è pieno; \texttt{getQuanti()}, il predicato \texttt{isPieno()}, \texttt{media()} e \texttt{massimo()} (0 se vuoto). Nessun metodo restituisce l'array. Il programma di prova riceve i voti dalla riga di comando (\texttt{java ProvaLibretto 28 30 17 24}) e stampa quanti sono registrati, quanti rifiutati, la media con 2 decimali e il massimo.
+\end{enumerate}
+
+Tutte le variabili di istanza sono \texttt{private}. Usate solo ciò che abbiamo visto finora.
+\end{frame}
+
+% ========================================================================
+\begin{frame}
+\begin{center}
+{\Huge Domande?}\\[2.5em]
+{\normalsize \href{mailto:mattia.fonisto@unina.it}{\texttt{mattia.fonisto@unina.it}}}
+\end{center}
+\end{frame}
+
+\end{document}

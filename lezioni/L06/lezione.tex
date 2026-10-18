@@ -1,0 +1,1223 @@
+% ============================================================================
+%  Laboratorio di Programmazione -- Lezione 6 (20 ottobre 2026)
+%  Compilare con:  pdflatex -shell-escape Lezione06_This_Static_Final_Immutabilita.tex
+%  Richiede: mermaid.sty (nel progetto) + Mermaid CLI `mmdc` nel PATH
+%  NB: ogni frame che contiene codice (lstlisting) o un diagramma (mermaid)
+%      deve essere dichiarato [fragile].
+% ============================================================================
+\documentclass[10pt,aspectratio=169]{beamer}
+\usetheme{Madrid}
+\usecolortheme{default}
+
+% `provide=*` carica la localizzazione italiana dai file .ini di babel: funziona anche
+% su installazioni TeX prive di texlive-lang-italian; con una TeX Live completa e`
+% equivalente al classico \usepackage[italian]{babel}.
+\usepackage[italian,provide=*]{babel}
+\usepackage[utf8]{inputenc}
+
+% Localizzazione dei nomi dei blocchi Beamer
+\uselanguage{italian}
+\languagepath{italian}
+\deftranslation[to=italian]{Definition}{Definizione}
+\deftranslation[to=italian]{Theorem}{Teorema}
+\deftranslation[to=italian]{Example}{Esempio}
+\deftranslation[to=italian]{Proof}{Dimostrazione}
+\deftranslation[to=italian]{Corollary}{Corollario}
+\deftranslation[to=italian]{Lemma}{Lemma}
+
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{mermaid}
+
+% Mermaid: sfondo trasparente e dimensione massima adatta a una slide 16:9
+\MermaidRendererOptions{-b transparent}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+% Configurazione colori per il codice
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\definecolor{keywordblue}{rgb}{0.0,0.0,0.7}
+
+% Stile per snippet Java
+\lstdefinestyle{javastyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen}\itshape,
+    keywordstyle=\color{keywordblue}\bfseries,
+    numberstyle=\scriptsize\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=none,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    language=Java,
+    literate={à}{{\`a}}1 {è}{{\`e}}1 {é}{{\'e}}1 {ì}{{\`i}}1
+             {ò}{{\`o}}1 {ù}{{\`u}}1 {È}{{\`E}}1
+}
+\lstset{style=javastyle}
+
+% Stile per righe di terminale
+\lstdefinestyle{shell}{
+    language=bash,
+    backgroundcolor=\color{black!85},
+    basicstyle=\ttfamily\footnotesize\color{white},
+    keywordstyle=\color{white},
+    stringstyle=\color{white},
+    commentstyle=\color{green!70},
+    numbers=none,
+    frame=none,
+    showstringspaces=false
+}
+
+\title[Lezione 6 -- this, static, final, immutabilità]{Lezione 6 -- \texttt{this}, \texttt{static}, \texttt{final}, immutabilità}
+\subtitle{Classi in Java: aspetti avanzati}
+\author[Mattia Fonisto]{Mattia Fonisto}
+\institute[Lab.\ di Programmazione]{Laboratorio di Programmazione -- Ingegneria Informatica, II anno\\
+           Università degli Studi di Napoli Federico II -- Sede di San Giovanni a Teduccio}
+\date{20 ottobre 2026}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% ========================================================================
+\begin{frame}{Agenda della lezione (2h)}
+\begin{enumerate}
+    \item \textbf{Ripasso e Homework 5} \hfill (\emph{15 min})
+    \begin{itemize}
+        \item uno di voi alla lavagna con \texttt{Rettangolo}, \texttt{Orario} o \texttt{Libretto}: lo commentiamo insieme
+    \end{itemize}
+    \item \textbf{Il riferimento \texttt{this}; copia e confronto di oggetti} \hfill (\emph{20 min})
+    \begin{itemize}
+        \item \texttt{this} implicito ed esplicito
+        \item \texttt{=} e \texttt{==} sui riferimenti; i metodi \texttt{equals} e \texttt{notEqual}
+    \end{itemize}
+    \item \textbf{Membri \texttt{static}, variabili \texttt{final}, classi immutabili} \hfill (\emph{25 min})
+    \begin{itemize}
+        \item variabili di classe e metodi \texttt{static}; variabili di istanza \texttt{final}
+        \item classi immutabili e \emph{privacy leak}
+    \end{itemize}
+    \item \textbf{Esercitazione} -- tutti insieme \hfill (\emph{50 min})
+    \begin{itemize}
+        \item \emph{Commentiamo insieme}: \texttt{Point2D}, un punto del piano che non cambia mai
+        \item \emph{Insieme, passo passo}: \texttt{Circle} -- dal programma di prova alla classe
+    \end{itemize}
+    \item \textbf{Wrap-up e Homework 6} \hfill (\emph{10 min})
+\end{enumerate}
+\end{frame}
+
+% ========================================================================
+\section{Il riferimento this}
+
+\begin{frame}[fragile]{Il riferimento \texttt{this}: su quale oggetto lavora un metodo?}
+\begin{columns}[T]
+\column{0.47\textwidth}
+{\footnotesize In \texttt{Counter}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    public int getValue() {
+        return value;
+    }
+\end{lstlisting}
+{\footnotesize Nel \texttt{main} di \texttt{ProvaCounter}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Counter c = new Counter(4);
+Counter d = new Counter(c);
+c.increment();
+d.increment();
+d.increment();
+System.out.println(c.getValue());   // 1
+System.out.println(d.getValue());   // 2
+\end{lstlisting}
+\small
+Nel corpo di \texttt{getValue} nulla dice di quale oggetto sia \texttt{value}. Eppure \texttt{c.getValue()} restituisce il valore di \texttt{c}, e \texttt{d.getValue()} quello di \texttt{d}.
+
+\vspace{0.1cm}
+Come fa il metodo a sapere su quale oggetto è stato chiamato?
+
+\column{0.53\textwidth}
+\begin{block}{Il riferimento \texttt{this}}
+\small In ogni metodo non \texttt{static}, e in ogni costruttore, il compilatore aggiunge un riferimento nascosto di nome \texttt{this}: si riferisce all'\emph{oggetto corrente}: l'oggetto su cui il metodo è stato chiamato o, in un costruttore, l'oggetto appena creato. \texttt{this} si può usare, non modificare.
+\end{block}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.26\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 50
+    wrappingWidth: 600
+---
+flowchart LR
+  c["<b>stack</b> · main<br/>c ●"] --> o1["<b>heap</b> · oggetto Counter<br/>value 1 &nbsp; max 4"]
+  t["<b>stack</b> · getValue<br/>this ●"] --> o1
+  style c fill:#fef3c7,stroke:#b45309
+  style t fill:#fce7f3,stroke:#be185d
+  style o1 fill:#dbeafe,stroke:#1d4ed8
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+La memoria durante \texttt{c.getValue()}: alla chiamata, \texttt{this} riceve una copia del riferimento \texttt{c}, come un parametro in più (lezione~3). Durante \texttt{d.getValue()}, \texttt{this} porta all'oggetto di \texttt{d}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}{Il riferimento \texttt{this}: uso implicito e uso esplicito}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\small
+\textbf{Uso implicito.} In un metodo non \texttt{static}, il nome di una variabile di istanza o di un metodo della classe, scritto da solo, è riferito a \texttt{this}.
+
+\begin{center}
+\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Scritto nel metodo} & \textbf{Equivale a} \\
+\midrule
+\texttt{return value;} & \texttt{return this.value;} \\
+\texttt{value++;} & \texttt{this.value++;} \\
+\texttt{if (!isValido(voto))} & \texttt{if (!this.isValido(voto))} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{itemize}\itemsep=3pt
+    \item è il caso normale: per questo finora non abbiamo mai scritto \texttt{this}
+    \item nella lezione~5 \texttt{registra} chiamava \texttt{isValido} con il solo nome: lo chiamava su \texttt{this}, cioè sullo stesso studente
+    \item un metodo \texttt{static} \textbf{non ha} \texttt{this}: non viene chiamato su un oggetto. In un metodo \texttt{static} di \texttt{Counter} non si può scrivere né \texttt{this} né \texttt{value}
+\end{itemize}
+
+\column{0.5\textwidth}
+\small
+\textbf{Uso esplicito.} \texttt{this} va scritto in tre casi:
+\begin{enumerate}\itemsep=5pt
+    \item per \textbf{distinguere} una variabile di istanza da un parametro, o da una variabile locale, che ha lo stesso nome:\\ \texttt{this.max = max;}
+    \item per chiamare, da un costruttore, \textbf{un altro costruttore} della stessa classe:\\ \texttt{this(10);}
+    \item per riferirsi all'\textbf{intero oggetto corrente}: per confrontarlo con un altro riferimento, passarlo a un metodo, restituirlo:\\ \texttt{if (altro == this)}
+\end{enumerate}
+
+\vspace{0.2cm}
+Li vediamo tutti e tre in \texttt{ContoBancario}, la classe scritta insieme nella lezione~5.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{L'uso esplicito di \texttt{this} -- \texttt{ContoBancario.java}}
+\begin{columns}[T]
+\column{0.53\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public ContoBancario(String intestatario) {
+    this.intestatario = intestatario;
+    saldo = 0;
+    movimenti = 0;
+}
+
+/** Un conto aperto con un primo versamento. */
+public ContoBancario(String intestatario,
+                     double primo) {
+    this(intestatario);
+    versa(primo);
+}
+
+/** false se altro e` questo stesso conto
+ *  o se il prelievo fallisce. */
+public boolean trasferisci(ContoBancario altro,
+                           double importo) {
+    if (altro == this || !preleva(importo)) {
+        return false;
+    }
+    altro.versa(importo);
+    return true;
+}
+\end{lstlisting}
+
+\column{0.47\textwidth}
+\footnotesize
+\begin{enumerate}\itemsep=3pt
+    \item \texttt{this.intestatario = intestatario;}\\ Il parametro ha il nome della variabile di istanza e la \emph{nasconde}: \texttt{intestatario} è il parametro, \texttt{this.intestatario} la variabile di istanza. Senza \texttt{this} la riga assegnerebbe il parametro a se stesso: compila, ma la variabile di istanza resta \texttt{null}.
+    \item \texttt{this(intestatario);}\\ Chiama il primo costruttore: le inizializzazioni sono scritte una volta sola. Di norma è la prima istruzione del costruttore.
+    \item \texttt{altro == this}\\ Il conto ricevuto è lo stesso su cui il metodo è chiamato? Nella lezione~5 \texttt{anna.trasferisci(anna, 100)} riusciva, e contava due movimenti. Ora restituisce \texttt{false}: \texttt{||} non valuta il secondo operando, e \texttt{preleva} non viene chiamato.
+\end{enumerate}
+
+\vspace{0.1cm}
+Nei costruttori e nei metodi \texttt{set}, dare al parametro il nome della variabile di istanza è la forma più diffusa.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Copia e confronto}
+
+\begin{frame}[fragile]{Copia di oggetti: \texttt{=} copia il riferimento -- \texttt{Copia.java}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Counter b = new Counter(4);
+Counter c = new Counter(7);
+
+c = b;            // copia il riferimento
+c.increment();
+System.out.println(b.getValue());   // 1
+System.out.println(c.getMax());     // 4
+
+Counter d = new Counter(b);   // copia l'oggetto
+d.increment();
+System.out.println(b.getValue());   // 1
+System.out.println(d.getValue());   // 2
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item dopo \texttt{c = b} i due riferimenti portano allo \textbf{stesso oggetto}: l'incremento fatto attraverso \texttt{c} si legge anche attraverso \texttt{b}. Il contatore con \texttt{max} 7 resta orfano (lezione~5)
+    \item lo stesso accade quando un oggetto è passato a un metodo: il parametro riceve una copia del riferimento (lezione~3)
+\end{itemize}
+
+\column{0.48\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.3\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 30
+    wrappingWidth: 600
+---
+flowchart LR
+  b["<b>stack</b><br/>b ●"] --> o1["<b>heap</b> · oggetto Counter<br/>value 1 &nbsp; max 4"]
+  c["<b>stack</b><br/>c ●"] --> o1
+  c ~~~ o2["<b>heap</b> · oggetto Counter<br/>value 0 &nbsp; max 7 · <i>orfano</i>"]
+  style b fill:#fef3c7,stroke:#b45309
+  style c fill:#fef3c7,stroke:#b45309
+  style o1 fill:#dbeafe,stroke:#1d4ed8
+  style o2 fill:#fee2e2,stroke:#b91c1c,stroke-dasharray: 5 5
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+La memoria dopo \texttt{c = b} e \texttt{c.increment()}.
+
+\vspace{0.2cm}
+\small
+\textbf{Copiare un oggetto} significa creare un secondo oggetto con lo stesso stato. L'assegnazione non lo fa mai, nemmeno quando \texttt{c} ha già un suo oggetto. Lo fa il \textbf{costruttore di copia} (lezione~5), una variabile di istanza alla volta: \texttt{d} è un altro oggetto.
+
+\vspace{0.15cm}
+Per la copia Java prevede anche un metodo, \texttt{clone}: lezione~8.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Confronto di oggetti: \texttt{==} ed \texttt{equals} -- \texttt{Counter.java} (versione 5)}
+\begin{columns}[T]
+\column{0.53\textwidth}
+{\footnotesize Aggiunti alla versione 4:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    public boolean equals(Counter c) {
+        return max == c.max && value == c.value;
+    }
+
+    public boolean notEqual(Counter c) {
+        return !equals(c);
+    }
+\end{lstlisting}
+{\footnotesize Nel \texttt{main} di \texttt{Confronto}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Counter c = new Counter(4);
+Counter d = new Counter(c);   // copia di c
+Counter e = c;                // alias di c
+
+System.out.println(c == d);          // false
+System.out.println(c.equals(d));     // true
+System.out.println(c == e);          // true
+
+d.increment();
+System.out.println(c.equals(d));     // false
+System.out.println(c.notEqual(d));   // true
+\end{lstlisting}
+
+\column{0.47\textwidth}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \texttt{c == d} confronta i due \textbf{riferimenti}: è \texttt{true} soltanto se portano allo stesso oggetto. Vale per tutti gli oggetti, come per le \texttt{String} della lezione~2
+    \item per confrontare lo \textbf{stato} serve un metodo, che per convenzione si chiama \texttt{equals}. È la classe a stabilire quando due suoi oggetti sono uguali: due contatori lo sono se hanno lo stesso \texttt{max} e lo stesso \texttt{value}
+    \item \texttt{c.equals(d)} ha due operandi. Quello di sinistra è l'oggetto corrente: \texttt{max} è \texttt{this.max}. Quello di destra è il parametro
+    \item \texttt{notEqual} non riscrive il confronto: nega \texttt{equals}. \texttt{!equals(c)} equivale a \texttt{!this.equals(c)}
+\end{itemize}
+
+\vspace{0.1cm}
+Su \texttt{String}, \texttt{equals} confronta i caratteri perché la classe \texttt{String} lo definisce così. Se una classe non lo definisce, \texttt{c.equals(d)} compila lo stesso e confronta i riferimenti, come \texttt{==}: accadeva con gli array nella lezione~4. Il perché nella lezione~8.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{static e final}
+
+\begin{frame}[fragile]{Membri \texttt{static}: le variabili di classe}
+\begin{columns}[T]
+\column{0.56\textwidth}
+\begin{block}{Variabile di classe (variabile \texttt{static})}
+\small Una variabile dichiarata \texttt{static} appartiene alla classe, non ai singoli oggetti: ne esiste \textbf{una sola copia}, condivisa da tutti gli oggetti della classe.
+\end{block}
+{\footnotesize In \texttt{Counter} (versione 5):}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    public static final int DEFAULT_MAX = 10;
+    private static int objCount;   // creati finora
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item una variabile di istanza descrive un oggetto (\texttt{value}: il valore di \emph{un} contatore); una variabile di classe descrive la classe (\texttt{objCount}: quanti contatori sono stati creati)
+    \item la JVM la crea quando usa la classe per la prima volta, anche senza oggetti, con il valore di default o con quello scritto nella dichiarazione
+\end{itemize}
+
+\vspace{0.1cm}
+\texttt{private} e \texttt{public} valgono come sempre: \texttt{objCount} è visibile solo dentro \texttt{Counter}, e i client la leggono con \texttt{getObjCount}; \texttt{DEFAULT\_MAX} è a disposizione dei client come \texttt{Counter.DEFAULT\_MAX}.
+
+\column{0.44\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.4\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 30
+    wrappingWidth: 600
+---
+flowchart LR
+  b["<b>stack</b><br/>b ●"] --> o1["<b>heap</b> · oggetto Counter<br/>value 0 &nbsp; max 10"]
+  c["<b>stack</b><br/>c ●"] --> o2["<b>heap</b> · oggetto Counter<br/>value 0 &nbsp; max 4"]
+  d["<b>stack</b><br/>d ●"] --> o3["<b>heap</b> · oggetto Counter<br/>value 0 &nbsp; max 4"]
+  x[" "] ~~~ s["<b>dati static</b> · classe Counter<br/>objCount 3 &nbsp; DEFAULT_MAX 10"]
+  style b fill:#fef3c7,stroke:#b45309
+  style c fill:#fef3c7,stroke:#b45309
+  style d fill:#fef3c7,stroke:#b45309
+  style x fill:none,stroke:none
+  style o1 fill:#dbeafe,stroke:#1d4ed8
+  style o2 fill:#dbeafe,stroke:#1d4ed8
+  style o3 fill:#dbeafe,stroke:#1d4ed8
+  style s fill:#dcfce7,stroke:#15803d
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+La memoria dopo tre \texttt{new}. Di \texttt{objCount} e \texttt{DEFAULT\_MAX} c'è una sola copia, in nessun oggetto: la JVM la tiene a parte, nell'area dei dati \texttt{static} della classe.
+
+\vspace{0.1cm}
+\texttt{DEFAULT\_MAX} può essere \texttt{public} perché è anche \texttt{final}: i client la leggono, nessuno la modifica. Una variabile \texttt{public static} non \texttt{final} la cambierebbe qualunque client: per questo \texttt{objCount} resta \texttt{private}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Membri \texttt{static}: i metodi \texttt{static} -- \texttt{Counter.java} (versione 5)}
+\begin{columns}[T]
+\column{0.54\textwidth}
+{\footnotesize In \texttt{Counter}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    // costruttore con argomenti
+    public Counter(int m) {
+        max = m;
+        value = 0;
+        objCount++;
+    }
+
+    // metodo static: non lavora su un oggetto
+    public static int getObjCount() {
+        return objCount;
+    }
+\end{lstlisting}
+{\footnotesize Nel \texttt{main} di \texttt{ProvaCounter}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+System.out.println(Counter.getObjCount());   // 0
+
+Counter b = new Counter();
+Counter c = new Counter(4);
+Counter d = new Counter(c);
+System.out.println(Counter.getObjCount());   // 3
+System.out.println(b.getObjCount());         // 3
+\end{lstlisting}
+
+\column{0.46\textwidth}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \texttt{objCount++} sta in tutti e tre i costruttori, anche in quello di copia. Costruttori e metodi non \texttt{static} \textbf{possono} usare le variabili di classe
+    \item un metodo \texttt{static} si chiama con il nome della classe, anche quando non esiste alcun oggetto: il primo \texttt{Counter.getObjCount()} restituisce 0
+    \item non avendo \texttt{this}, un metodo \texttt{static} \textbf{non può} usare \texttt{value} né chiamare \texttt{increment()}: manca l'oggetto corrente. Lavora sulle variabili di classe e sui parametri, come \texttt{Math.sqrt(x)} e i metodi delle lezioni 1--4
+    \item \texttt{b.getObjCount()} compila, ma è fuorviante: il risultato non dipende da \texttt{b}
+\end{itemize}
+
+\vspace{0.1cm}
+\textbf{Con cautela}: una variabile di classe può essere modificata da ogni metodo della classe, su qualunque oggetto. \texttt{static} si usa quando un dato o un'operazione riguarda la classe e non un singolo oggetto.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Variabili di istanza \texttt{final} -- \texttt{Counter.java} (versione 5)}
+\begin{columns}[T]
+\column{0.52\textwidth}
+{\footnotesize In \texttt{Counter}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    private int value;       // valore corrente
+    private final int max;   // valore massimo
+
+    // costruttore senza argomenti
+    public Counter() {
+        max = DEFAULT_MAX;
+        value = 0;
+        objCount++;
+    }
+
+    // setMax non c'e` piu`: non compilerebbe
+    // public void setMax(int m) {
+    //     max = m;   // ERRORE: max e` final
+    // }
+\end{lstlisting}
+\footnotesize
+Nella versione~4 \texttt{setMax} lasciava al client la possibilità di portare la soglia sotto il valore già raggiunto: con \texttt{value} 3, dopo \texttt{c.setMax(1)} il contatore è in uno stato che non ha senso. La soglia di un contatore si sceglie alla creazione, e poi non deve cambiare.
+
+\column{0.48\textwidth}
+\small
+\begin{itemize}\itemsep=4pt
+    \item una variabile di istanza \texttt{final} riceve il suo valore \textbf{una sola volta}: nella dichiarazione, oppure in ogni costruttore, direttamente o chiamandone un altro con \texttt{this(...)}
+    \item dopo, ogni assegnazione è un errore di compilazione, \textbf{anche dentro la classe}. Nel costruttore \texttt{max = DEFAULT\_MAX} è la prima e unica assegnazione: lecita. In \texttt{setMax} sarebbe la seconda: errore
+    \item è una costante \textbf{dell'oggetto}: ogni contatore ha il suo \texttt{max}, 10 per \texttt{b} e 4 per \texttt{c}. È il \texttt{final} delle variabili locali della lezione~2, applicato allo stato dell'oggetto
+    \item \texttt{static final} è invece una costante \textbf{della classe}: un solo valore per tutti, scritto nella dichiarazione. Il nome è in maiuscolo: \texttt{DEFAULT\_MAX}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{\texttt{Counter} versione 5: il quadro}
+\begin{columns}[T]
+\column{0.34\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.78\textheight,center}
+\begin{mermaid}
+classDiagram
+  class Counter {
+    +DEFAULT_MAX : int$
+    -objCount : int$
+    -value : int
+    -max : int
+    +Counter()
+    +Counter(m : int)
+    +Counter(c : Counter)
+    +getObjCount()$ int
+    +getValue() int
+    +getMax() int
+    +increment()
+    +decrement()
+    +ovf() boolean
+    +unf() boolean
+    +equals(c : Counter) boolean
+    +notEqual(c : Counter) boolean
+  }
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+\column{0.66\textwidth}
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Variabile} & \textbf{Dichiarata} & \textbf{Quante copie} & \textbf{Dopo la creazione} \\
+\midrule
+\texttt{value} & -- & una per oggetto & cambia \\
+\texttt{max} & \texttt{final} & una per oggetto & non cambia \\
+\texttt{objCount} & \texttt{static} & una per la classe & cambia \\
+\texttt{DEFAULT\_MAX} & \texttt{static final} & una per la classe & non cambia \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+{\footnotesize Nel \texttt{main} di \texttt{ProvaCounter}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+System.out.println(Counter.DEFAULT_MAX);     // 10
+System.out.println(b.getMax());              // 10
+System.out.println(c.getMax());              // 4
+// c.setMax(2);   // ERRORE: setMax non esiste
+// ERRORE: objCount e` private
+// Counter.objCount = 100;
+// ERRORE: DEFAULT_MAX e` final
+// Counter.DEFAULT_MAX = 20;
+\end{lstlisting}
+\small
+Nel diagramma UML i membri \texttt{static} sono sottolineati. Rispetto alla versione~4, \texttt{setMax} è scomparso: \texttt{max} è \texttt{final}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Classi immutabili}
+
+\begin{frame}{Classi immutabili}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{block}{Classe immutabile}
+\small Una classe che non offre ai client alcun modo di modificare lo stato dei suoi oggetti. I suoi oggetti si dicono \emph{immutabili}: dopo la creazione non cambiano più.
+\end{block}
+
+\small
+Ne usate una dalla lezione~2: \texttt{String}. Lo sono anche le classi wrapper, come \texttt{Integer}. \texttt{s.toUpperCase()} non modifica \texttt{s}: restituisce una nuova stringa.
+
+\vspace{0.1cm}
+\textbf{Che cosa si guadagna}
+\begin{itemize}\itemsep=3pt
+    \item il riferimento a un oggetto immutabile si può \textbf{condividere} senza rischi: nessuno, attraverso un alias, può cambiare l'oggetto. Per questo le \texttt{String} si passano e si restituiscono senza mai copiarle
+    \item le regole sullo stato si controllano una volta sola, nel costruttore: un oggetto che nasce valido resta valido
+\end{itemize}
+
+\column{0.46\textwidth}
+\small
+\textbf{Come si scrive} una classe immutabile:
+\begin{itemize}\itemsep=4pt
+    \item tutte le variabili di istanza sono \texttt{private final}
+    \item nessun metodo \texttt{set}, e nessun altro metodo che modifichi lo stato
+    \item un metodo che ``trasforma'' l'oggetto crea e restituisce un \textbf{nuovo} oggetto, come \texttt{toUpperCase}
+    \item se una variabile di istanza si riferisce a un oggetto modificabile serve una cautela in più: la vediamo nelle prossime due slide
+\end{itemize}
+
+\vspace{0.25cm}
+\textbf{Non tutte le classi devono esserlo.} \texttt{Counter} non è immutabile: contare significa cambiare stato. Ha una variabile \texttt{final}, \texttt{max}, e una che non lo è, \texttt{value}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Il \emph{privacy leak} -- \texttt{Persona.java} (versione 1)}
+\begin{columns}[T]
+\column{0.52\textwidth}
+{\footnotesize In \texttt{Persona}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    private final String nome;
+    private final Data nascita;
+
+    public Persona(String nome, Data nascita) {
+        this.nome = nome;
+        this.nascita = nascita;
+    }
+    public Data getNascita() {
+        return nascita;
+    }
+\end{lstlisting}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.29\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 30
+    wrappingWidth: 600
+---
+flowchart LR
+  m["<b>stack</b><br/>mario ●"] --> P["<b>heap</b> · oggetto Persona<br/>nome ● &nbsp; nascita ●"]
+  P --> D["<b>heap</b> · oggetto Data<br/>10 · 3 · 1990"]
+  d["<b>stack</b><br/>d ●"] ~~~ n["<b>stack</b><br/>n ●"]
+  n --> D
+  d --> D
+  style m fill:#fef3c7,stroke:#b45309
+  style d fill:#fef3c7,stroke:#b45309
+  style n fill:#fef3c7,stroke:#b45309
+  style P fill:#dbeafe,stroke:#1d4ed8
+  style D fill:#fee2e2,stroke:#b91c1c
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+\texttt{Data} ha i metodi \texttt{set}: \textbf{non} è immutabile.
+
+\column{0.48\textwidth}
+{\footnotesize Nel \texttt{main} di \texttt{ProvaPersona}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Data d = new Data(15, 3, 2006);
+Persona mario = new Persona("Mario", d);
+Data n = mario.getNascita();
+n.setGiorno(10);
+d.setAnno(1990);
+Data ora = mario.getNascita();
+System.out.println(ora.getGiorno());   // 10
+System.out.println(ora.getAnno());   // 1990
+\end{lstlisting}
+\begin{block}{Privacy leak}
+\footnotesize Un client ottiene un riferimento a un oggetto modificabile che fa parte dello stato \texttt{private} di un altro oggetto: può cambiare quello stato senza passare dai metodi della classe.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item il costruttore conserva il riferimento, \texttt{getNascita} lo restituisce: \texttt{d} e \texttt{n} portano alla \texttt{Data} di \texttt{mario}
+    \item \texttt{nascita} è \texttt{final}, ma non basta: \texttt{final} vieta di riassegnare il \textbf{riferimento}, non di modificare l'oggetto
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Il \emph{privacy leak}: i rimedi -- \texttt{Persona.java} (versione 2)}
+\begin{columns}[T]
+\column{0.57\textwidth}
+{\footnotesize In \texttt{Persona}, al posto del costruttore e del \texttt{get} della versione 1:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    public Persona(String nome, Data nascita) {
+        this.nome = nome;
+        this.nascita = new Data(nascita);   // copia
+    }
+
+    public Data getNascita() {
+        return new Data(nascita);           // copia
+    }
+\end{lstlisting}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.34\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 30
+    wrappingWidth: 600
+---
+flowchart LR
+  m["<b>stack</b><br/>mario ●"] --> P["<b>heap</b> · oggetto Persona<br/>nome ● &nbsp; nascita ●"]
+  P --> D["<b>heap</b> · oggetto Data<br/>15 · 3 · 2006"]
+  d["<b>stack</b><br/>d ●"] --> D1["<b>heap</b> · oggetto Data<br/>15 · 3 · 1990"]
+  n["<b>stack</b><br/>n ●"] --> D2["<b>heap</b> · oggetto Data<br/>10 · 3 · 2006"]
+  style m fill:#fef3c7,stroke:#b45309
+  style d fill:#fef3c7,stroke:#b45309
+  style n fill:#fef3c7,stroke:#b45309
+  style P fill:#dbeafe,stroke:#1d4ed8
+  style D fill:#dcfce7,stroke:#15803d
+  style D1 fill:#e5e7eb,stroke:#4b5563
+  style D2 fill:#e5e7eb,stroke:#4b5563
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+Lo stesso \texttt{main} ora stampa \texttt{15} e \texttt{2006}: \texttt{d} e \texttt{n} portano a oggetti diversi da quello di \texttt{mario}, e modificarli non lo tocca.
+
+\column{0.43\textwidth}
+\small
+\textbf{Tre modi di evitare il privacy leak}
+\begin{enumerate}\itemsep=4pt
+    \item usare solo variabili di istanza di \textbf{tipo primitivo}: funziona, ma è una limitazione molto forte
+    \item non conservare e non restituire il riferimento, ma una \textbf{copia} dell'oggetto: è la versione~2, con il costruttore di copia di \texttt{Data}
+    \item usare solo riferimenti a oggetti \textbf{immutabili}: se \texttt{Data} non avesse i \texttt{set}, la versione~1 sarebbe già corretta. Per questo \texttt{nome}, una \texttt{String}, non dà problemi
+\end{enumerate}
+
+\vspace{0.1cm}
+Vale anche per gli \textbf{array}, che sono oggetti modificabili: un \texttt{get} restituisce una copia dell'array \texttt{private} (\texttt{Arrays.copyOf}, lezione~4).
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Esercitazione}
+
+\begin{frame}[fragile]{Commentiamo insieme (20 min) -- il problema}
+\begin{columns}[T]
+\column{0.62\textwidth}
+\small
+\textbf{Il problema.} Un programma di geometria piana lavora con i punti: li sposta, ne calcola le distanze, li confronta. Serve una classe che rappresenti un punto del piano.
+
+\vspace{0.2cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=3pt
+    \item un punto ha due coordinate, $x$ e $y$, e dopo la creazione \textbf{non cambia più}
+    \item spostare un punto, o cercarne il simmetrico rispetto all'origine, significa ottenere \textbf{un altro} punto: quello di partenza resta dov'è
+    \item di due punti si può calcolare la distanza
+    \item due punti sono uguali se hanno le stesse coordinate
+    \item l'origine $(0, 0)$ serve spesso: è a disposizione di tutti come costante
+\end{itemize}
+
+\vspace{0.2cm}
+La soluzione è già scritta: la classe \texttt{Point2D}, che fa rispettare le regole, e il programma \texttt{ProvaPoint2D}, che la usa. Li leggiamo insieme, riga per riga, cercando \texttt{this}, \texttt{static} e \texttt{final}.
+
+\column{0.38\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.72\textheight,center}
+\begin{mermaid}
+classDiagram
+  class Point2D {
+    +ORIGIN : Point2D$
+    -x : double
+    -y : double
+    +Point2D(double, double)
+    +Point2D(Point2D)
+    +getX() double
+    +getY() double
+    +distance(Point2D) double
+    +translate(double, double) Point2D
+    +reflectOrigin() Point2D
+    +equals(Point2D) boolean
+    +notEqual(Point2D) boolean
+  }
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{Point2D.java} (1/2)}
+\begin{columns}[T]
+\column{0.64\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Un punto del piano. Immutabile. */
+public class Point2D {
+
+    /** L'origine: una costante condivisa. */
+    public static final Point2D ORIGIN = new Point2D(0, 0);
+
+    private final double x;
+    private final double y;
+
+    public Point2D(double x, double y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    /** Costruttore di copia. */
+    public Point2D(Point2D p) {
+        this(p.x, p.y);
+    }
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item \texttt{x} e \texttt{y} sono \texttt{private final}: ricevono il valore nel costruttore, e poi nessun metodo, nemmeno di \texttt{Point2D}, può cambiarle. Non c'è alcun \texttt{set}
+    \item il costruttore di copia chiama l'altro costruttore con \texttt{this(p.x, p.y)}
+\end{itemize}
+
+\column{0.36\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    public double getX() {
+        return x;
+    }
+
+    public double getY() {
+        return y;
+    }
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \texttt{this.x = x}: il parametro ha il nome della variabile di istanza
+    \item \texttt{ORIGIN} è \texttt{public static final}: una costante della classe. L'oggetto è creato una volta sola, quando la JVM comincia a usare \texttt{Point2D}. I client scrivono \texttt{Point2D.ORIGIN}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{Point2D.java} (2/2)}
+\begin{columns}[T]
+\column{0.57\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    public double distance(Point2D p) {
+        double dx = x - p.x;
+        double dy = y - p.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    /** CREA il punto spostato di (dx, dy). */
+    public Point2D translate(double dx, double dy) {
+        return new Point2D(x + dx, y + dy);
+    }
+
+    /** CREA il simmetrico rispetto all'origine. */
+    public Point2D reflectOrigin() {
+        return ORIGIN.translate(-x, -y);
+    }
+
+    public boolean equals(Point2D p) {
+        return x == p.x && y == p.y;
+    }
+
+    public boolean notEqual(Point2D p) {
+        return !equals(p);
+    }
+}
+\end{lstlisting}
+
+\column{0.43\textwidth}
+\footnotesize
+\textbf{Da notare, leggendo:}
+\begin{itemize}\itemsep=3pt
+    \item in \texttt{distance}, \texttt{x} e \texttt{y} sono dell'oggetto corrente (\texttt{this.x}); \texttt{p.x} e \texttt{p.y} del punto ricevuto. \texttt{dx} e \texttt{dy} sono variabili locali
+    \item \texttt{translate} e \texttt{reflectOrigin} non modificano nulla: creano un nuovo punto e ne restituiscono il riferimento. Non potrebbero fare altro: \texttt{x} e \texttt{y} sono \texttt{final}
+    \item \texttt{reflectOrigin} non scrive \texttt{new}: il simmetrico di $(x, y)$ è l'origine spostata di $(-x, -y)$, e lo chiede a \texttt{translate} chiamato su \texttt{ORIGIN}. Dentro la classe la costante si usa con il solo nome
+    \item \texttt{equals} confronta le coordinate con \texttt{==}: fra \texttt{double} il confronto è esatto, e due punti ottenuti con calcoli diversi possono differire per un arrotondamento
+    \item nessuno di questi metodi è \texttt{static}: ciascuno lavora sulle coordinate di un punto
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{ProvaPoint2D.java}}
+\begin{columns}[T]
+\column{0.56\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** LEGGE il punto ricevuto e lo stampa. */
+public static void stampa(String nome, Point2D p) {
+    System.out.println(nome + " = (" + p.getX()
+            + ", " + p.getY() + ")");
+}
+
+public static void main(String[] args) {
+    Point2D p = new Point2D(3, 4);
+    Point2D q = p.translate(1, 1);
+    Point2D r = p.reflectOrigin().reflectOrigin();
+    stampa("p", p);
+    stampa("q", q);
+    stampa("r", r);
+
+    System.out.println(p.distance(Point2D.ORIGIN));
+    System.out.println(p == r);
+    System.out.println(p.equals(r));
+    System.out.println(p.notEqual(q));
+
+    p.translate(10, 10);
+    stampa("p", p);
+}
+\end{lstlisting}
+
+\column{0.44\textwidth}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+p = (3.0, 4.0)
+q = (4.0, 5.0)
+r = (3.0, 4.0)
+5.0
+false
+true
+true
+p = (3.0, 4.0)
+\end{lstlisting}
+\footnotesize
+\textbf{Rispondiamo insieme:}
+\begin{enumerate}\itemsep=2pt
+    \item perché l'ultima riga stampa ancora \texttt{(3.0, 4.0)}? Che fine fa il punto creato da \texttt{p.translate(10, 10)}?
+    \item quanti oggetti \texttt{Point2D} crea il programma, contando \texttt{ORIGIN}? Quanti sono orfani alla fine?
+    \item perché \texttt{p == r} è \texttt{false} e \texttt{p.equals(r)} è \texttt{true}?
+    \item un client può scrivere \texttt{Point2D.ORIGIN = p}? Può spostare l'origine in un altro modo?
+    \item il costruttore di copia serve, in una classe immutabile?
+\end{enumerate}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo (30 min) -- il problema}
+\begin{columns}[T]
+\column{0.68\textwidth}
+\small
+\textbf{Il problema.} Al programma di geometria serve anche il cerchio: un centro, che è un punto del piano, e un raggio.
+
+\vspace{0.1cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=2pt
+    \item un cerchio, come un punto, dopo la creazione non cambia più
+    \item il raggio è sempre positivo: un raggio non positivo viene sostituito da 1
+    \item un cerchio si crea indicando il centro e il raggio, oppure soltanto il raggio: in questo caso il centro è l'origine
+    \item di un cerchio si possono leggere il centro e il raggio, calcolare l'area, sapere se contiene un punto; il bordo fa parte del cerchio
+    \item ingrandire o rimpicciolire un cerchio di un fattore $k$ significa ottenere un altro cerchio, con lo stesso centro e il raggio moltiplicato per $k$
+    \item due cerchi sono uguali se hanno centri uguali e lo stesso raggio
+    \item in ogni momento si può sapere quanti cerchi sono stati creati
+\end{itemize}
+
+\vspace{0.1cm}
+\texttt{Point2D} c'è già: la riusiamo senza modificarla. Anche il programma di prova, \texttt{ProvaCircle}, è già scritto: manca la classe \texttt{Circle}.
+
+\column{0.32\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.55\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 34
+    wrappingWidth: 600
+---
+flowchart TB
+  A["<b>ProvaCircle</b><br/>già scritta"] -- "usa" --> B["<b>Circle</b><br/>da scrivere"]
+  B -- "usa" --> C["<b>Point2D</b><br/>già scritta"]
+  A -- "usa" --> C
+  style A fill:#fef3c7,stroke:#b45309
+  style B fill:#fee2e2,stroke:#b91c1c,stroke-dasharray: 5 5
+  style C fill:#dcfce7,stroke:#15803d
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+\texttt{Circle} avrà due ruoli: sarà usata da \texttt{ProvaCircle} e sarà client di \texttt{Point2D}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo -- \texttt{ProvaCircle.java}}
+\begin{columns}[T]
+\column{0.57\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static void stampa(String nome, Circle c) {
+    Point2D o = c.getCenter();
+    System.out.println(nome + ": centro (" + o.getX()
+            + ", " + o.getY() + "), raggio "
+            + c.getRadius());
+}
+
+public static void main(String[] args) {
+    Point2D p = new Point2D(3, 4);
+    Circle a = new Circle(p, 5);
+    Circle b = new Circle(2);
+    Circle c = a.scale(2);
+    Circle d = new Circle(new Point2D(3, 4), 5);
+    Circle e = new Circle(p, -1);
+    stampa("b", b);
+    stampa("c", c);
+    stampa("e", e);
+    System.out.println(a.contains(Point2D.ORIGIN));
+    System.out.println(b.contains(p));
+    System.out.println(a.equals(d));
+    System.out.println(a.notEqual(c));
+    System.out.println(b.area());
+    System.out.println(Circle.getObjCount());
+}
+\end{lstlisting}
+
+\column{0.43\textwidth}
+{\footnotesize Deve stampare:}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+b: centro (0.0, 0.0), raggio 2.0
+c: centro (3.0, 4.0), raggio 10.0
+e: centro (3.0, 4.0), raggio 1.0
+true
+false
+true
+true
+12.566370614359172
+5
+\end{lstlisting}
+\small
+Come nella lezione~5, il client viene prima della classe: leggendolo ricaviamo l'\textbf{interfaccia} che \texttt{Circle} deve offrire.
+
+\vspace{0.15cm}
+Due indizi: \texttt{getObjCount} è chiamato sul nome della classe; \texttt{a} e \texttt{d} hanno per centro due oggetti \texttt{Point2D} diversi, con le stesse coordinate.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo -- dal programma di prova alla classe}
+\begin{columns}[T]
+\column{0.62\textwidth}
+\small
+\textbf{Prima di scrivere codice, decidiamo insieme:}
+\begin{enumerate}\itemsep=3pt
+    \item quali \textbf{variabili di istanza}? \textrightarrow{} \texttt{center}, un \texttt{Point2D}, e \texttt{radius}: \texttt{private final}, perché il cerchio non cambia
+    \item dove si contano i cerchi? \textrightarrow{} in una variabile \texttt{static}, \texttt{objCount}: una sola per tutta la classe. La legge un metodo \texttt{static}
+    \item quanti \textbf{costruttori}? \textrightarrow{} due. Il controllo sul raggio e \texttt{objCount++} si scrivono in uno solo: l'altro lo chiama con \texttt{this(...)}
+    \item quali \texttt{get}, quali \texttt{set}? \textrightarrow{} \texttt{getCenter} e \texttt{getRadius}; nessun \texttt{set}
+    \item come si scrive \texttt{scale}? \textrightarrow{} non può modificare \texttt{radius}: crea un nuovo \texttt{Circle}
+    \item come si confrontano due cerchi? \textrightarrow{} i centri con \texttt{equals} di \texttt{Point2D}, non con \texttt{==}; i raggi con \texttt{==}
+    \item \texttt{getCenter} restituisce il riferimento al centro: è un privacy leak? \textrightarrow{} no, perché \texttt{Point2D} è immutabile
+\end{enumerate}
+
+\column{0.38\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.78\textheight,center}
+\begin{mermaid}
+classDiagram
+  class Circle {
+    -objCount : int$
+    -center : Point2D
+    -radius : double
+    +Circle(Point2D, double)
+    +Circle(double)
+    +getObjCount()$ int
+    +getCenter() Point2D
+    +getRadius() double
+    +area() double
+    +contains(Point2D) boolean
+    +scale(double) Circle
+    +equals(Circle) boolean
+    +notEqual(Circle) boolean
+  }
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione (1/2) -- \texttt{Circle.java}}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Un cerchio del piano. Immutabile. */
+public class Circle {
+
+    private static int objCount;   // cerchi creati
+
+    private final Point2D center;
+    private final double radius;
+
+    /** Un raggio non positivo diventa 1. */
+    public Circle(Point2D center, double radius) {
+        this.center = center;
+        if (radius > 0) {
+            this.radius = radius;
+        } else {
+            this.radius = 1;
+        }
+        objCount++;
+    }
+
+    /** Il centro e` l'origine. */
+    public Circle(double radius) {
+        this(Point2D.ORIGIN, radius);
+    }
+\end{lstlisting}
+
+\column{0.45\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    public static int getObjCount() {
+        return objCount;
+    }
+
+    public Point2D getCenter() {
+        return center;
+    }
+
+    public double getRadius() {
+        return radius;
+    }
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item il primo costruttore fa tutto: assegna le due variabili \texttt{final}, controlla il raggio, conta il cerchio. I due rami dell'\texttt{if} assegnano \texttt{radius} una volta ciascuno: è comunque una sola assegnazione
+    \item il secondo lo chiama con \texttt{this(...)}: il controllo e \texttt{objCount++} sono scritti in un punto solo
+    \item \texttt{getCenter} restituisce il riferimento, senza copie: \texttt{Point2D} è immutabile
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione (2/2) -- \texttt{Circle.java}}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    public double area() {
+        return Math.PI * radius * radius;
+    }
+
+    /** true se p e` nel cerchio o sul bordo. */
+    public boolean contains(Point2D p) {
+        return center.distance(p) <= radius;
+    }
+
+    /** CREA il cerchio con il raggio per k. */
+    public Circle scale(double k) {
+        return new Circle(center, radius * k);
+    }
+
+    public boolean equals(Circle c) {
+        return center.equals(c.center)
+                && radius == c.radius;
+    }
+
+    public boolean notEqual(Circle c) {
+        return !equals(c);
+    }
+}
+\end{lstlisting}
+
+\column{0.46\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.26\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 30
+    wrappingWidth: 600
+---
+flowchart LR
+  a["<b>stack</b><br/>a ●"] --> Ca["<b>heap</b> · oggetto Circle<br/>center ● &nbsp; radius 5.0"]
+  c["<b>stack</b><br/>c ●"] --> Cc["<b>heap</b> · oggetto Circle<br/>center ● &nbsp; radius 10.0"]
+  Ca --> P["<b>heap</b> · oggetto Point2D<br/>x 3.0 &nbsp; y 4.0"]
+  Cc --> P
+  style a fill:#fef3c7,stroke:#b45309
+  style c fill:#fef3c7,stroke:#b45309
+  style Ca fill:#dbeafe,stroke:#1d4ed8
+  style Cc fill:#dbeafe,stroke:#1d4ed8
+  style P fill:#dcfce7,stroke:#15803d
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+\texttt{a} e \texttt{c} condividono lo stesso centro, a cui porta anche \texttt{p}: nessun rischio, perché nessuno può modificarlo.
+\begin{itemize}\itemsep=2pt
+    \item \texttt{contains} chiama \texttt{distance} sul centro: \texttt{Circle} usa \texttt{Point2D} solo attraverso i suoi metodi \texttt{public}. Qui \texttt{center.x} non compila: \texttt{x} è \texttt{private} di un'altra classe
+    \item \texttt{scale} passa dal costruttore: anche il nuovo cerchio ha un raggio valido, ed è contato
+    \item \texttt{equals} confronta i centri con \texttt{equals} di \texttt{Point2D}: con \texttt{==} i cerchi \texttt{a} e \texttt{d} risulterebbero diversi
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Wrap-up}
+
+\begin{frame}{Riepilogo: cosa abbiamo trattato}
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Concetto (unità di riferimento)} & \textbf{Dove compare oggi} \\
+\hline
+Il riferimento \texttt{this}, uso implicito (U10) & \texttt{getValue}, \texttt{increment}; ogni metodo non \texttt{static} \\
+\hline
+Uso esplicito di \texttt{this} (U10) & \texttt{ContoBancario}; i costruttori di \texttt{Point2D} e \texttt{Circle} \\
+\hline
+Copia di oggetti: \texttt{=} e costruttore di copia (U10) & \texttt{Copia}; \texttt{Point2D(Point2D p)} \\
+\hline
+Confronto: \texttt{==}, \texttt{equals}, \texttt{notEqual} (U10) & \texttt{Confronto}; \texttt{Point2D}; \texttt{Circle} \\
+\hline
+Variabili di classe e metodi \texttt{static} (U10) & \texttt{objCount} e \texttt{getObjCount} in \texttt{Counter} e in \texttt{Circle} \\
+\hline
+Costanti di classe, \texttt{static final} (U10) & \texttt{Counter.DEFAULT\_MAX}; \texttt{Point2D.ORIGIN} \\
+\hline
+Variabili di istanza \texttt{final} (U10) & \texttt{max} in \texttt{Counter}; \texttt{x}, \texttt{y}, \texttt{center}, \texttt{radius} \\
+\hline
+\texttt{Counter} versione 5 (U10) & \texttt{ProvaCounter} \\
+\hline
+Classi immutabili (U10) & \texttt{String}; \texttt{Point2D}; \texttt{Circle} \\
+\hline
+Privacy leak e rimedi (U10) & \texttt{Persona} versioni 1 e 2; \texttt{getCenter} in \texttt{Circle} \\
+\hline
+\end{tabular}
+\end{center}
+
+\vspace{0.1cm}
+\textbf{Prossima lezione (L7)}: ereditarietà e polimorfismo -- \texttt{extends}, \texttt{super}, ridefinizione dei metodi, classi e metodi astratti.
+\end{frame}
+
+% ========================================================================
+\begin{frame}{Homework 6 (da svolgere entro la prossima lezione)}
+\footnotesize
+Tre classi \textbf{immutabili}, ciascuna con il suo programma di prova (\texttt{ProvaSegment}, \texttt{ProvaFrazione}, \texttt{ProvaMisure}): variabili di istanza \texttt{private final}, nessun \texttt{set}, metodi \texttt{equals} e \texttt{notEqual}.
+\begin{enumerate}\itemsep=3pt
+    \item \textbf{\texttt{Segment.java}}: un segmento del piano, dato dai suoi estremi: due \texttt{Point2D} (la classe di oggi, da copiare nella cartella \texttt{homework/} senza modifiche). Costruttore \texttt{Segment(Point2D a, Point2D b)}; \texttt{getA()}, \texttt{getB()}; \texttt{length()}; \texttt{midpoint()} crea il punto medio; \texttt{translate(double dx, double dy)} crea il segmento spostato. Per \texttt{equals} il segmento AB e il segmento BA sono uguali. Il programma di prova riceve le coordinate degli estremi dalla riga di comando (\texttt{java ProvaSegment 0 0 3 4}) e stampa lunghezza, punto medio e confronto fra AB e BA, con \texttt{equals} e con \texttt{==}.
+    \item \textbf{\texttt{Frazione.java}}: numeratore e denominatore \texttt{int}, sempre ridotti ai minimi termini e con il denominatore positivo ($6/{-8}$ diventa $-3/4$). Costruttori \texttt{Frazione(int num, int den)}, con precondizione \texttt{den} diverso da 0, e \texttt{Frazione(int n)}, la frazione $n/1$; \texttt{getNum()}, \texttt{getDen()}; \texttt{somma(Frazione f)} e \texttt{prodotto(Frazione f)} creano una nuova frazione; \texttt{valore()} restituisce il \texttt{double} corrispondente; \texttt{descrizione()} una stringa come \texttt{"-3/4"}. Il massimo comune divisore lo calcola un metodo \texttt{private static}. Due costanti di classe: \texttt{ZERO} e \texttt{UNO}. Il programma di prova legge da tastiera due frazioni (quattro interi): se un denominatore è 0 stampa un messaggio e termina, altrimenti stampa le due frazioni, la somma e il prodotto.
+    \item \textbf{\texttt{Misure.java}}: una serie di misure, per esempio le temperature di una giornata, in un \texttt{double[]} \texttt{private final}. Costruttore \texttt{Misure(double[] valori)}, con precondizione di almeno un valore; \texttt{getQuante()}, \texttt{getValore(int i)}, \texttt{getValori()}; \texttt{media()}, \texttt{massimo()}; \texttt{aggiungi(double v)} crea una serie con una misura in più, in coda. Nessun privacy leak: né l'array passato al costruttore né quello restituito da \texttt{getValori} devono permettere al client di modificare la serie. Il programma di prova modifica entrambi gli array e stampa la serie: deve risultare immutata.
+\end{enumerate}
+
+Usate solo ciò che abbiamo visto finora.
+\end{frame}
+
+% ========================================================================
+\begin{frame}
+\begin{center}
+{\Huge Domande?}\\[2.5em]
+{\normalsize \href{mailto:mattia.fonisto@unina.it}{\texttt{mattia.fonisto@unina.it}}}
+\end{center}
+\end{frame}
+
+\end{document}

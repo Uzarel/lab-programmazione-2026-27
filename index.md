@@ -21,7 +21,7 @@ Lezioni il **martedì**, 2 ore, fino al 15 dicembre 2026 (8 dicembre festivo).
 | 3 | 30 set | Metodi, overloading, array | U7, U9 | [PDF](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L03/lezione.pdf) | [tex](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L03/lezione.tex) | [cartella](https://github.com/Uzarel/lab-programmazione-2026-27/tree/main/lezioni/L03/esercizi) |
 | 4 | 06 ott | Array avanzati, programmazione modulare | U11, U3 | [PDF](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L04/lezione.pdf) | [tex](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L04/lezione.tex) | [cartella](https://github.com/Uzarel/lab-programmazione-2026-27/tree/main/lezioni/L04/esercizi) |
 | 5 | 13 ott | Concetti OO, classi in Java | U4, U5 | [PDF](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L05/lezione.pdf) | [tex](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L05/lezione.tex) | [cartella](https://github.com/Uzarel/lab-programmazione-2026-27/tree/main/lezioni/L05/esercizi) |
-| 6 | TBD | Classi: aspetti avanzati | U10 | — | — | — |
+| 6 | 20 ott | Classi: aspetti avanzati | U10 | [PDF](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L06/lezione.pdf) | [tex](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L06/lezione.tex) | [cartella](https://github.com/Uzarel/lab-programmazione-2026-27/tree/main/lezioni/L06/esercizi) |
 | 7 | TBD | Ereditarietà e polimorfismo | U13, U14 | — | — | — |
 | 8 | TBD | `Object`, relazioni tra classi, `clone` | U15, U16, U23 | — | — | — |
 | 9 | TBD | Interfacce e package | U17, U18 | — | — | — |

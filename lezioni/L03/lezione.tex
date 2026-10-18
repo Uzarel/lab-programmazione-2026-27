@@ -266,8 +266,8 @@ public static void main(String[] args) {
 \MermaidAdjustBoxOpts{max width=\linewidth,max height=0.26\textheight,center}
 \begin{mermaid}
 flowchart LR
-  nome["<b>main</b>: nome ●"] --> d["<b>heap</b>: &quot;diego&quot;"]
-  s["<b>maiuscola</b>: s ●<br/>copia di nome"] -. "alla chiamata" .-> d
+  nome["<b>main</b>: nome <span style='color:#9ca3af'><i>riferimento</i></span>"] --> d["<b>heap</b>: &quot;diego&quot;"]
+  s["<b>maiuscola</b>: s <span style='color:#9ca3af'><i>riferimento</i></span><br/>copia di nome"] -. "alla chiamata" .-> d
   s -- "dopo s = s.toUpperCase()" --> D["<b>heap</b>: &quot;DIEGO&quot;"]
   style nome fill:#fef3c7,stroke:#b45309
   style s fill:#fef3c7,stroke:#b45309
@@ -383,7 +383,7 @@ a[4] = 7;               // ultimo: length - 1
 \MermaidAdjustBoxOpts{max width=\linewidth,max height=0.45\textheight,center}
 \begin{mermaid}
 flowchart LR
-  a["<b>stack</b><br/>int[] a<br/>●"]
+  a["<b>stack</b><br/>int[] a<br/><span style='color:#9ca3af'><i>riferimento</i></span>"]
   o["<b>heap</b> · oggetto array, length = 5<br/><table border='1' cellpadding='4'><tr><td>[0]</td><td>[1]</td><td>[2]</td><td>[3]</td><td>[4]</td></tr><tr><td>42</td><td>0</td><td>0</td><td>0</td><td>7</td></tr></table>"]
   a --> o
   style a fill:#fef3c7,stroke:#b45309
@@ -516,9 +516,9 @@ public static void main(String[] args) {
 \MermaidAdjustBoxOpts{max width=\linewidth,max height=0.34\textheight,center}
 \begin{mermaid}
 flowchart LR
-  a["<b>main</b>: a ●"] --> o["<b>heap</b>: {0, 20, 10}"]
-  v["<b>azzeraPrimo</b>: v ●<br/>(copia di a)"] -- "v[0] = 0" --> o
-  w["<b>sostituisci</b>: v ●<br/>(copia di a, poi riassegnata)"] -- "v = new int[]{7,7,7}" --> o2["<b>heap</b>: {7, 7, 7}<br/>nuovo, nessun altro lo vede"]
+  a["<b>main</b>: a <span style='color:#9ca3af'><i>riferimento</i></span>"] --> o["<b>heap</b>: {0, 20, 10}"]
+  v["<b>azzeraPrimo</b>: v <span style='color:#9ca3af'><i>riferimento</i></span><br/>(copia di a)"] -- "v[0] = 0" --> o
+  w["<b>sostituisci</b>: v <span style='color:#9ca3af'><i>riferimento</i></span><br/>(copia di a, poi riassegnata)"] -- "v = new int[]{7,7,7}" --> o2["<b>heap</b>: {7, 7, 7}<br/>nuovo, nessun altro lo vede"]
   style a fill:#fef3c7,stroke:#b45309
   style v fill:#fef3c7,stroke:#b45309
   style w fill:#fef3c7,stroke:#b45309
@@ -603,7 +603,7 @@ for (int i = 0; i < args.length; i++) {
 \MermaidAdjustBoxOpts{max width=\linewidth,max height=0.34\textheight,center}
 \begin{mermaid}
 flowchart LR
-  n["String[] nomi"] --> arr["[0] ● &nbsp; [1] ● &nbsp; [2] ●"]
+  n["String[] nomi"] --> arr["[0] <span style='color:#9ca3af'><i>riferimento</i></span><br/>[1] <span style='color:#9ca3af'><i>riferimento</i></span><br/>[2] <span style='color:#9ca3af'><i>riferimento</i></span>"]
   arr --> s0["&quot;Anna&quot;"]
   arr --> s1["&quot;Luca&quot;"]
   arr --> s2["&quot;Marta&quot;"]
@@ -649,7 +649,7 @@ m4[1] = new int[3];
 \MermaidAdjustBoxOpts{max width=\linewidth,max height=0.34\textheight,center}
 \begin{mermaid}
 flowchart LR
-  m["int[][] m3"] --> r["[0] ●<br/>[1] ●<br/>[2] ●"]
+  m["int[][] m3"] --> r["[0] <span style='color:#9ca3af'><i>riferimento</i></span><br/>[1] <span style='color:#9ca3af'><i>riferimento</i></span><br/>[2] <span style='color:#9ca3af'><i>riferimento</i></span>"]
   r --> r0["{4, 5}"]
   r --> r1["{8}"]
   r --> r2["{1, 13, 0}"]

@@ -371,8 +371,8 @@ config:
     wrappingWidth: 600
 ---
 flowchart LR
-  c["<b>stack</b><br/>main: c ●"] --> o1["<b>heap</b> · oggetto Counter<br/>value 2 &nbsp; max 0"]
-  d["<b>stack</b><br/>main: d ●"] --> o2["<b>heap</b> · oggetto Counter<br/>value 1 &nbsp; max 0"]
+  c["<b>stack</b><br/>main: c <span style='color:#9ca3af'><i>riferimento</i></span>"] --> o1["<b>heap</b> · oggetto Counter<br/>value 2 &nbsp; max 0"]
+  d["<b>stack</b><br/>main: d <span style='color:#9ca3af'><i>riferimento</i></span>"] --> o2["<b>heap</b> · oggetto Counter<br/>value 1 &nbsp; max 0"]
   style c fill:#fef3c7,stroke:#b45309
   style d fill:#fef3c7,stroke:#b45309
   style o1 fill:#dbeafe,stroke:#1d4ed8
@@ -496,9 +496,9 @@ config:
     wrappingWidth: 600
 ---
 flowchart LR
-  b["<b>stack</b><br/>main: b ●"] --> o1["<b>heap</b> · oggetto Counter<br/>value 0 &nbsp; max 10"]
-  c["<b>stack</b><br/>main: c ●"] --> o2["<b>heap</b> · oggetto Counter<br/>value 2 &nbsp; max 4"]
-  d["<b>stack</b><br/>main: d ●"] --> o3["<b>heap</b> · oggetto Counter<br/>value 1 &nbsp; max 4"]
+  b["<b>stack</b><br/>main: b <span style='color:#9ca3af'><i>riferimento</i></span>"] --> o1["<b>heap</b> · oggetto Counter<br/>value 0 &nbsp; max 10"]
+  c["<b>stack</b><br/>main: c <span style='color:#9ca3af'><i>riferimento</i></span>"] --> o2["<b>heap</b> · oggetto Counter<br/>value 2 &nbsp; max 4"]
+  d["<b>stack</b><br/>main: d <span style='color:#9ca3af'><i>riferimento</i></span>"] --> o3["<b>heap</b> · oggetto Counter<br/>value 1 &nbsp; max 4"]
   style b fill:#fef3c7,stroke:#b45309
   style c fill:#fef3c7,stroke:#b45309
   style d fill:#fef3c7,stroke:#b45309
@@ -660,8 +660,8 @@ config:
     wrappingWidth: 600
 ---
 flowchart LR
-  c["<b>stack</b><br/>c ●"] --> o3["<b>heap</b> · oggetto Counter<br/>value 0 &nbsp; max 7"]
-  k["<b>stack</b><br/>copia ●"] --> o2["<b>heap</b> · oggetto Counter<br/>value 1 &nbsp; max 4"]
+  c["<b>stack</b><br/>c <span style='color:#9ca3af'><i>riferimento</i></span>"] --> o3["<b>heap</b> · oggetto Counter<br/>value 0 &nbsp; max 7"]
+  k["<b>stack</b><br/>copia <span style='color:#9ca3af'><i>riferimento</i></span>"] --> o2["<b>heap</b> · oggetto Counter<br/>value 1 &nbsp; max 4"]
   a["<b>stack</b><br/>alias: null"] ~~~ o1["<b>heap</b> · oggetto Counter<br/>value 2 &nbsp; max 4 · <i>orfano</i>"]
   style c fill:#fef3c7,stroke:#b45309
   style k fill:#fef3c7,stroke:#b45309

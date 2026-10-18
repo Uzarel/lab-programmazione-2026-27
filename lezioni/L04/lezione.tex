@@ -289,7 +289,7 @@ Sono \textbf{immutabili}, come \texttt{String}: nessun metodo cambia il valore c
 \begin{mermaid}
 flowchart LR
   n["<b>stack</b><br/>int n<br/>10"]
-  w["<b>stack</b><br/>Integer w<br/>●"]
+  w["<b>stack</b><br/>Integer w<br/><span style='color:#9ca3af'><i>riferimento</i></span>"]
   o["<b>heap</b><br/>oggetto Integer<br/>10"]
   n ~~~ w
   w --> o
@@ -345,7 +345,7 @@ public static void main(String[] args) {
 \MermaidAdjustBoxOpts{max width=\linewidth,max height=0.2\textheight,center}
 \begin{mermaid}
 flowchart LR
-  v["voti ●"] --> arr["[0] ● &nbsp; [1] null &nbsp; [2] null"]
+  v["voti <span style='color:#9ca3af'><i>riferimento</i></span>"] --> arr["[0] <span style='color:#9ca3af'><i>riferimento</i></span><br/>[1] null<br/>[2] null"]
   arr --> o["Integer<br/>28"]
   style v fill:#fef3c7,stroke:#b45309
   style arr fill:#dbeafe,stroke:#1d4ed8

@@ -154,7 +154,7 @@ String s = new String("ciao");   // stack + heap
 \begin{mermaid}
 flowchart LR
   n["<b>stack</b><br/>n<br/>5"]
-  s["<b>stack</b><br/>s<br/>●"]
+  s["<b>stack</b><br/>s<br/><span style='color:#9ca3af'><i>riferimento</i></span>"]
   o["<b>heap</b><br/>oggetto String<br/>&quot;ciao&quot;"]
   n ~~~ s
   s --> o
@@ -333,8 +333,8 @@ flowchart TB
     direction LR
     x["int x<br/><b>5</b>"]
     y["int y<br/><b>5</b>"]
-    s["String s<br/><i>riferimento</i> ●"]
-    t["String t<br/><i>riferimento</i> ●"]
+    s["String s<br/><span style='color:#9ca3af'><i>riferimento</i></span>"]
+    t["String t<br/><span style='color:#9ca3af'><i>riferimento</i></span>"]
     n["String n<br/><b>null</b>"]
   end
   subgraph HEAP["Heap: gli oggetti (creati con new)"]

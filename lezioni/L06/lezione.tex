@@ -161,8 +161,8 @@ config:
     wrappingWidth: 600
 ---
 flowchart LR
-  c["<b>stack</b> · main<br/>c ●"] --> o1["<b>heap</b> · oggetto Counter<br/>value 1 &nbsp; max 4"]
-  t["<b>stack</b> · getValue<br/>this ●"] --> o1
+  c["<b>stack</b> · main<br/>c <span style='color:#9ca3af'><i>riferimento</i></span>"] --> o1["<b>heap</b> · oggetto Counter<br/>value 1 &nbsp; max 4"]
+  t["<b>stack</b> · getValue<br/>this <span style='color:#9ca3af'><i>riferimento</i></span>"] --> o1
   style c fill:#fef3c7,stroke:#b45309
   style t fill:#fce7f3,stroke:#be185d
   style o1 fill:#dbeafe,stroke:#1d4ed8
@@ -296,8 +296,8 @@ config:
     wrappingWidth: 600
 ---
 flowchart LR
-  b["<b>stack</b><br/>b ●"] --> o1["<b>heap</b> · oggetto Counter<br/>value 1 &nbsp; max 4"]
-  c["<b>stack</b><br/>c ●"] --> o1
+  b["<b>stack</b><br/>b <span style='color:#9ca3af'><i>riferimento</i></span>"] --> o1["<b>heap</b> · oggetto Counter<br/>value 1 &nbsp; max 4"]
+  c["<b>stack</b><br/>c <span style='color:#9ca3af'><i>riferimento</i></span>"] --> o1
   c ~~~ o2["<b>heap</b> · oggetto Counter<br/>value 0 &nbsp; max 7 · <i>orfano</i>"]
   style b fill:#fef3c7,stroke:#b45309
   style c fill:#fef3c7,stroke:#b45309
@@ -396,9 +396,9 @@ config:
     wrappingWidth: 600
 ---
 flowchart LR
-  b["<b>stack</b><br/>b ●"] --> o1["<b>heap</b> · oggetto Counter<br/>value 0 &nbsp; max 10"]
-  c["<b>stack</b><br/>c ●"] --> o2["<b>heap</b> · oggetto Counter<br/>value 0 &nbsp; max 4"]
-  d["<b>stack</b><br/>d ●"] --> o3["<b>heap</b> · oggetto Counter<br/>value 0 &nbsp; max 4"]
+  b["<b>stack</b><br/>b <span style='color:#9ca3af'><i>riferimento</i></span>"] --> o1["<b>heap</b> · oggetto Counter<br/>value 0 &nbsp; max 10"]
+  c["<b>stack</b><br/>c <span style='color:#9ca3af'><i>riferimento</i></span>"] --> o2["<b>heap</b> · oggetto Counter<br/>value 0 &nbsp; max 4"]
+  d["<b>stack</b><br/>d <span style='color:#9ca3af'><i>riferimento</i></span>"] --> o3["<b>heap</b> · oggetto Counter<br/>value 0 &nbsp; max 4"]
   x[" "] ~~~ s["<b>dati static</b> · classe Counter<br/>objCount 3 &nbsp; DEFAULT_MAX 10"]
   style b fill:#fef3c7,stroke:#b45309
   style c fill:#fef3c7,stroke:#b45309
@@ -620,9 +620,9 @@ config:
     wrappingWidth: 600
 ---
 flowchart LR
-  m["<b>stack</b><br/>mario ●"] --> P["<b>heap</b> · oggetto Persona<br/>nome ● &nbsp; nascita ●"]
+  m["<b>stack</b><br/>mario <span style='color:#9ca3af'><i>riferimento</i></span>"] --> P["<b>heap</b> · oggetto Persona<br/>nome <span style='color:#9ca3af'><i>riferimento</i></span><br/>nascita <span style='color:#9ca3af'><i>riferimento</i></span>"]
   P --> D["<b>heap</b> · oggetto Data<br/>10 · 3 · 1990"]
-  d["<b>stack</b><br/>d ●"] ~~~ n["<b>stack</b><br/>n ●"]
+  d["<b>stack</b><br/>d <span style='color:#9ca3af'><i>riferimento</i></span>"] ~~~ n["<b>stack</b><br/>n <span style='color:#9ca3af'><i>riferimento</i></span>"]
   n --> D
   d --> D
   style m fill:#fef3c7,stroke:#b45309
@@ -685,10 +685,10 @@ config:
     wrappingWidth: 600
 ---
 flowchart LR
-  m["<b>stack</b><br/>mario ●"] --> P["<b>heap</b> · oggetto Persona<br/>nome ● &nbsp; nascita ●"]
+  m["<b>stack</b><br/>mario <span style='color:#9ca3af'><i>riferimento</i></span>"] --> P["<b>heap</b> · oggetto Persona<br/>nome <span style='color:#9ca3af'><i>riferimento</i></span><br/>nascita <span style='color:#9ca3af'><i>riferimento</i></span>"]
   P --> D["<b>heap</b> · oggetto Data<br/>15 · 3 · 2006"]
-  d["<b>stack</b><br/>d ●"] --> D1["<b>heap</b> · oggetto Data<br/>15 · 3 · 1990"]
-  n["<b>stack</b><br/>n ●"] --> D2["<b>heap</b> · oggetto Data<br/>10 · 3 · 2006"]
+  d["<b>stack</b><br/>d <span style='color:#9ca3af'><i>riferimento</i></span>"] --> D1["<b>heap</b> · oggetto Data<br/>15 · 3 · 1990"]
+  n["<b>stack</b><br/>n <span style='color:#9ca3af'><i>riferimento</i></span>"] --> D2["<b>heap</b> · oggetto Data<br/>10 · 3 · 2006"]
   style m fill:#fef3c7,stroke:#b45309
   style d fill:#fef3c7,stroke:#b45309
   style n fill:#fef3c7,stroke:#b45309
@@ -1140,8 +1140,8 @@ config:
     wrappingWidth: 600
 ---
 flowchart LR
-  a["<b>stack</b><br/>a ●"] --> Ca["<b>heap</b> · oggetto Circle<br/>center ● &nbsp; radius 5.0"]
-  c["<b>stack</b><br/>c ●"] --> Cc["<b>heap</b> · oggetto Circle<br/>center ● &nbsp; radius 10.0"]
+  a["<b>stack</b><br/>a <span style='color:#9ca3af'><i>riferimento</i></span>"] --> Ca["<b>heap</b> · oggetto Circle<br/>center <span style='color:#9ca3af'><i>riferimento</i></span><br/>radius 5.0"]
+  c["<b>stack</b><br/>c <span style='color:#9ca3af'><i>riferimento</i></span>"] --> Cc["<b>heap</b> · oggetto Circle<br/>center <span style='color:#9ca3af'><i>riferimento</i></span><br/>radius 10.0"]
   Ca --> P["<b>heap</b> · oggetto Point2D<br/>x 3.0 &nbsp; y 4.0"]
   Cc --> P
   style a fill:#fef3c7,stroke:#b45309

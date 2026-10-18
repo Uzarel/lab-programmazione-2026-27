@@ -782,28 +782,37 @@ flowchart LR
 % ========================================================================
 \section{Esercitazione}
 
-\begin{frame}[fragile]{Obiettivo dell'esercitazione}
-Due programmi, tutti insieme, sulla stessa idea: \textbf{ogni file è un modulo con un compito solo}, e chi lo usa ne conosce soltanto l'interfaccia.
+\begin{frame}[fragile]{Commentiamo insieme (20 min) -- il problema}
+\begin{columns}[T]
+\column{0.64\textwidth}
+\small
+\textbf{Il problema.} Molti programmi devono calcolare statistiche su sequenze di interi: voti, temperature, conteggi. Serve un modulo che lo faccia una volta per tutte.
 
-\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.4\textheight,center}
+\vspace{0.2cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=3pt
+    \item il modulo calcola somma, media, minimo, massimo e mediana
+    \item la \emph{mediana} è il valore centrale dei dati ordinati; con un numero pari di valori, la media dei due centrali
+    \item ogni calcolo si chiede con un array oppure direttamente con un elenco di valori: \texttt{media(voti)}, \texttt{media(18, 30)}
+    \item i dati ricevuti non vengono mai modificati, nemmeno per ordinarli
+    \item serve almeno un valore
+\end{itemize}
+
+\vspace{0.2cm}
+La soluzione è già scritta: il modulo \texttt{Statistiche} e il programma \texttt{ProvaStatistiche}, che lo usa conoscendone soltanto l'interfaccia. Li leggiamo distinguendo interfaccia e corpo.
+
+\column{0.36\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.62\textheight,center}
 \begin{mermaid}
-flowchart LR
+flowchart TB
   PS["<b>ProvaStatistiche</b><br/>main"] -- "usa" --> S["<b>Statistiche</b><br/>somma · media · minimo<br/>massimo · mediana"]
-  F["<b>Frequenze</b><br/>main: solo ingresso e uscita"] -- "usa" --> S
-  F -- "usa" --> L["<b>Lettere</b><br/>conta · lettera"]
   S -- "usa" --> A["<b>java.util.Arrays</b><br/>copyOf · sort"]
   style PS fill:#fef3c7,stroke:#b45309
-  style F fill:#fef3c7,stroke:#b45309
   style S fill:#dcfce7,stroke:#15803d
-  style L fill:#dcfce7,stroke:#15803d
   style A fill:#e5e7eb,stroke:#4b5563
 \end{mermaid}
 \MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
-
-\begin{enumerate}\itemsep=4pt
-    \item \textbf{Commentiamo insieme} (20') -- \texttt{Statistiche.java} e \texttt{ProvaStatistiche.java}: un modulo di statistiche su interi, con varargs, \texttt{Arrays} e cast. Lo leggiamo distinguendo interfaccia e corpo.
-    \item \textbf{Insieme, passo passo} (30') -- \texttt{Frequenze}: partiamo da un \texttt{main} che fa tutto da solo e lo riscriviamo a moduli, riusando \texttt{Statistiche}. Io al PC proiettato, voi in VS Code.
-\end{enumerate}
+\end{columns}
 \end{frame}
 
 % ========================================================================
@@ -940,9 +949,43 @@ System.out.println(vicina);
 \end{frame}
 
 % ========================================================================
-\begin{frame}[fragile]{Insieme, passo passo (30 min) -- \texttt{FrequenzeMonolite.java}}
+\begin{frame}[fragile]{Insieme, passo passo (30 min) -- il problema}
+\begin{columns}[T]
+\column{0.58\textwidth}
 \small
-\textbf{Il problema.} Contare quante volte compare ogni lettera di un testo, in percentuale, e segnalare la più frequente.
+\textbf{Il problema.} Leggere un testo, contare quante volte compare ogni lettera e segnalare la più frequente.
+
+\vspace{0.2cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=3pt
+    \item contano solo le lettere da \texttt{a} a \texttt{z}, senza distinguere maiuscole e minuscole; gli altri caratteri si ignorano
+    \item per ogni lettera che compare almeno una volta si stampano, in ordine alfabetico, la lettera, quante volte compare e la sua percentuale sul totale delle lettere, con un decimale
+    \item la lettera più frequente è segnata con \texttt{<-{}- max}; a pari merito, lo sono tutte
+\end{itemize}
+
+\vspace{0.2cm}
+Si parte da un programma che risolve già il problema, ma con un \texttt{main} che fa tutto da solo. Lo riscriviamo insieme, a moduli.
+
+\column{0.42\textwidth}
+{\small Il risultato atteso:}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+$ java Frequenze
+Testo: Java e la JVM
+a   3  30.0%  <-- max
+e   1  10.0%
+j   2  20.0%
+l   1  10.0%
+m   1  10.0%
+v   2  20.0%
+\end{lstlisting}
+\footnotesize
+10 lettere in tutto: la \texttt{a} compare 3 volte, cioè il 30\%.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo -- il punto di partenza: \texttt{FrequenzeMonolite.java}}
+\small
 
 \begin{columns}[T]
 \column{0.52\textwidth}

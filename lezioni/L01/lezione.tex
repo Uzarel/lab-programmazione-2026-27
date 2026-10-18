@@ -109,10 +109,14 @@
         \item edit \textrightarrow{} \texttt{javac} \textrightarrow{} \texttt{java}: dal vivo, da terminale
         \item gli errori che farete (tutti) la prima settimana
     \end{itemize}
-    \item \textbf{Esercitazione guidata} -- programmi interattivi \hfill (\emph{40 min})
+    \item \textbf{Programmi interattivi} \hfill (\emph{10 min})
     \begin{itemize}
-        \item \texttt{System.out.printf}, \texttt{Scanner}, metodi \texttt{static}
-        \item \texttt{SommaNumeri} commentato insieme, poi \texttt{Media} scritto insieme, passo passo
+        \item \texttt{System.out.printf}, \texttt{Scanner}, argomenti da riga di comando, metodi \texttt{static}
+    \end{itemize}
+    \item \textbf{Esercitazione} -- tutti insieme \hfill (\emph{30 min})
+    \begin{itemize}
+        \item \emph{Commentiamo insieme}: \texttt{SommaNumeri}
+        \item \emph{Insieme, passo passo}: \texttt{Media}
     \end{itemize}
     \item \textbf{Wrap-up e homework} \hfill (\emph{10 min})
 \end{enumerate}
@@ -607,9 +611,9 @@ Leggete \textbf{il primo} messaggio d'errore, non l'ultimo: gli errori successiv
 \end{frame}
 
 % ========================================================================
-\section{Esercitazione guidata: programmi interattivi}
+\section{Programmi interattivi}
 
-\begin{frame}[fragile]{Obiettivo dell'esercitazione}
+\begin{frame}[fragile]{Programmi che dialogano con l'utente}
 Finora il programma \emph{parla} soltanto (\texttt{println}). Ora vogliamo programmi che \textbf{dialogano} con l'utente:
 \begin{enumerate}\itemsep=0pt
     \item \textbf{leggono} numeri e testo digitati da tastiera;
@@ -632,7 +636,7 @@ flowchart LR
 \MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
 
 \vspace{0.1cm}
-Servono tre ingredienti nuovi, che vediamo uno alla volta e poi mettiamo insieme in \texttt{SommaNumeri}:
+Servono tre ingredienti nuovi, che vediamo uno alla volta e poi usiamo nell'esercitazione:
 \begin{itemize}\itemsep=0pt
     \item \texttt{System.out.printf} -- stampa formattata (colonne, decimali)
     \item \texttt{Scanner} -- lettura da tastiera
@@ -701,6 +705,31 @@ public class Eta {
 \end{frame}
 
 % ========================================================================
+\begin{frame}[fragile]{Variante -- Argomenti da riga di comando}
+Il parametro \texttt{args} del \texttt{main} contiene ciò che scriviamo dopo il nome della classe:
+\begin{lstlisting}
+public class Saluta {
+    public static void main(String[] args) {
+        if (args.length == 0) {
+            System.out.println("Uso: java Saluta <nome> [<nome> ...]");
+            return;
+        }
+        for (int i = 0; i < args.length; i++) {   // args.length: quanti argomenti
+            System.out.printf("Ciao, %s!%n", args[i]);
+        }
+    }
+}
+\end{lstlisting}
+\begin{lstlisting}[style=shell]
+$ java Saluta Anna Luca
+Ciao, Anna!
+Ciao, Luca!
+$ java Saluta
+Uso: java Saluta <nome> [<nome> ...]
+\end{lstlisting}
+\end{frame}
+
+% ========================================================================
 \begin{frame}[fragile]{Ingrediente 3 -- Metodi \texttt{static}: funzioni per organizzare il codice}
 \begin{columns}[T]
 \column{0.58\textwidth}
@@ -739,6 +768,35 @@ Per ora \emph{tutti} i nostri metodi saranno \texttt{static}: sono le ``funzioni
     \item il \texttt{main} diventa la ``trama'', leggibile in 5 righe
 \end{itemize}
 \end{block}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Esercitazione}
+
+\begin{frame}[fragile]{Commentiamo insieme (5 min) -- il problema}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\textbf{Il problema.} Chiedere all'utente due numeri interi e stampare la loro somma.
+
+\vspace{0.3cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=3pt
+    \item i numeri si leggono da tastiera, uno alla volta; prima di ciascuno il programma stampa una richiesta
+    \item il risultato si stampa in una frase, non da solo
+\end{itemize}
+
+\vspace{0.3cm}
+La soluzione è già scritta: \texttt{SommaNumeri}. La leggiamo riga per riga, cercando i tre ingredienti, e poi la miglioriamo insieme.
+
+\column{0.45\textwidth}
+{\small Il risultato atteso:}
+\begin{lstlisting}[style=shell]
+$ java SommaNumeri
+Primo numero: 7
+Secondo numero: 5
+La somma è: 12
+\end{lstlisting}
 \end{columns}
 \end{frame}
 
@@ -788,35 +846,37 @@ public class SommaNumeri {
 \end{frame}
 
 % ========================================================================
-\begin{frame}[fragile]{Variante -- Argomenti da riga di comando}
-Il parametro \texttt{args} del \texttt{main} contiene ciò che scriviamo dopo il nome della classe:
-\begin{lstlisting}
-public class Saluta {
-    public static void main(String[] args) {
-        if (args.length == 0) {
-            System.out.println("Uso: java Saluta <nome> [<nome> ...]");
-            return;
-        }
-        for (int i = 0; i < args.length; i++) {   // args.length: quanti argomenti
-            System.out.printf("Ciao, %s!%n", args[i]);
-        }
-    }
-}
-\end{lstlisting}
+\begin{frame}[fragile]{Insieme, passo passo (25 min) -- il problema}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\textbf{Il problema.} Calcolare la media di un certo numero di voti inseriti dall'utente.
+
+\vspace{0.3cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=3pt
+    \item prima si chiede \emph{quanti} voti si vogliono inserire
+    \item poi si leggono i voti, interi, uno alla volta: ogni richiesta dice di quale voto si tratta
+    \item la media si stampa con 2 decimali
+\end{itemize}
+
+\vspace{0.3cm}
+Lo scriviamo da zero: \texttt{Media.java}.
+
+\column{0.45\textwidth}
+{\small Il risultato atteso:}
 \begin{lstlisting}[style=shell]
-$ java Saluta Anna Luca
-Ciao, Anna!
-Ciao, Luca!
-$ java Saluta
-Uso: java Saluta <nome> [<nome> ...]
+$ java Media
+Quanti voti? 3
+Voto 1: 27
+Voto 2: 28
+Voto 3: 30
+Media: 28.33
 \end{lstlisting}
+\end{columns}
 \end{frame}
 
 % ========================================================================
-\begin{frame}[fragile]{Insieme, passo passo (25 min) -- \texttt{Media.java}}
-\textbf{Il problema.} Chiedere quanti voti si vogliono inserire, leggerli uno alla volta e stampare la media con 2 decimali.
-
-\vspace{0.3cm}
+\begin{frame}[fragile]{Insieme, passo passo -- prima di scrivere codice}
 \textbf{Prima di scrivere codice, decidiamo insieme:}
 \begin{enumerate}\itemsep=3pt
     \item quali \textbf{dati} servono (quanti voti? la somma? di che tipo?);

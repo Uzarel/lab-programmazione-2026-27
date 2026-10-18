@@ -673,10 +673,22 @@ Una matrice in Java è un \textbf{array di array}: \texttt{m[r]} è la riga \tex
 % ========================================================================
 \section{Esercitazione}
 
-\begin{frame}[fragile]{Obiettivo dell'esercitazione}
-Due programmi, tutti insieme, sulla stessa idea: \textbf{ogni operazione su un array è un metodo} con un compito solo, e il \texttt{main} li mette in fila.
+\begin{frame}[fragile]{Commentiamo insieme (20 min) -- il problema}
+\small
+\textbf{Il problema.} Molti programmi lavorano su sequenze di interi. Serve una piccola libreria di metodi su \texttt{int[]}, da usare in qualunque programma.
 
-\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.36\textheight,center}
+\vspace{0.1cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=1pt
+    \item stampare un array nella forma \texttt{[12, 7, 3]}; calcolarne somma, massimo e media (anche di un \texttt{double[]})
+    \item cercare un valore: la posizione della sua \emph{prima} occorrenza, oppure $-1$ se non c'è
+    \item invertire un array: cambiando quello ricevuto, oppure restituendone uno nuovo, invertito
+    \item massimo e media richiedono almeno un elemento
+\end{itemize}
+
+La soluzione è già scritta: \texttt{Vettori.java}. La leggiamo metodo per metodo, chiedendoci di quale tipo è ciascuno:
+
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.3\textheight,center}
 \begin{mermaid}
 flowchart LR
   I["dati<br/>(letterale o Scanner)"] --> A["<b>array</b><br/>int[] · int[][]"]
@@ -689,11 +701,6 @@ flowchart LR
   style R fill:#dcfce7,stroke:#15803d
 \end{mermaid}
 \MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
-
-\begin{enumerate}\itemsep=4pt
-    \item \textbf{Commentiamo insieme} (20') -- \texttt{Vettori.java}: una piccola libreria di funzioni su \texttt{int[]}. La leggiamo metodo per metodo, distinguendo i tre tipi: \emph{legge}, \emph{modifica}, \emph{crea}.
-    \item \textbf{Insieme, passo passo} (30') -- \texttt{Matrici.java}: leggere due matrici, stamparle, calcolare trasposta e somma. Io al PC proiettato, voi in VS Code.
-\end{enumerate}
 \end{frame}
 
 % ========================================================================
@@ -870,25 +877,26 @@ System.out.println(media(d));
 \end{frame}
 
 % ========================================================================
-\begin{frame}[fragile]{Insieme, passo passo (30 min) -- \texttt{Matrici.java}}
-\textbf{Il problema.} Leggere da tastiera il numero di righe e di colonne, poi due matrici di interi di quelle dimensioni. Stampare la prima, la sua trasposta e la somma delle due.
-
-\vspace{0.2cm}
+\begin{frame}[fragile]{Insieme, passo passo (30 min) -- il problema}
 \begin{columns}[T]
 \column{0.55\textwidth}
 \small
-\textbf{Prima di scrivere codice, decidiamo insieme:}
-\begin{enumerate}\itemsep=3pt
-    \item quali \textbf{metodi}, e per ciascuno: \emph{legge}, \emph{modifica} o \emph{crea}? \\ \textrightarrow{} \texttt{leggi} (crea), \texttt{stampa} (legge), \texttt{trasposta} (crea), \texttt{somma} (crea), \texttt{stesseDimensioni} (legge)
-    \item le \textbf{firme}: cosa riceve e cosa restituisce ciascuno? \\ \textrightarrow{} \texttt{int[][] trasposta(int[][] m)}
-    \item la trasposta di una $r \times c$ è $c \times r$: \texttt{t[c][r] = m[r][c]}
-    \item il \texttt{main}: legge le dimensioni, chiama \texttt{leggi} due volte, stampa i risultati
-\end{enumerate}
+\textbf{Il problema.} Leggere due matrici di interi, stampare la prima, la sua trasposta e la somma delle due.
 
-\vspace{0.1cm}
-Da tenere a mente: chi controlla che le due matrici abbiano le stesse dimensioni, \texttt{somma} o il \texttt{main}?
+\vspace{0.2cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=3pt
+    \item si leggono da tastiera il numero di righe e di colonne, poi gli elementi della prima matrice riga per riga, poi quelli della seconda: le due matrici hanno le stesse dimensioni
+    \item la \emph{trasposta} si ottiene scambiando righe e colonne: l'elemento in riga $r$ e colonna $c$ va in riga $c$ e colonna $r$. Una matrice $2 \times 3$ diventa $3 \times 2$
+    \item la \emph{somma} si fa elemento per elemento
+    \item le matrici si stampano una riga per riga, con i numeri incolonnati
+\end{itemize}
+
+\vspace{0.2cm}
+Lo scriviamo da zero: \texttt{Matrici.java}.
 
 \column{0.45\textwidth}
+{\small Un esempio:}
 \MermaidAdjustBoxOpts{max width=\linewidth,max height=0.6\textheight,center}
 \begin{mermaid}
 flowchart TB
@@ -906,6 +914,20 @@ flowchart TB
 \end{mermaid}
 \MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
 \end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo -- prima di scrivere codice}
+\textbf{Prima di scrivere codice, decidiamo insieme:}
+\begin{enumerate}\itemsep=3pt
+    \item quali \textbf{metodi}, e per ciascuno: \emph{legge}, \emph{modifica} o \emph{crea}? \\ \textrightarrow{} \texttt{leggi} (crea), \texttt{stampa} (legge), \texttt{trasposta} (crea), \texttt{somma} (crea), \texttt{stesseDimensioni} (legge)
+    \item le \textbf{firme}: cosa riceve e cosa restituisce ciascuno? \\ \textrightarrow{} \texttt{int[][] trasposta(int[][] m)}
+    \item la trasposta di una $r \times c$ è $c \times r$: \texttt{t[c][r] = m[r][c]}
+    \item il \texttt{main}: legge le dimensioni, chiama \texttt{leggi} due volte, stampa i risultati
+\end{enumerate}
+
+\vspace{0.3cm}
+Da tenere a mente: chi controlla che le due matrici abbiano le stesse dimensioni, \texttt{somma} o il \texttt{main}?
 \end{frame}
 
 % ========================================================================

@@ -751,28 +751,39 @@ Quando \textbf{costruite} una stringa pezzo per pezzo, di solito in un ciclo. Pe
 % ========================================================================
 \section{Esercitazione}
 
-\begin{frame}[fragile]{Obiettivo dell'esercitazione}
-Tre programmi, tutti insieme, tutti sulla stessa idea: \textbf{leggere una stringa, scorrerla, costruirne un'altra}.
+\begin{frame}[fragile]{Commentiamo insieme (15 min) -- il problema}
+\begin{columns}[T]
+\column{0.56\textwidth}
+\small
+\textbf{Il problema.} Leggere una parola e rispondere ad alcune domande su di essa.
 
-\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.3\textheight,center}
-\begin{mermaid}
-flowchart LR
-  I["Scanner<br/>in.next() / in.nextLine()"] --> S["<b>String</b> letta<br/>(immutabile)"]
-  S -->|"for + charAt"| C["decisione<br/>su ogni char"]
-  C -->|"append"| B["<b>StringBuilder</b><br/>(modificabile)"]
-  B -->|"toString"| O["<b>String</b> risultato<br/>→ printf"]
-  style S fill:#dcfce7,stroke:#15803d
-  style B fill:#fef3c7,stroke:#b45309
-  style O fill:#dcfce7,stroke:#15803d
-\end{mermaid}
-\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\vspace{0.2cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=3pt
+    \item si legge una sola parola, senza spazi, e la si tratta tutta in minuscolo
+    \item si stampano la parola, la sua lunghezza, la parola in maiuscolo, la prima e l'ultima lettera
+    \item poi quante vocali (\texttt{a e i o u}) e quante consonanti contiene: consonante è ogni lettera che non è una vocale
+    \item infine la parola rovesciata; se è \emph{palindroma}, cioè uguale alla sua rovesciata; se comincia e finisce con la stessa lettera
+\end{itemize}
 
-\begin{enumerate}\itemsep=4pt
-    \item \textbf{Commentiamo insieme} (15') -- \texttt{AnalisiParola.java}: lo leggiamo riga per riga; contiene tutto ciò che serve dopo.
-    \item \textbf{Insieme, passo passo} (30') -- \texttt{Cesare.java}: io al PC proiettato, voi in VS Code. Prima decidiamo il disegno, poi scriviamo.
-    \item \textbf{Un esperimento} (10') -- \texttt{ConfrontoConcatenazione.java}: quanto costa davvero \texttt{s += x} in un ciclo?
-\end{enumerate}
+\vspace{0.2cm}
+La soluzione è già scritta: \texttt{AnalisiParola.java}. La leggiamo riga per riga: contiene tutto ciò che serve dopo.
 
+\column{0.44\textwidth}
+{\small Il risultato atteso:}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+$ java AnalisiParola
+Scrivi una parola: Java
+Parola:      java
+Lunghezza:   4
+Maiuscolo:   JAVA
+Iniziale:    j   Finale: a
+Vocali:      2   Consonanti: 2
+Rovesciata:  avaj
+Palindroma?  false
+Stessi estremi? false
+\end{lstlisting}
+\end{columns}
 \end{frame}
 
 % ========================================================================
@@ -867,8 +878,42 @@ Stessi estremi? true
 \end{frame}
 
 % ========================================================================
-\begin{frame}[fragile]{Insieme, passo passo (30 min) -- il cifrario di Cesare}
-\textbf{Il problema.} Leggere un testo e una chiave $k$ ($0 \le k \le 25$); stampare il testo cifrato sostituendo ogni lettera con quella $k$ posizioni più avanti nell'alfabeto (dopo la \texttt{z} si ricomincia dalla \texttt{a}); gli altri caratteri restano invariati. Poi decifrarlo e verificare che torni uguale.
+\begin{frame}[fragile]{Insieme, passo passo (30 min) -- il problema}
+\begin{columns}[T]
+\column{0.56\textwidth}
+\small
+\textbf{Il problema.} Cifrare un testo con il \emph{cifrario di Cesare}, poi decifrarlo e verificare che torni uguale.
+
+\vspace{0.2cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=3pt
+    \item si leggono un testo, che può contenere spazi, e una chiave $k$, con $0 \le k \le 25$
+    \item il testo si tratta tutto in minuscolo
+    \item cifrare: ogni lettera è sostituita da quella $k$ posizioni più avanti nell'alfabeto; dopo la \texttt{z} si ricomincia dalla \texttt{a}
+    \item gli altri caratteri (spazi, punteggiatura, cifre) restano invariati
+    \item decifrare: l'operazione inversa, che riporta al testo di partenza
+\end{itemize}
+
+\vspace{0.2cm}
+Lo scriviamo da zero: \texttt{Cesare.java}.
+
+\column{0.44\textwidth}
+{\small Il risultato atteso, con $k = 3$:}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+$ java Cesare
+Testo da cifrare: ciao, zia!
+Chiave (0-25):    3
+Cifrato:   fldr, cld!
+Decifrato: ciao, zia!
+Uguale? true
+\end{lstlisting}
+\footnotesize
+\texttt{c} \textrightarrow{} \texttt{f}, \texttt{i} \textrightarrow{} \texttt{l}, e la \texttt{z} ricomincia dall'inizio: \texttt{z} \textrightarrow{} \texttt{c}. La virgola, lo spazio e il punto esclamativo restano dove sono.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo -- prima di scrivere codice}
 
 \MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.26\textheight,center}
 \begin{mermaid}

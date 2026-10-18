@@ -40,9 +40,11 @@ jobs:
             echo "Nessun file .java trovato: niente da compilare."
             exit 0
           fi
-          # ogni radice è un progetto a sé
+          # ogni radice è un progetto a sé. this-escape è escluso: segnala i costruttori
+          # che chiamano metodi sovrascrivibili (es. versa(primo) in ContoBancario), un
+          # problema solo in presenza di sottoclassi, che il corso introduce più avanti
           cut -f1 "$index" | sort -u | while IFS= read -r root; do
             echo "== $root"
             files=$(awk -F'\t' -v r="$root" '$1 == r { print $2 }' "$index")
-            javac -Xlint:all -Werror -d "$(mktemp -d)" $files
+            javac -Xlint:all,-this-escape -Werror -d "$(mktemp -d)" $files
           done

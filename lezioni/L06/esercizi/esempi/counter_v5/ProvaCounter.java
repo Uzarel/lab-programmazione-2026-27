@@ -1,6 +1,8 @@
 /** Prova di Counter, versione 5: this, membri static, variabili final. */
 public class ProvaCounter {
 
+    // b.getObjCount() e` voluto: compila, ma e` fuorviante (vedi slide)
+    @SuppressWarnings("static")
     public static void main(String[] args) {
         System.out.println(Counter.getObjCount());   // 0
         System.out.println(Counter.DEFAULT_MAX);     // 10

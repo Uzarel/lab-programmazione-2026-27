@@ -1,0 +1,1186 @@
+% ============================================================================
+%  Laboratorio di Programmazione -- Lezione 7 (27 ottobre 2026)
+%  Compilare con:  pdflatex -shell-escape Lezione07_Ereditarieta_Polimorfismo.tex
+%  Richiede: mermaid.sty (nel progetto) + Mermaid CLI `mmdc` nel PATH
+%  NB: ogni frame che contiene codice (lstlisting) o un diagramma (mermaid)
+%      deve essere dichiarato [fragile].
+% ============================================================================
+\documentclass[10pt,aspectratio=169]{beamer}
+\usetheme{Madrid}
+\usecolortheme{default}
+
+% `provide=*` carica la localizzazione italiana dai file .ini di babel: funziona anche
+% su installazioni TeX prive di texlive-lang-italian; con una TeX Live completa e`
+% equivalente al classico \usepackage[italian]{babel}.
+\usepackage[italian,provide=*]{babel}
+\usepackage[utf8]{inputenc}
+
+% Localizzazione dei nomi dei blocchi Beamer
+\uselanguage{italian}
+\languagepath{italian}
+\deftranslation[to=italian]{Definition}{Definizione}
+\deftranslation[to=italian]{Theorem}{Teorema}
+\deftranslation[to=italian]{Example}{Esempio}
+\deftranslation[to=italian]{Proof}{Dimostrazione}
+\deftranslation[to=italian]{Corollary}{Corollario}
+\deftranslation[to=italian]{Lemma}{Lemma}
+
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{mermaid}
+
+% Mermaid: sfondo trasparente e dimensione massima adatta a una slide 16:9
+\MermaidRendererOptions{-b transparent}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+% Configurazione colori per il codice
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\definecolor{keywordblue}{rgb}{0.0,0.0,0.7}
+
+% Stile per snippet Java
+\lstdefinestyle{javastyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen}\itshape,
+    keywordstyle=\color{keywordblue}\bfseries,
+    numberstyle=\scriptsize\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=none,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    language=Java,
+    literate={à}{{\`a}}1 {è}{{\`e}}1 {é}{{\'e}}1 {ì}{{\`i}}1
+             {ò}{{\`o}}1 {ù}{{\`u}}1 {È}{{\`E}}1
+}
+\lstset{style=javastyle}
+
+% Stile per righe di terminale
+\lstdefinestyle{shell}{
+    language=bash,
+    backgroundcolor=\color{black!85},
+    basicstyle=\ttfamily\footnotesize\color{white},
+    keywordstyle=\color{white},
+    stringstyle=\color{white},
+    commentstyle=\color{green!70},
+    numbers=none,
+    frame=none,
+    showstringspaces=false
+}
+
+\title[Lezione 7 -- Ereditarietà e polimorfismo]{Lezione 7 -- Ereditarietà e polimorfismo}
+\subtitle{\texttt{extends}, \texttt{super}, binding dinamico, classi astratte}
+\author[Mattia Fonisto]{Mattia Fonisto}
+\institute[Lab.\ di Programmazione]{Laboratorio di Programmazione -- Ingegneria Informatica, II anno\\
+           Università degli Studi di Napoli Federico II -- Sede di San Giovanni a Teduccio}
+\date{27 ottobre 2026}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% ========================================================================
+\begin{frame}{Agenda della lezione (2h)}
+\begin{enumerate}
+    \item \textbf{Ripasso e Homework 6} \hfill (\emph{15 min})
+    \begin{itemize}
+        \item uno di voi alla lavagna con \texttt{Segment}, \texttt{Frazione} o \texttt{Misure}: lo commentiamo insieme
+    \end{itemize}
+    \item \textbf{Ereditarietà} \hfill (\emph{25 min})
+    \begin{itemize}
+        \item la relazione \emph{è-un}; \texttt{extends}, \texttt{super} e i costruttori
+        \item che cosa vede la sottoclasse: \texttt{private} e \texttt{protected}; ridefinire un metodo, \texttt{@Override}
+    \end{itemize}
+    \item \textbf{Polimorfismo} \hfill (\emph{20 min})
+    \begin{itemize}
+        \item upcasting e binding dinamico; array polimorfici; downcasting
+        \item classi e metodi astratti
+    \end{itemize}
+    \item \textbf{Esercitazione} -- tutti insieme \hfill (\emph{50 min})
+    \begin{itemize}
+        \item \emph{Commentiamo insieme}: \texttt{Forma}, \texttt{Cerchio}, \texttt{Rettangolo} -- un array di forme
+        \item \emph{Insieme, passo passo}: \texttt{Dipendente} e \texttt{Manager}
+    \end{itemize}
+    \item \textbf{Wrap-up e Homework 7} \hfill (\emph{10 min})
+\end{enumerate}
+\end{frame}
+
+% ========================================================================
+\section{Ereditarietà}
+
+\begin{frame}[fragile]{Ereditarietà: la relazione \emph{è-un}}
+\begin{columns}[T]
+\column{0.56\textwidth}
+\begin{block}{Ereditarietà}
+\small Una classe nuova, la \emph{sottoclasse}, si definisce a partire da una classe esistente, la \emph{superclasse}: ne eredita variabili di istanza e metodi, e ne aggiunge di propri o ne ridefinisce alcuni.
+\end{block}
+
+\small
+È la generalizzazione-specializzazione della lezione~5: \emph{uno studente è una persona}. Tutto ciò che vale per una persona (nome, cognome, descrizione) vale per uno studente, che in più ha una matricola.
+
+\vspace{0.1cm}
+\begin{itemize}\itemsep=3pt
+    \item \textbf{è-un}: un oggetto \texttt{Studente} è anche un oggetto \texttt{Persona}, e si può usare dovunque serva una \texttt{Persona}: è il polimorfismo
+    \item \textbf{riuso}: \texttt{Studente} non riscrive \texttt{nome}, \texttt{cognome}, \texttt{getNome}, \texttt{getCognome}: li eredita
+    \item \textbf{gerarchia}: dal generale al particolare, anche su più livelli (borsista, studente, persona)
+\end{itemize}
+
+\column{0.44\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.56\textheight,center}
+\begin{mermaid}
+classDiagram
+  direction TB
+  class Persona {
+    -nome : String
+    -cognome : String
+    +Persona(String, String)
+    +getNome() String
+    +getCognome() String
+    +descrizione() String
+  }
+  class Studente {
+    -matricola : String
+    +Studente(String, String, String)
+    +getMatricola() String
+    +descrizione() String
+  }
+  Persona <|-- Studente
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+In UML la freccia con il triangolo vuoto va dalla sottoclasse alla superclasse (lezione~5). I membri ereditati non si ripetono; \texttt{descrizione} compare in entrambe perché \texttt{Studente} la \emph{ridefinisce}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Ereditarietà in Java: \texttt{extends} -- \texttt{Persona.java} e \texttt{Studente.java}}
+\begin{columns}[T]
+\column{0.42\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Una persona: nome e cognome. */
+public class Persona {
+
+    private final String nome;
+    private final String cognome;
+
+    public Persona(String nome,
+                   String cognome) {
+        this.nome = nome;
+        this.cognome = cognome;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public String getCognome() {
+        return cognome;
+    }
+
+    public String descrizione() {
+        return nome + " " + cognome;
+    }
+}
+\end{lstlisting}
+
+\column{0.58\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Uno studente E` UNA persona con matricola. */
+public class Studente extends Persona {
+
+    private final String matricola;
+
+    public Studente(String nome,
+                    String cognome,
+                    String matricola) {
+        super(nome, cognome);
+        this.matricola = matricola;
+    }
+
+    public String getMatricola() {
+        return matricola;
+    }
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item \texttt{extends Persona}: \texttt{Studente} eredita tutto ciò che \texttt{Persona} dichiara; aggiunge \texttt{matricola} e \texttt{getMatricola}; ridefinisce \texttt{descrizione} (fra due slide)
+    \item \texttt{super(nome, cognome)} chiama il costruttore di \texttt{Persona}: prossima slide. \texttt{Persona} non è stata toccata (e non è quella della lezione~6)
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Costruire un oggetto derivato: \texttt{super(...)} -- \texttt{ProvaPersone.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Persona p = new Persona("Anna", "Russo");
+Studente s = new Studente("Luca", "Bianchi",
+        "N86001234");
+
+System.out.println(p.descrizione());
+System.out.println(s.getNome());
+System.out.println(s.getMatricola());
+System.out.println(s.descrizione());
+
+// p.getMatricola();   // ERRORE
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Anna Russo
+Luca
+N86001234
+Luca Bianchi, matricola N86001234
+\end{lstlisting}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.26\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 30
+    wrappingWidth: 600
+---
+flowchart LR
+  s["<b>stack</b><br/>s <span style='color:#9ca3af'><i>riferimento</i></span>"] --> o["<b>heap</b> · oggetto Studente<br/>parte Persona: nome <span style='color:#9ca3af'><i>riferimento</i></span><br/>cognome <span style='color:#9ca3af'><i>riferimento</i></span><br/>parte propria: matricola <span style='color:#9ca3af'><i>riferimento</i></span>"]
+  style s fill:#fef3c7,stroke:#b45309
+  style o fill:#dbeafe,stroke:#1d4ed8
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+\column{0.5\textwidth}
+\footnotesize
+Un oggetto \texttt{Studente} contiene \textbf{tutte} le variabili di istanza di \texttt{Persona}, più le proprie: una ``parte \texttt{Persona}'' e una parte propria. La parte \texttt{Persona} la sa inizializzare solo il costruttore di \texttt{Persona}.
+\begin{itemize}\itemsep=2pt
+    \item \texttt{super(nome, cognome)} lo chiama: di norma è la \textbf{prima istruzione} del costruttore; poi \texttt{Studente} inizializza la parte propria. È l'analogo di \texttt{this(...)} (lezione~6), che chiama un costruttore della \emph{stessa} classe
+    \item senza \texttt{super(...)} né \texttt{this(...)}, il compilatore inserisce \texttt{super()}: se la superclasse non ha un costruttore senza argomenti, errore di compilazione
+\end{itemize}
+\texttt{p.getMatricola()} non compila: le persone non hanno matricola. L'ereditarietà va in una direzione sola.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Che cosa vede la sottoclasse: \texttt{private} e \texttt{protected}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+{\footnotesize In \texttt{Studente} (versione 1):}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    @Override
+    public String descrizione() {
+        // return nome + " " + cognome + ...
+        // ERRORE: nome e` private in Persona
+        return super.descrizione()
+                + ", matricola " + matricola;
+    }
+\end{lstlisting}
+\footnotesize
+\texttt{nome} fa parte di ogni \texttt{Studente}, ma è \texttt{private} in \texttt{Persona}: visibile solo in \texttt{Persona} (lezione~5). \texttt{Studente} lo legge con i metodi \texttt{public}: \texttt{getNome()}, o \texttt{super.descrizione()}.
+
+{\footnotesize In \texttt{Persona} e \texttt{Studente} (versione 2):}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    protected final String nome;
+    protected final String cognome;
+\end{lstlisting}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    // lecito: nome e cognome sono protected
+    return nome + " " + cognome
+            + ", matricola " + matricola;
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}lp{5.6cm}@{}}
+\toprule
+\textbf{Modificatore} & \textbf{Visibile in} \\
+\midrule
+\texttt{private} & la classe che lo dichiara \\
+\texttt{protected} & la classe, le sottoclassi, il package (lezione~9) \\
+\texttt{public} & tutte le classi \\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{itemize}\itemsep=2pt
+    \item \texttt{protected} apre la variabile alle sottoclassi e alle classi della stessa cartella (stesso package: lezione~9): nella versione 2 anche \texttt{ProvaPersone} vede \texttt{s.nome}; un client in un'altra cartella no
+    \item l'ereditarietà \textbf{non aggira l'information hiding}: le variabili \texttt{private} di \texttt{Persona} stanno in ogni \texttt{Studente}, che però non le vede
+    \item \texttt{protected} ha un costo: se la variabile non è \texttt{final}, la sottoclasse può assegnarle un valore che la superclasse non ammette. Con \texttt{private} e i \texttt{get}, le sottoclassi dipendono solo dall'interfaccia pubblica di \texttt{Persona}: se \texttt{Persona} rinomina una variabile, non cambiano
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Ridefinire un metodo: \emph{overriding} e \texttt{@Override}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+{\footnotesize In \texttt{Persona}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    public String descrizione() {
+        return nome + " " + cognome;
+    }
+\end{lstlisting}
+{\footnotesize In \texttt{Studente}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    @Override
+    public String descrizione() {
+        return super.descrizione()
+                + ", matricola " + matricola;
+    }
+\end{lstlisting}
+{\footnotesize In \texttt{ProvaPersone}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+System.out.println(p.descrizione());
+System.out.println(s.descrizione());
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Anna Russo
+Luca Bianchi, matricola N86001234
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\begin{block}{Ridefinizione (\emph{overriding})}
+\small La sottoclasse riscrive un metodo della superclasse con la \textbf{stessa firma} e lo \textbf{stesso tipo di risultato}, ma un altro corpo: sugli oggetti della sottoclasse vale la nuova versione.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item \texttt{super.descrizione()} chiama la versione di \texttt{Persona} sullo stesso oggetto: la nuova versione \textbf{estende} la vecchia. Senza \texttt{super}, \texttt{descrizione()} chiamerebbe se stessa all'infinito
+    \item \texttt{@Override} è un'\emph{annotazione}: ``questo metodo ne ridefinisce uno della superclasse''. Se non è vero, per esempio per un errore di battitura (\texttt{descrizone}), il compilatore lo segnala; senza l'annotazione avremmo un metodo nuovo e nessun avviso
+    \item non è l'\textbf{overloading} della lezione~3: lì stesso nome e parametri \emph{diversi} nella stessa classe; qui stessi parametri in due classi diverse
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Ereditarietà in Java: le regole}
+\begin{columns}[T]
+\column{0.62\textwidth}
+\footnotesize
+\textbf{Che cosa si eredita e che cosa no}
+\begin{itemize}\itemsep=2pt
+    \item si ereditano variabili di istanza e metodi non \texttt{private}; quelli \texttt{private} fanno parte dell'oggetto, ma la sottoclasse non li vede
+    \item \textbf{non} si ereditano i costruttori: ogni classe scrive i suoi, e chiama quelli della superclasse con \texttt{super(...)}
+    \item i membri \texttt{static} appartengono alla classe: si usano con il suo nome e non partecipano al binding dinamico (prossime slide)
+    \item un metodo \texttt{final} non si può ridefinire; una classe \texttt{final} non si può estendere (\texttt{String} lo è). È il terzo uso di \texttt{final}, dopo le variabili locali (lezione~2) e di istanza (lezione~6): sempre ``non cambia più''
+\end{itemize}
+\textbf{La forma della gerarchia}
+\begin{itemize}\itemsep=2pt
+    \item una classe ha \textbf{una sola} superclasse diretta: niente ereditarietà multipla (le interfacce, lezione~9, ne offrono una parte)
+    \item è transitiva: \texttt{Borsista extends Studente} eredita anche ciò che \texttt{Studente} ha ereditato da \texttt{Persona}
+    \item una classe senza \texttt{extends} estende \texttt{Object}: ogni classe ne discende e ne eredita \texttt{equals}, \texttt{toString} e altri metodi. Per questo, come detto nella lezione~6, \texttt{equals} compila anche su una classe che non lo definisce: lezione~8
+\end{itemize}
+
+\column{0.38\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.62\textheight,center}
+\begin{mermaid}
+---
+config:
+  class:
+    hideEmptyMembersBox: true
+---
+classDiagram
+  direction TB
+  class Object {
+    +equals(Object) boolean
+    +toString() String
+  }
+  class Persona
+  class Studente
+  class Borsista
+  Object <|-- Persona
+  Persona <|-- Studente
+  Studente <|-- Borsista
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+\texttt{Borsista} sarà uno degli homework. \texttt{Object} sta in \texttt{java.lang}, come \texttt{String}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Polimorfismo}
+
+\begin{frame}[fragile]{Polimorfismo: \emph{upcasting} -- \texttt{Polimorfismo.java}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Persona p = new Studente("Luca", "Bianchi",
+        "N86001234");   // upcasting
+System.out.println(p.getNome());
+System.out.println(p.descrizione());
+// p.getMatricola();   // ERRORE
+\end{lstlisting}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.3\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 30
+    wrappingWidth: 600
+---
+flowchart LR
+  p["<b>stack</b><br/>p <span style='color:#9ca3af'><i>riferimento</i></span><br/><i>tipo Persona</i>"] --> o["<b>heap</b> · oggetto Studente<br/>parte Persona: nome <span style='color:#9ca3af'><i>riferimento</i></span><br/>cognome <span style='color:#9ca3af'><i>riferimento</i></span><br/>parte propria: matricola <span style='color:#9ca3af'><i>riferimento</i></span>"]
+  style p fill:#fef3c7,stroke:#b45309
+  style o fill:#dbeafe,stroke:#1d4ed8
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+Il riferimento è di tipo \texttt{Persona}; l'oggetto a cui porta è uno \texttt{Studente}. I due tipi non coincidono, e va bene così: il riferimento copiato in \texttt{p} (lezione~6) ha un tipo più generale di quello dell'oggetto.
+
+\column{0.48\textwidth}
+\begin{block}{Upcasting}
+\small Un riferimento di tipo superclasse può portare a un oggetto di una qualunque sottoclasse: uno \texttt{Studente} \emph{è una} \texttt{Persona}. La conversione è \textbf{implicita}, come \texttt{int} \textrightarrow{} \texttt{double} nella lezione~4: vince il tipo più generale.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item quali metodi si possono chiamare su \texttt{p}? Li decide il \textbf{compilatore} dal \textbf{tipo del riferimento}: quelli di \texttt{Persona}. \texttt{p.getNome()} compila, \texttt{p.getMatricola()} no, anche se l'oggetto ce l'ha
+    \item \texttt{p.descrizione()} compila: \texttt{Persona} ha \texttt{descrizione}. Ma ne esistono due versioni, di \texttt{Persona} e di \texttt{Studente}: quale viene eseguita?
+    \item l'oggetto non cambia: resta uno \texttt{Studente}. Cambia solo ciò che \texttt{p} permette di vedere
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Polimorfismo: binding dinamico}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Luca
+Luca Bianchi, matricola N86001234
+\end{lstlisting}
+\footnotesize
+\texttt{p.descrizione()} ha eseguito la versione di \texttt{Studente}: la classe dell'\textbf{oggetto}, non del riferimento.
+\vspace{-0.1cm}
+\begin{block}{Polimorfismo}
+\small La stessa chiamata, \texttt{x.descrizione()}, esegue codice diverso a seconda della classe dell'oggetto a cui \texttt{x} porta in quel momento. La scelta avviene \textbf{a tempo di esecuzione} (\emph{binding dinamico}): la fa la JVM, non il compilatore.
+\end{block}
+\footnotesize
+È il terzo principio della lezione~5, \texttt{f.area()} su cerchi e rettangoli: lo faremo nell'esercitazione. Due momenti, due controlli:
+\begin{itemize}\itemsep=2pt
+    \item \textbf{compilazione}: \texttt{p} è \texttt{Persona}; \texttt{Persona} ha \texttt{descrizione()}? Sì: la chiamata è lecita
+    \item \textbf{esecuzione}: \texttt{p} porta a uno \texttt{Studente}: la JVM cerca \texttt{descrizione()} da \texttt{Studente}
+\end{itemize}
+
+\column{0.5\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.44\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 26
+    wrappingWidth: 600
+---
+flowchart TB
+  c["<b>p.descrizione()</b><br/>p porta a uno Studente"] --> S["classe <b>Studente</b><br/>descrizione() ✔ eseguito"]
+  S -. "se non c'è, risali" .-> P["classe <b>Persona</b><br/>getNome() &nbsp; descrizione()"]
+  style c fill:#fef3c7,stroke:#b45309
+  style S fill:#dcfce7,stroke:#15803d
+  style P fill:#dbeafe,stroke:#1d4ed8
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+La JVM parte dalla classe dell'oggetto e risale finché trova il metodo. Per \texttt{p.getNome()} in \texttt{Studente} non c'è nulla: si risale a \texttt{Persona}.
+
+\vspace{0.05cm}
+Vale per i metodi che si possono ridefinire. Per i metodi \texttt{static}, \texttt{private} e \texttt{final}, per i costruttori e per la scelta fra metodi in overloading (lezione~3) decide il compilatore: \emph{binding statico}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Polimorfismo: un array di \texttt{Persona} -- \texttt{Polimorfismo.java}}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** LEGGE la persona ricevuta e la stampa. */
+public static void stampa(Persona x) {
+    System.out.println(x.descrizione());
+}
+\end{lstlisting}
+{\footnotesize Nel \texttt{main}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Persona[] elenco = {
+    new Persona("Anna", "Russo"),
+    new Studente("Luca", "Bianchi", "N86001234"),
+    new Persona("Marco", "Esposito"),
+    new Studente("Sara", "Greco", "N86005678")
+};
+for (Persona x : elenco) {
+    stampa(x);
+}
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Anna Russo
+Luca Bianchi, matricola N86001234
+Marco Esposito
+Sara Greco, matricola N86005678
+\end{lstlisting}
+
+\column{0.46\textwidth}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item un \texttt{Persona[]} può contenere riferimenti a persone e a studenti: ogni elemento è un upcasting. È un \textbf{array polimorfico}
+    \item il ciclo e \texttt{stampa} sono scritti una volta sola, in termini di \texttt{Persona}; a ogni giro \texttt{x.descrizione()} esegue la versione giusta per l'oggetto di quel giro
+    \item anche passare \texttt{x} a \texttt{stampa} è un upcasting: accetta una \texttt{Persona}, quindi anche uno \texttt{Studente}
+\end{itemize}
+\vspace{0.05cm}
+\textbf{Che cosa si guadagna.} Se domani aggiungiamo \texttt{Docente extends Persona}, né \texttt{stampa} né il ciclo cambiano: funzionano anche per i docenti. Il codice che usa la gerarchia è scritto per la superclasse e non conosce l'elenco delle sottoclassi.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Polimorfismo: \emph{downcasting} -- \texttt{Downcast.java}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Persona p = new Studente("Luca", "Bianchi",
+        "N86001234");
+Persona q = new Persona("Anna", "Russo");
+
+// Studente s = p;   // ERRORE: serve il cast
+Studente s = (Studente) p;   // ok: Studente
+System.out.println(s.getMatricola());
+
+Studente t = (Studente) q;   // compila, ma...
+System.out.println(t.getMatricola());
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+N86001234
+Exception in thread "main"
+  java.lang.ClassCastException: class Persona
+  cannot be cast to class Studente ...
+\end{lstlisting}
+\vspace{-0.1cm}
+\footnotesize
+Il programma termina su \texttt{(Studente) q}: la JVM ha controllato che l'oggetto di \texttt{q} non è uno \texttt{Studente}. Il messaggio è un'\emph{eccezione}, lezione~10.
+
+\column{0.46\textwidth}
+\begin{block}{Downcasting}
+\small Assegnare a un riferimento di tipo sottoclasse un riferimento di tipo superclasse. Serve il \textbf{cast} \texttt{(Studente) p}: compila perché \texttt{Studente} è sottoclasse di \texttt{Persona}, ma riesce solo se l'oggetto è uno \texttt{Studente}.
+\end{block}
+\begin{center}
+\scriptsize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & \textbf{Primitivi (L4)} & \textbf{Classi} \\
+\midrule
+implicito & \texttt{double d = i;} & \texttt{Persona p = s;} \\
+esplicito & \texttt{int i = (int) d;} & \texttt{Studente s = (Studente) p;} \\
+rischio & perde i decimali & errore a tempo di esecuzione \\
+\bottomrule
+\end{tabular}
+\end{center}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item per sapere \emph{prima} se l'oggetto è uno \texttt{Studente}, Java ha un operatore apposta (lezione~8): fino ad allora, il cast si fa solo se si è certi della classe dell'oggetto
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Classi e metodi astratti}
+\begin{columns}[T]
+\column{0.5\textwidth}
+{\footnotesize In \texttt{Forma}, la superclasse dell'esercitazione:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public abstract class Forma {
+    private final String colore;
+
+    public Forma(String colore) {
+        this.colore = colore;
+    }
+
+    public String getColore() {
+        return colore;
+    }
+
+    public abstract double area();
+
+    public boolean piuGrandeDi(Forma altra) {
+        return area() > altra.area();
+    }
+\end{lstlisting}
+{\footnotesize In \texttt{ProvaForme}: riferimenti e array di tipo \texttt{Forma} sono leciti}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+// Forma f = new Forma("nero");   // ERRORE
+Forma[] forme = {
+    new Cerchio("rosso", 1),
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\begin{block}{Classe astratta, metodo astratto}
+\small Un metodo \texttt{abstract} ha la firma ma non il corpo: dice che cosa ogni sottoclasse deve saper fare. Una classe con un metodo astratto è \texttt{abstract}: si può estendere e usare come tipo di riferimenti, ma \textbf{non creare oggetti}.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item una sottoclasse \textbf{deve} ridefinire tutti i metodi astratti che eredita, altrimenti è a sua volta \texttt{abstract}
+    \item \texttt{piuGrandeDi} ha il corpo e chiama \texttt{area()} su \texttt{this} e su \texttt{altra}: a tempo di esecuzione gli oggetti sono cerchi e rettangoli, e la JVM esegue la loro \texttt{area}. Un metodo della superclasse può usare un metodo che ha corpo solo nelle sottoclassi
+    \item \texttt{Forma} ha anche la parte comune: \texttt{colore}, il costruttore (chiamato dalle sottoclassi con \texttt{super(colore)}), \texttt{getColore}. In UML i nomi astratti sono in \emph{corsivo}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Esercitazione}
+
+\begin{frame}[fragile]{Commentiamo insieme (20 min) -- il problema}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\footnotesize
+\textbf{Il problema.} Un programma di disegno tiene in un array le forme sul foglio: cerchi e rettangoli, ciascuno con un colore. Deve stampare la descrizione di ogni forma, calcolare l'area totale e trovare la forma più grande.
+
+\vspace{0.1cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=2pt
+    \item ogni forma ha un colore, un'area, un perimetro e una descrizione
+    \item non esiste una forma ``generica'': sul foglio ci sono solo cerchi e rettangoli. Domani, forse, anche triangoli
+    \item un cerchio ha un raggio, un rettangolo una base e un'altezza: un valore non positivo diventa 1. Dopo la creazione una forma non cambia più
+    \item un rettangolo sa dire se è un quadrato
+    \item di due forme si può dire quale ha l'area maggiore, qualunque forme siano
+\end{itemize}
+
+\vspace{0.1cm}
+La soluzione è già scritta: la classe astratta \texttt{Forma}, le sottoclassi \texttt{Cerchio} e \texttt{Rettangolo} e il programma \texttt{ProvaForme}. Li leggiamo insieme, riga per riga, cercando \texttt{extends}, \texttt{super}, \texttt{@Override} e \texttt{abstract}.
+
+\column{0.45\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.76\textheight,center}
+\begin{mermaid}
+classDiagram
+  direction TB
+  class Forma {
+    <<abstract>>
+    -colore : String
+    +Forma(String)
+    +getColore() String
+    +area()* double
+    +perimetro()* double
+    +piuGrandeDi(Forma) boolean
+    +descrizione() String
+  }
+  class Cerchio {
+    -raggio : double
+    +Cerchio(String, double)
+    +getRaggio() double
+    +area() double
+    +perimetro() double
+    +descrizione() String
+  }
+  class Rettangolo {
+    -base : double
+    -altezza : double
+    +Rettangolo(String, double, double)
+    +getBase() double
+    +getAltezza() double
+    +isQuadrato() boolean
+    +area() double
+    +perimetro() double
+    +descrizione() String
+  }
+  Forma <|-- Cerchio
+  Forma <|-- Rettangolo
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{Forma.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Una forma piana, con un colore. Astratta:
+ *  esistono solo cerchi, rettangoli... */
+public abstract class Forma {
+
+    private final String colore;
+
+    public Forma(String colore) {
+        this.colore = colore;
+    }
+
+    public String getColore() {
+        return colore;
+    }
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item \texttt{colore} è comune a tutte le forme: sta qui, una volta sola, \texttt{private final}
+    \item il costruttore non si chiama mai con \texttt{new Forma(...)}: lo chiamano \texttt{Cerchio} e \texttt{Rettangolo} con \texttt{super(colore)}
+\end{itemize}
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    /** Ogni forma la calcola a modo suo. */
+    public abstract double area();
+
+    public abstract double perimetro();
+
+    /** true se ha area maggiore di altra. */
+    public boolean piuGrandeDi(Forma altra) {
+        return area() > altra.area();
+    }
+
+    public String descrizione() {
+        return "forma " + colore;
+    }
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item \texttt{area} e \texttt{perimetro} terminano con \texttt{;}: niente corpo. Ogni sottoclasse deve scriverli
+    \item \texttt{piuGrandeDi} e \texttt{descrizione} hanno il corpo e si ereditano: \texttt{descrizione} è minima e le sottoclassi la ridefiniranno
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{Cerchio.java} e \texttt{Rettangolo.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class Cerchio extends Forma {
+
+    private final double raggio;
+
+    public Cerchio(String colore,
+                   double raggio) {
+        super(colore);
+        if (raggio > 0) {
+            this.raggio = raggio;
+        } else {
+            this.raggio = 1;
+        }
+    }
+
+    @Override
+    public double area() {
+        return Math.PI * raggio * raggio;
+    }
+
+    @Override
+    public String descrizione() {
+        return "cerchio " + getColore()
+                + ", raggio " + raggio;
+    }
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class Rettangolo extends Forma {
+
+    private final double base;
+    private final double altezza;
+
+    public boolean isQuadrato() {
+        return base == altezza;
+    }
+
+    @Override
+    public double area() {
+        return base * altezza;
+    }
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item \texttt{super(colore)} per primo; poi il controllo sul raggio (non positivo: 1), come in \texttt{Circle} della lezione~6. Il costruttore di \texttt{Rettangolo}, non mostrato, controlla allo stesso modo \texttt{base} e \texttt{altezza}
+    \item \texttt{area} e \texttt{perimetro} danno corpo ai metodi astratti: senza uno dei due, \texttt{Cerchio} non compila (dovrebbe essere \texttt{abstract}). \texttt{descrizione} usa \texttt{getColore()}: \texttt{colore} è \texttt{private}. \texttt{isQuadrato} esiste solo in \texttt{Rettangolo}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{ProvaForme.java} (1/2)}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** LEGGE l'array e somma le aree. */
+public static double areaTotale(Forma[] forme) {
+    double totale = 0;
+    for (Forma f : forme) {
+        totale += f.area();
+    }
+    return totale;
+}
+
+/** LEGGE l'array e restituisce la forma
+ *  piu` grande (precondizione: almeno una). */
+public static Forma piuGrande(Forma[] forme) {
+    Forma max = forme[0];
+    for (Forma f : forme) {
+        if (f.piuGrandeDi(max)) {
+            max = f;
+        }
+    }
+    return max;
+}
+\end{lstlisting}
+
+\column{0.48\textwidth}
+\small
+\textbf{Da notare, leggendo:}
+\begin{itemize}\itemsep=4pt
+    \item \texttt{f} è un riferimento di tipo \texttt{Forma}; a ogni giro l'oggetto è un \texttt{Cerchio} o un \texttt{Rettangolo}. \texttt{f.area()} compila perché \texttt{Forma} dichiara \texttt{area}; esegue la versione della classe dell'oggetto
+    \item \texttt{areaTotale} non nomina mai \texttt{Cerchio} né \texttt{Rettangolo}: funzionerà anche per il \texttt{Triangolo} dell'homework, senza cambiare una riga
+    \item \texttt{piuGrandeDi} è scritto in \texttt{Forma}, ma quando viene eseguito \texttt{this} e \texttt{altra} portano a oggetti concreti: le due chiamate ad \texttt{area()} sono entrambe polimorfiche
+    \item \texttt{piuGrande} restituisce un \texttt{Forma}: il client che la riceve non sa se è un cerchio o un rettangolo, e per stamparla non ha bisogno di saperlo
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{ProvaForme.java} (2/2)}
+\begin{columns}[T]
+\column{0.56\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static void main(String[] args) {
+    Forma[] forme = {
+        new Cerchio("rosso", 1),
+        new Rettangolo("blu", 3, 4),
+        new Cerchio("verde", 2),
+        new Rettangolo("giallo", 2, 2)
+    };
+    for (Forma f : forme) {
+        System.out.printf("%s: area %.2f%n",
+                f.descrizione(), f.area());
+    }
+    System.out.printf("area totale: %.2f%n",
+            areaTotale(forme));
+    Forma g = piuGrande(forme);
+    System.out.println(g.descrizione());
+
+    // Forma f = new Forma("nero");   // ERRORE
+    // Rettangolo r = forme[1];   // ERRORE: cast
+    Rettangolo r = (Rettangolo) forme[1];
+    System.out.println(r.isQuadrato());
+}
+\end{lstlisting}
+
+\column{0.44\textwidth}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+cerchio rosso, raggio 1.0: area 3.14
+rettangolo blu 3.0 x 4.0: area 12.00
+cerchio verde, raggio 2.0: area 12.57
+rettangolo giallo 2.0 x 2.0: area 4.00
+area totale: 31.71
+cerchio verde, raggio 2.0
+false
+\end{lstlisting}
+\footnotesize
+\textbf{Rispondiamo insieme:}
+\begin{enumerate}\itemsep=1pt
+    \item perché \texttt{f.descrizione()} non stampa ``forma rosso''?
+    \item quante versioni di \texttt{area} esistono? Quante di \texttt{piuGrandeDi}?
+    \item senza \texttt{perimetro} in \texttt{Cerchio}, quale file non compila?
+    \item perché \texttt{r.isQuadrato()} vuole il cast, e \texttt{f.area()} no?
+\end{enumerate}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo (30 min) -- il problema}
+\begin{columns}[T]
+\column{0.64\textwidth}
+\small
+\textbf{Il problema.} Un'azienda tiene il personale in un array e deve calcolare il costo mensile degli stipendi. Ci sono dipendenti e manager: un manager è un dipendente con in più un bonus mensile.
+
+\vspace{0.05cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=2pt
+    \item ogni dipendente ha un nome e uno stipendio base mensile, positivo (precondizione); lo stipendio di un dipendente è la base
+    \item un aumento del $p\%$ fa crescere la base del $p\%$; il nome non cambia mai
+    \item un manager ha anche un bonus mensile fisso: il suo stipendio è base più bonus. L'aumento riguarda solo la base
+    \item di ogni dipendente si può avere una descrizione: nome e stipendio; per un manager anche il bonus
+    \item il costo mensile dell'azienda è la somma degli stipendi di tutto il personale
+\end{itemize}
+
+\vspace{0.05cm}
+\texttt{ProvaDipendenti} è già scritto: mancano \texttt{Dipendente} e \texttt{Manager}. Scriviamo prima la superclasse, poi la sottoclasse.
+
+\column{0.36\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.46\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 34
+    wrappingWidth: 600
+---
+flowchart TB
+  A["<b>ProvaDipendenti</b><br/>già scritta"] -- "usa" --> B["<b>Dipendente</b><br/>da scrivere"]
+  A -- "usa" --> C["<b>Manager</b><br/>da scrivere"]
+  C -- "estende" --> B
+  style A fill:#fef3c7,stroke:#b45309
+  style B fill:#fee2e2,stroke:#b91c1c,stroke-dasharray: 5 5
+  style C fill:#fee2e2,stroke:#b91c1c,stroke-dasharray: 5 5
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+\texttt{Manager} avrà due ruoli: sarà usata da \texttt{ProvaDipendenti} e sarà sottoclasse di \texttt{Dipendente}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo -- \texttt{ProvaDipendenti.java}}
+\begin{columns}[T]
+\column{0.56\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static void main(String[] args) {
+    Dipendente a = new Dipendente("Anna", 1800);
+    Manager m = new Manager("Luca", 2500, 700);
+    Dipendente[] personale = {
+        a, m, new Dipendente("Sara", 1600)
+    };
+    System.out.println(a.descrizione());
+    System.out.println(m.descrizione());
+    System.out.println(m.getBonus());
+    System.out.println(costoMensile(personale));
+
+    for (Dipendente d : personale) {
+        d.aumenta(10);
+    }
+    System.out.println(m.descrizione());
+    System.out.println(costoMensile(personale));
+
+    Dipendente d = m;   // upcasting
+    System.out.println(d.stipendio());
+    // d.getBonus();   // ERRORE: d e` un Dipendente
+}
+\end{lstlisting}
+
+\column{0.44\textwidth}
+{\footnotesize Deve stampare:}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Anna, stipendio 1800.0
+Luca, stipendio 3200.0, bonus 700.0
+700.0
+6600.0
+Luca, stipendio 3450.0, bonus 700.0
+7190.0
+3450.0
+\end{lstlisting}
+\footnotesize
+Come nelle lezioni 5 e 6, il client viene prima delle classi: leggendolo ricaviamo l'\textbf{interfaccia} di \texttt{Dipendente} e di \texttt{Manager}. \texttt{costoMensile} è un metodo \texttt{static} di \texttt{ProvaDipendenti}, già scritto come \texttt{areaTotale}: somma \texttt{d.stipendio()}.
+
+\vspace{0.05cm}
+Due indizi: \texttt{aumenta(10)} è chiamato su tutti, manager compreso, e il bonus non cambia; \texttt{d.stipendio()} stampa 3450, non 2750.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo -- dal programma di prova alle classi}
+\begin{columns}[T]
+\column{0.6\textwidth}
+\footnotesize
+\textbf{Prima di scrivere codice, decidiamo insieme:}
+\begin{enumerate}\itemsep=2pt
+    \item chi è la superclasse? \textrightarrow{} \texttt{Dipendente}: un manager \emph{è un} dipendente, non il contrario
+    \item quali \textbf{variabili di istanza} in \texttt{Dipendente}? \textrightarrow{} \texttt{nome}, \texttt{final}, e \texttt{stipendioBase}, che cambia con \texttt{aumenta}: non \texttt{final}. \texttt{private} entrambe
+    \item e in \texttt{Manager}? \textrightarrow{} solo \texttt{bonus}, \texttt{private final}: il resto è ereditato
+    \item il \textbf{costruttore} di \texttt{Manager}? \textrightarrow{} tre parametri: i primi due a \texttt{super(...)}, il terzo a \texttt{bonus}
+    \item che cosa ridefinisce \texttt{Manager}? \textrightarrow{} \texttt{stipendio}: \texttt{super.stipendio() + bonus}. E \texttt{descrizione}, che aggiunge il bonus a quella di \texttt{Dipendente}
+    \item \texttt{aumenta} va ridefinito? \textrightarrow{} no: agisce sulla base, che è ereditata
+    \item serve \texttt{protected} perché \texttt{Manager} legga la base? \textrightarrow{} no: basta \texttt{super.stipendio()}, o \texttt{getStipendioBase()}
+\end{enumerate}
+
+\column{0.4\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.74\textheight,center}
+\begin{mermaid}
+classDiagram
+  direction TB
+  class Dipendente {
+    -nome : String
+    -stipendioBase : double
+    +Dipendente(String, double)
+    +getNome() String
+    +getStipendioBase() double
+    +stipendio() double
+    +aumenta(double)
+    +descrizione() String
+  }
+  class Manager {
+    -bonus : double
+    +Manager(String, double, double)
+    +getBonus() double
+    +stipendio() double
+    +descrizione() String
+  }
+  Dipendente <|-- Manager
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione (1/2) -- \texttt{Dipendente.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Un dipendente: nome e stipendio base. */
+public class Dipendente {
+
+    private final String nome;
+    private double stipendioBase;   // mensile
+
+    /** Precondizione: stipendioBase > 0. */
+    public Dipendente(String nome,
+                      double stipendioBase) {
+        this.nome = nome;
+        this.stipendioBase = stipendioBase;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public double getStipendioBase() {
+        return stipendioBase;
+    }
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    /** Lo stipendio mensile: la base. */
+    public double stipendio() {
+        return stipendioBase;
+    }
+
+    /** MODIFICA la base: +percentuale %. */
+    public void aumenta(double percentuale) {
+        stipendioBase += stipendioBase
+                * percentuale / 100;
+    }
+
+    public String descrizione() {
+        return nome + ", stipendio "
+                + stipendio();
+    }
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item una classe come quelle delle lezioni 5 e 6: non sa che avrà una sottoclasse. Non è astratta: i dipendenti esistono
+    \item \texttt{descrizione} chiama \texttt{stipendio()} invece di leggere \texttt{stipendioBase}: è ciò che farà funzionare la descrizione di un manager
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione (2/2) -- \texttt{Manager.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class Manager extends Dipendente {
+    private final double bonus;   // mensile
+    public Manager(String nome,
+                   double stipendioBase,
+                   double bonus) {
+        super(nome, stipendioBase);
+        this.bonus = bonus;
+    }
+
+    public double getBonus() {
+        return bonus;
+    }
+
+    @Override
+    public double stipendio() {
+        return super.stipendio() + bonus;
+    }
+
+    @Override
+    public String descrizione() {
+        return super.descrizione()
+                + ", bonus " + bonus;
+    }
+}
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\small
+\begin{itemize}\itemsep=3pt
+    \item \texttt{super(nome, stipendioBase)} per primo: la parte \texttt{Dipendente} la inizializza \texttt{Dipendente}
+    \item \texttt{stipendio} ridefinito \textbf{estende} quello di \texttt{Dipendente}: \texttt{super.stipendio()} è la base, letta senza \texttt{protected}
+    \item \texttt{m.descrizione()} esegue la versione di \texttt{Manager}, che chiama \texttt{super.descrizione()}, che chiama \texttt{stipendio()}: su un manager è quello di \texttt{Manager}, 3200 e non 2500. Il binding dinamico vale anche dentro la superclasse
+    \item \texttt{d.aumenta(10)}: il metodo ereditato lavora sulla parte \texttt{Dipendente}; \texttt{bonus} non è toccato
+    \item \texttt{d = m} è un upcasting: \texttt{d.stipendio()} stampa 3450. Il tipo di \texttt{d} decide che cosa compila (\texttt{d.getBonus()} no), l'oggetto che cosa è eseguito
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Wrap-up}
+
+\begin{frame}{Riepilogo: cosa abbiamo trattato}
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Concetto (unità)} & \textbf{Dove compare oggi} \\
+\hline
+Ereditarietà, relazione \emph{è-un} (U13) & \texttt{Studente}, \texttt{Cerchio}, \texttt{Rettangolo}, \texttt{Manager} e le loro superclassi \\
+\hline
+\texttt{extends}, costruttori e \texttt{super(...)} (U13) & tutte le sottoclassi di oggi \\
+\hline
+\texttt{private} e \texttt{protected} (U13) & \texttt{Persona} versioni 1 e 2 \\
+\hline
+Ridefinizione, \texttt{super.metodo()}, \texttt{@Override} (U13) & \texttt{descrizione} in \texttt{Studente}; \texttt{stipendio} in \texttt{Manager} \\
+\hline
+Che cosa non si eredita; \texttt{final}; \texttt{Object} (U13) & slide ``le regole'' \\
+\hline
+Upcasting e downcasting (U14) & \texttt{Polimorfismo}; \texttt{Downcast}; \texttt{(Rettangolo) forme[1]}; \texttt{d = m} \\
+\hline
+Binding dinamico (U14) & \texttt{p.descrizione()}; \texttt{f.area()}; \texttt{d.stipendio()} \\
+\hline
+Array polimorfico (U14) & \texttt{Persona[]}; \texttt{Forma[]}; \texttt{Dipendente[]} \\
+\hline
+Classi e metodi astratti (U14) & \texttt{Forma}, \texttt{area()} e \texttt{perimetro()} \\
+\hline
+\end{tabular}
+\end{center}
+
+\vspace{0.1cm}
+\textbf{Prossima lezione (L8)}: la superclasse \texttt{Object} -- \texttt{toString}, \texttt{equals(Object)} e \texttt{hashCode}, \texttt{instanceof}, \texttt{clone}; le relazioni tra classi: aggregazione e composizione, ereditarietà o contenimento?
+\end{frame}
+
+% ========================================================================
+\begin{frame}{Homework 7 (da svolgere entro la prossima lezione)}
+\footnotesize\setlength{\parskip}{0pt}
+Tre sottoclassi, ciascuna con il suo programma di prova (\texttt{ProvaTriangolo}, \texttt{ProvaContoRisparmio}, \texttt{ProvaBorsisti}); le superclassi, già scritte, vanno copiate in \texttt{homework/} senza modifiche. Niente \texttt{instanceof} né \texttt{toString}.
+\begin{enumerate}\itemsep=1pt
+    \item \textbf{\texttt{Triangolo.java}}: una nuova forma per la gerarchia di oggi (copiate \texttt{Forma}, \texttt{Cerchio} e \texttt{Rettangolo}). Costruttore \texttt{Triangolo(String colore, double a, double b, double c)}, con i tre lati: se non formano un triangolo (uno non positivo, o non minore della somma degli altri due) diventano 3, 4, 5; il controllo è un metodo \texttt{private static}. \texttt{getA()}, \texttt{getB()}, \texttt{getC()}, \texttt{isEquilatero()}, \texttt{perimetro()}, \texttt{area()} con la formula di Erone $\sqrt{p(p-a)(p-b)(p-c)}$ ($p$ semiperimetro), \texttt{descrizione()}. Il programma di prova mette in un \texttt{Forma[]} tre triangoli (uno non valido), un cerchio e un rettangolo; stampa descrizione, area e perimetro di ciascuno e l'area totale (con l'\texttt{areaTotale} di oggi); infine, con un cast, dice se il secondo triangolo è equilatero.
+    \item \textbf{\texttt{ContoRisparmio.java}}: estende il \texttt{ContoBancario} della lezione~6 (copiatelo). Ha un tasso annuo in percentuale e la costante di classe \texttt{SALDO\_MINIMO}, 100. Costruttore \texttt{ContoRisparmio(String intestatario, double primo, double tasso)}; \texttt{getTasso()}; \texttt{preleva} ridefinito: \texttt{false} anche se il prelievo porterebbe il saldo sotto \texttt{SALDO\_MINIMO}, altrimenti come in \texttt{ContoBancario}; \texttt{aggiungiInteressi()} versa gli interessi di un anno (saldo per tasso diviso 100). Il programma di prova mette in un \texttt{ContoBancario[]} un conto normale e uno di risparmio, entrambi con 500; chiede a ciascuno un prelievo di 450 e poi uno di 300, stampando risultati e saldi; aggiunge gli interessi al conto di risparmio; prova un trasferimento per verso.
+    \item \textbf{\texttt{Borsista.java}}: estende lo \texttt{Studente} di oggi (copiate \texttt{Persona} e \texttt{Studente}). Importo annuo della borsa, \texttt{double} positivo; costruttore con quattro parametri; \texttt{getImportoBorsa()}; \texttt{rataMensile()}, l'importo diviso 12; \texttt{descrizione()} ridefinita. Il programma di prova crea un borsista e chiama su di lui un metodo di \texttt{Persona}, uno di \texttt{Studente} e uno di \texttt{Borsista}; mette in un \texttt{Persona[]} una persona, uno studente e il borsista e stampa le descrizioni con \texttt{stampa(Persona x)}; infine assegna il borsista a un riferimento \texttt{Studente} e ne stampa la descrizione.
+\end{enumerate}
+\end{frame}
+
+% ========================================================================
+\begin{frame}
+\begin{center}
+{\Huge Domande?}\\[2em]
+{\normalsize \href{mailto:mattia.fonisto@unina.it}{\texttt{mattia.fonisto@unina.it}}}
+\end{center}
+\end{frame}
+
+\end{document}

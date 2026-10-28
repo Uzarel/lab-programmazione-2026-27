@@ -4,13 +4,11 @@ title: Laboratorio di Programmazione — A.A. 2026/27
 
 # Laboratorio di Programmazione
 
-**Ingegneria Informatica, II anno — I semestre — Sede di San Giovanni a Teduccio**
-Docente: Mattia Fonisto
+**Ingegneria Informatica — II anno, I semestre — Sede di San Giovanni a Teduccio — aula A3-T2**
+
+_Docente: Mattia Fonisto_
 
 Lezioni il **martedì**, 2 ore, fino al 15 dicembre 2026 (8 dicembre festivo).
-
-> ⚠️ **Avviso.** Il corso è iniziato con **due settimane di ritardo** rispetto al calendario previsto.
-> Per completare il programma sono previste **lezioni di recupero in slot aggiuntivi**, in date da concordare con voi e da comunicare a lezione e su Teams.
 
 ## Lezioni
 

@@ -1,0 +1,1290 @@
+% ============================================================================
+%  Laboratorio di Programmazione -- Lezione 8 (28 ottobre 2026)
+%  Compilare con:  pdflatex -shell-escape Lezione08_Object_Clone_Relazioni.tex
+%  Richiede: mermaid.sty (nel progetto) + Mermaid CLI `mmdc` nel PATH
+%  NB: ogni frame che contiene codice (lstlisting) o un diagramma (mermaid)
+%      deve essere dichiarato [fragile].
+% ============================================================================
+\documentclass[10pt,aspectratio=169]{beamer}
+\usetheme{Madrid}
+\usecolortheme{default}
+
+% `provide=*` carica la localizzazione italiana dai file .ini di babel: funziona anche
+% su installazioni TeX prive di texlive-lang-italian; con una TeX Live completa e`
+% equivalente al classico \usepackage[italian]{babel}.
+\usepackage[italian,provide=*]{babel}
+\usepackage[utf8]{inputenc}
+
+% Localizzazione dei nomi dei blocchi Beamer
+\uselanguage{italian}
+\languagepath{italian}
+\deftranslation[to=italian]{Definition}{Definizione}
+\deftranslation[to=italian]{Theorem}{Teorema}
+\deftranslation[to=italian]{Example}{Esempio}
+\deftranslation[to=italian]{Proof}{Dimostrazione}
+\deftranslation[to=italian]{Corollary}{Corollario}
+\deftranslation[to=italian]{Lemma}{Lemma}
+
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{mermaid}
+
+% Mermaid: sfondo trasparente e dimensione massima adatta a una slide 16:9
+\MermaidRendererOptions{-b transparent}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+% Configurazione colori per il codice
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\definecolor{keywordblue}{rgb}{0.0,0.0,0.7}
+
+% Stile per snippet Java
+\lstdefinestyle{javastyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen}\itshape,
+    keywordstyle=\color{keywordblue}\bfseries,
+    numberstyle=\scriptsize\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=none,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    language=Java,
+    literate={à}{{\`a}}1 {è}{{\`e}}1 {é}{{\'e}}1 {ì}{{\`i}}1
+             {ò}{{\`o}}1 {ù}{{\`u}}1 {È}{{\`E}}1
+}
+\lstset{style=javastyle}
+
+% Stile per righe di terminale
+\lstdefinestyle{shell}{
+    language=bash,
+    backgroundcolor=\color{black!85},
+    basicstyle=\ttfamily\footnotesize\color{white},
+    keywordstyle=\color{white},
+    stringstyle=\color{white},
+    commentstyle=\color{green!70},
+    numbers=none,
+    frame=none,
+    showstringspaces=false
+}
+
+\title[Lezione 8 -- \texttt{Object}, \texttt{clone}, relazioni tra classi]{Lezione 8 -- La classe \texttt{Object}, \texttt{clone} e le relazioni tra classi}
+\subtitle{\texttt{toString}, \texttt{equals} e \texttt{hashCode}, \texttt{instanceof}, copia di oggetti, contenimento fra classi}
+\author[Mattia Fonisto]{Mattia Fonisto}
+\institute[Lab.\ di Programmazione]{Laboratorio di Programmazione -- Ingegneria Informatica, II anno\\
+           Università degli Studi di Napoli Federico II -- Sede di San Giovanni a Teduccio}
+\date{28 ottobre 2026}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% ========================================================================
+\begin{frame}{Agenda della lezione (2h)}
+\begin{enumerate}
+    \item \textbf{Ripasso e Homework 7} \hfill (\emph{15 min})
+    \begin{itemize}
+        \item uno di voi alla lavagna con \texttt{Triangolo}, \texttt{ContoRisparmio} o \texttt{Borsista}: lo commentiamo insieme
+    \end{itemize}
+    \item \textbf{La superclasse \texttt{Object}} \hfill (\emph{25 min})
+    \begin{itemize}
+        \item \texttt{toString}; \texttt{equals(Object)} e \texttt{hashCode}; \texttt{getClass} e \texttt{instanceof}
+        \item copiare un oggetto: \texttt{clone}, copia superficiale e copia profonda
+    \end{itemize}
+    \item \textbf{Relazioni tra classi} \hfill (\emph{20 min})
+    \begin{itemize}
+        \item contenimento stretto e lasco: composizione e aggregazione; dipendenza
+        \item ereditarietà o contenimento?
+    \end{itemize}
+    \item \textbf{Esercitazione} -- tutti insieme \hfill (\emph{50 min})
+    \begin{itemize}
+        \item \emph{Commentiamo insieme}: \texttt{Complex} -- \texttt{toString}, \texttt{equals} e \texttt{hashCode} fatti bene
+        \item \emph{Insieme, passo passo}: \texttt{Persona} e \texttt{Indirizzo} -- la copia profonda
+    \end{itemize}
+    \item \textbf{Wrap-up e Homework 8} \hfill (\emph{10 min})
+\end{enumerate}
+\end{frame}
+
+% ========================================================================
+\section{La superclasse Object}
+
+\begin{frame}[fragile]{La superclasse \texttt{Object} -- \texttt{ProvaObject.java}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{block}{La classe \texttt{Object}}
+\small Una classe senza \texttt{extends} estende \texttt{java.lang.Object}: ogni classe ne discende e ne \textbf{eredita i metodi}. Un riferimento di tipo \texttt{Object} può portare a un oggetto di qualunque classe.
+\end{block}
+\footnotesize
+I metodi che useremo, nella versione di \texttt{Object}:
+\begin{center}
+\renewcommand{\arraystretch}{1.15}
+\scriptsize
+\begin{tabular}{@{}lp{4.2cm}@{}}
+\toprule
+\textbf{Metodo} & \textbf{Che cosa fa in \texttt{Object}} \\
+\midrule
+\texttt{String toString()} & nome della classe, \texttt{@}, codice hash \\
+\texttt{boolean equals(Object obj)} & confronta i riferimenti, come \texttt{==} \\
+\texttt{int hashCode()} & un intero associato all'oggetto \\
+\texttt{Class getClass()} & la classe dell'oggetto (\texttt{final}: non ridefinibile) \\
+\texttt{Object clone()} & copia campo per campo (\texttt{protected}: non visibile ai client) \\
+\bottomrule
+\end{tabular}
+\end{center}
+Gli altri (\texttt{wait}, \texttt{notify}, \texttt{finalize}) non li useremo.
+
+\column{0.48\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Persona p = new Persona("Anna", "Russo");
+Persona q = new Persona("Anna", "Russo");
+
+System.out.println(p);            // Object
+System.out.println(p.descrizione());
+System.out.println(p.hashCode()); // Object
+System.out.println(p.getClass()); // Object
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Persona@2a139a55
+Anna Russo
+705927765
+class Persona
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item \texttt{Persona} (versione 3) è quella della lezione~7: non dichiara \texttt{toString}, \texttt{hashCode} né \texttt{getClass}, ma le chiamate compilano: li eredita da \texttt{Object}
+    \item \texttt{Object} non sa nulla di nome e cognome: il suo \texttt{toString} stampa classe e codice hash in esadecimale (\texttt{2a139a55} = 705927765; il numero cambia da una macchina all'altra). Per avere versioni sensate, la classe li \textbf{ridefinisce}: è il lavoro di oggi
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{\texttt{toString}: Java lo chiama da solo -- \texttt{ProvaToString.java}}
+\begin{columns}[T]
+\column{0.56\textwidth}
+{\footnotesize In \texttt{Persona} (versione 4) e in \texttt{Studente}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    @Override
+    public String toString() {
+        return nome + " " + cognome;
+    }
+\end{lstlisting}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    @Override
+    public String toString() {
+        return super.toString()
+                + ", matricola " + matricola;
+    }
+\end{lstlisting}
+{\footnotesize Nel \texttt{main}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+System.out.println(p);              // p.toString()
+System.out.println(s);
+System.out.println("Ciao, " + p);   // p.toString()
+
+int[] v = { 1, 2, 3 };
+System.out.println(v);              // Object!
+System.out.println(Arrays.toString(v));
+\end{lstlisting}
+
+\column{0.44\textwidth}
+\begin{block}{\texttt{toString}}
+\small La rappresentazione testuale dell'oggetto. Java lo chiama \textbf{da solo} ogni volta che al posto di un oggetto serve una \texttt{String}: in \texttt{println(x)}, in \texttt{"..." + x}, in \texttt{String.valueOf(x)}.
+\end{block}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Anna Russo
+Luca Bianchi, matricola N86001234
+Ciao, Anna Russo
+[I@1d44bcfa
+[1, 2, 3]
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item finora l'abbiamo chiamato \texttt{descrizione()}: con il nome \texttt{toString} basta \texttt{println(p)}. Da oggi la descrizione si chiama così, con \texttt{@Override}
+    \item vale per ogni oggetto, anche per gli \textbf{array}, che però non lo ridefiniscono: \texttt{println(v)} stampa \texttt{[I@1d44bcfa} (\texttt{[I}: array di \texttt{int}); per questo serve \texttt{Arrays.toString} (lezione~4)
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{\texttt{equals}: perché ridefinire \texttt{equals(Object)} -- \texttt{ProvaObject.java}}
+\begin{columns}[T]
+\column{0.54\textwidth}
+{\footnotesize In \texttt{Persona} (versione 3), nello stile della lezione~6:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    public boolean equals(Persona altra) {
+        return nome.equals(altra.nome)
+                && cognome.equals(altra.cognome);
+    }
+\end{lstlisting}
+{\footnotesize Nel \texttt{main}, con \texttt{p} e \texttt{q} entrambi ``Anna Russo'':}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+System.out.println(p == q);
+System.out.println(p.equals(q));  // overload
+Object o = q;
+System.out.println(p.equals(o));  // Object!
+Persona[] a = { p };
+Persona[] b = { q };
+System.out.println(Arrays.equals(a, b));
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+false
+true
+false
+false
+\end{lstlisting}
+\footnotesize
+\texttt{p.equals(o)} e \texttt{Arrays.equals} dicono \texttt{false}, eppure \texttt{o} porta a \texttt{q}, e gli array contengono persone uguali. È l'\texttt{equals} di \texttt{Object}, quello che nella lezione~6 faceva compilare \texttt{c.equals(d)}.
+
+\column{0.46\textwidth}
+\begin{block}{\texttt{equals(Object)}}
+\small La versione di \texttt{Object} confronta i riferimenti, come \texttt{==}. Una classe che vuole confrontare il \emph{contenuto} la \textbf{ridefinisce}, con la stessa firma: \texttt{public boolean equals(Object obj)}.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item \texttt{equals(Persona)} è un \textbf{overload}: \texttt{Persona} ha due \texttt{equals}, il nostro e quello di \texttt{Object}. Fra i due sceglie il \textbf{compilatore}, dal tipo \emph{dichiarato} dell'argomento (lezione~7): \texttt{Persona} per \texttt{q}, \texttt{Object} per \texttt{o}
+    \item \texttt{Arrays.equals} lavora su \texttt{Object[]}: dentro, \texttt{a[0].equals(b[0])} ha l'argomento di tipo \texttt{Object}, quindi è l'\texttt{equals} di \texttt{Object}: \texttt{p} e \texttt{q} sono oggetti distinti, \texttt{false}. Così le collezioni (lezione~12): la libreria chiama \textbf{sempre} \texttt{equals(Object)}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{\texttt{equals(Object)}: come si scrive -- \texttt{Persona.java} (versione 4)}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        Persona altra = (Persona) obj;
+        return nome.equals(altra.nome)
+                && cognome.equals(altra.cognome);
+    }
+\end{lstlisting}
+\footnotesize
+Lo schema è sempre lo stesso, per ogni classe: cambiano solo il cast e l'ultimo confronto. \texttt{altra.nome} è \texttt{private}, ma siamo dentro \texttt{Persona}: visibile per ogni oggetto della classe (lezione~5).
+
+\column{0.46\textwidth}
+\footnotesize
+Il parametro è \texttt{Object}: \texttt{p.equals(x)} compila con \texttt{x} di \textbf{qualunque} tipo, anche \texttt{"Anna"} o \texttt{null}. Per questo il metodo controlla prima che cosa ha ricevuto, e solo dopo ci guarda dentro.
+
+\vspace{0.1cm}
+\textbf{I quattro passi}
+\begin{enumerate}\itemsep=3pt
+    \item \textbf{stesso oggetto}: \texttt{this == obj}, uguale di sicuro: \texttt{true} senza confrontare nulla
+    \item \textbf{\texttt{null}}: \texttt{false}, e si esce prima di chiamare qualcosa su \texttt{obj}, che terminerebbe il programma con un errore a tempo di esecuzione
+    \item \textbf{classe diversa}: \texttt{false}. \texttt{getClass()} è \texttt{this.getClass()}: la classe dell'oggetto, non del riferimento (fra due slide)
+    \item \textbf{cast e confronto}: ora \texttt{obj} porta di sicuro a una \texttt{Persona} e il downcasting (lezione~7) non può fallire; serve per leggere \texttt{altra.nome}, che \texttt{Object} non ha. Poi campo per campo: \texttt{equals} per le \texttt{String} e gli altri riferimenti, \texttt{==} per i primitivi
+\end{enumerate}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{\texttt{equals} e \texttt{hashCode}: la regola -- \texttt{Studente.java} e \texttt{ProvaEquals.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+{\footnotesize In \texttt{Persona}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    @Override
+    public int hashCode() {
+        return Objects.hash(nome, cognome);
+    }
+\end{lstlisting}
+{\footnotesize In \texttt{Studente}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    @Override
+    public boolean equals(Object obj) {
+        if (!super.equals(obj)) {
+            return false;
+        }
+        Studente s = (Studente) obj;
+        return matricola.equals(s.matricola);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(),
+                matricola);
+    }
+\end{lstlisting}
+\footnotesize
+\texttt{super.equals}: passi 1--3, nome e cognome; poi il cast è sicuro.
+
+\column{0.5\textwidth}
+\begin{block}{Funzione di hash e regola di \texttt{hashCode}}
+\small \texttt{hashCode} è una \emph{funzione di hash}: da un oggetto calcola un \texttt{int} che lo riassume, l'\emph{hash}. Serve alle strutture dati che cercano un oggetto in base al suo hash invece di confrontarlo con tutti gli altri (lezione~12). Perché funzionino: se \texttt{a.equals(b)} è \texttt{true}, allora \texttt{a.hashCode() == b.hashCode()}. Chi ridefinisce \texttt{equals} ridefinisce \textbf{anche} \texttt{hashCode}, sugli stessi campi.
+\end{block}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+System.out.println(p.equals(s)); // Studente
+System.out.println(p.hashCode()
+        == q.hashCode());
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+false
+true
+\end{lstlisting}
+\footnotesize
+Ora anche \texttt{p.equals(o)} e \texttt{Arrays.equals(a, b)} danno \texttt{true}. \texttt{Objects.hash} (\texttt{java.util}) combina gli hash degli argomenti: valori uguali, hash uguale.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{\texttt{getClass} e \texttt{instanceof} -- \texttt{ProvaInstanceof.java}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** LEGGE x: se porta a uno studente,
+ *  ne stampa la matricola. */
+public static void stampaMatricola(Persona x) {
+    if (x instanceof Studente) {
+        Studente s = (Studente) x;  // sicuro
+        System.out.println(s.getMatricola());
+    } else {
+        System.out.println("nessuna");
+    }
+}
+\end{lstlisting}
+{\footnotesize Nel \texttt{main}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Persona p = new Persona("Anna", "Russo");
+Persona q = new Studente("Luca", "Bianchi",
+        "N86001234");
+System.out.println(p.getClass());
+System.out.println(q.getClass());
+System.out.println(q instanceof Studente);
+System.out.println(q instanceof Persona);
+stampaMatricola(p);
+stampaMatricola(q);
+\end{lstlisting}
+
+\column{0.48\textwidth}
+\begin{block}{\texttt{instanceof}}
+\small \texttt{x instanceof C}: \texttt{true} se l'oggetto a cui \texttt{x} porta è di classe \texttt{C} \textbf{o di una sua sottoclasse}; con \texttt{x} a \texttt{null}, \texttt{false}.
+\end{block}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+class Persona
+class Studente
+true
+true
+nessuna
+N86001234
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item \texttt{getClass()} dà la classe \textbf{esatta} dell'oggetto (\texttt{Studente} per \texttt{q}); \texttt{instanceof} è vero anche per le superclassi. In \texttt{equals} serve \texttt{getClass}: con \texttt{instanceof}, \texttt{p.equals(s)} sarebbe vero e \texttt{s.equals(p)} no: uguaglianza non simmetrica
+    \item è l'operatore promesso nella lezione~7: controllo \emph{prima} del cast, che così non fallisce. Serve per i metodi della sola sottoclasse, non per quelli ridefiniti
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Copiare un oggetto: \texttt{clone} -- \texttt{ProvaClone.java}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class Persona implements Cloneable {
+
+    @Override
+    public Persona clone()
+            throws CloneNotSupportedException {
+        return (Persona) super.clone();
+    }
+\end{lstlisting}
+{\footnotesize Nel \texttt{main} (dichiarato \texttt{throws}):}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Persona p = new Persona("Anna", "Russo");
+Persona q = p.clone();
+System.out.println(p == q);
+System.out.println(p.equals(q));
+int[] v = { 1, 2, 3 };
+int[] w = v.clone();   // array: clonabile
+w[0] = 9;
+System.out.println(Arrays.toString(v));
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+false
+true
+[1, 2, 3]
+\end{lstlisting}
+
+\column{0.48\textwidth}
+\begin{block}{\texttt{clone}}
+\small \texttt{Object.clone()} crea un \textbf{nuovo oggetto della stessa classe} e vi copia, una per una, le variabili di istanza: una \emph{copia superficiale}.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item due righe che oggi \textbf{copiamo e basta}: \texttt{implements Cloneable}, un'\emph{interfaccia} (lezione~9) che autorizza la copia, e \texttt{throws CloneNotSupportedException}, un'\emph{eccezione} (lezione~10), su \texttt{clone} e, fino a quella lezione, su chi lo chiama
+    \item \texttt{super.clone()} fa il lavoro e restituisce un \texttt{Object}: da qui il cast. Il risultato \texttt{Persona} è lecito: nella ridefinizione si ammette un tipo \textbf{più specifico}
+    \item gli \textbf{array} sono già clonabili, senza \texttt{throws}: \texttt{v.clone()} come \texttt{Arrays.copyOf(v, v.length)}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Copia superficiale e copia profonda}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\footnotesize
+\centering \textbf{superficiale}: \texttt{q} copia di \texttt{p}, ma l'\texttt{Indirizzo} è condiviso
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.36\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 30
+    wrappingWidth: 600
+---
+flowchart LR
+  p["<b>stack</b><br/>p <span style='color:#9ca3af'><i>riferimento</i></span>"] --> P["<b>heap</b> · Persona<br/>nome: String <span style='color:#9ca3af'><i>riferimento</i></span><br/>cognome: String <span style='color:#9ca3af'><i>riferimento</i></span><br/>indirizzo: Indirizzo <span style='color:#9ca3af'><i>riferimento</i></span>"]
+  q["<b>stack</b><br/>q <span style='color:#9ca3af'><i>riferimento</i></span>"] --> Q["<b>heap</b> · Persona<br/>nome: String <span style='color:#9ca3af'><i>riferimento</i></span><br/>cognome: String <span style='color:#9ca3af'><i>riferimento</i></span><br/>indirizzo: Indirizzo <span style='color:#9ca3af'><i>riferimento</i></span>"]
+  P --> I["<b>heap</b> · Indirizzo<br/>via: via Roma 1<br/>citta: Napoli"]
+  Q --> I
+  style p fill:#fef3c7,stroke:#b45309
+  style q fill:#fef3c7,stroke:#b45309
+  style P fill:#dbeafe,stroke:#1d4ed8
+  style Q fill:#dbeafe,stroke:#1d4ed8
+  style I fill:#fee2e2,stroke:#b91c1c
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+\column{0.5\textwidth}
+\footnotesize
+\centering \textbf{profonda}: anche l'\texttt{Indirizzo} è copiato
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.36\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 30
+    wrappingWidth: 600
+---
+flowchart LR
+  p["<b>stack</b><br/>p <span style='color:#9ca3af'><i>riferimento</i></span>"] --> P["<b>heap</b> · Persona<br/>nome: String <span style='color:#9ca3af'><i>riferimento</i></span><br/>cognome: String <span style='color:#9ca3af'><i>riferimento</i></span><br/>indirizzo: Indirizzo <span style='color:#9ca3af'><i>riferimento</i></span>"]
+  q["<b>stack</b><br/>q <span style='color:#9ca3af'><i>riferimento</i></span>"] --> Q["<b>heap</b> · Persona<br/>nome: String <span style='color:#9ca3af'><i>riferimento</i></span><br/>cognome: String <span style='color:#9ca3af'><i>riferimento</i></span><br/>indirizzo: Indirizzo <span style='color:#9ca3af'><i>riferimento</i></span>"]
+  P --> I["<b>heap</b> · Indirizzo<br/>via: via Roma 1<br/>citta: Napoli"]
+  Q --> J["<b>heap</b> · Indirizzo<br/>via: via Roma 1<br/>citta: Napoli"]
+  style p fill:#fef3c7,stroke:#b45309
+  style q fill:#fef3c7,stroke:#b45309
+  style P fill:#dbeafe,stroke:#1d4ed8
+  style Q fill:#dbeafe,stroke:#1d4ed8
+  style I fill:#dcfce7,stroke:#15803d
+  style J fill:#dcfce7,stroke:#15803d
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\end{columns}
+\vspace{0.1cm}
+\begin{columns}[c]
+\column{0.5\textwidth}
+\begin{block}{Copia superficiale, copia profonda}
+\small La copia \emph{superficiale} copia le variabili di istanza: dei riferimenti copia il riferimento, e i due oggetti \textbf{condividono} gli oggetti interni. La copia \emph{profonda} copia anche gli oggetti interni (in pratica quelli modificabili: gli immutabili, come le \texttt{String}, si possono condividere).
+\end{block}
+\column{0.5\textwidth}
+\footnotesize
+Nell'esercitazione \texttt{Persona} avrà, oltre a nome e cognome (\texttt{String}), un \texttt{indirizzo}: non una \texttt{String}, ma un oggetto \texttt{Indirizzo} con via e città, e la città può cambiare. Con la copia superficiale \texttt{q.trasferisci("Milano")} cambierebbe la città anche di \texttt{p}: è il privacy leak (lezione~6), con lo stesso rimedio, copiare l'oggetto interno. In \texttt{clone}: prima \texttt{super.clone()}, poi \texttt{c.indirizzo = indirizzo.clone()}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Costruttore di copia o \texttt{clone}? -- \texttt{ProvaClone.java}}
+\begin{columns}[T]
+\column{0.6\textwidth}
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.8cm}>{\raggedright\arraybackslash}p{2.9cm}>{\raggedright\arraybackslash}p{3.5cm}@{}}
+\toprule
+ & \textbf{Costruttore di copia (L5)} & \textbf{\texttt{clone} (oggi)} \\
+\midrule
+si scrive & \texttt{Persona(Persona p)} & \texttt{implements Cloneable}; \texttt{clone()} con \texttt{super.clone()} \\
+si usa & \texttt{new Persona(p)} & \texttt{p.clone()} \\
+classe della copia & \texttt{Persona}: la decide il chiamante & quella dell'\textbf{oggetto}: da uno \texttt{Studente}, uno \texttt{Studente} \\
+controlli sui dati & sì, nel costruttore & no: nessun costruttore chiamato \\
+costo & nessuno & \texttt{Cloneable}, \texttt{throws}, cast \\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{itemize}\itemsep=2pt
+    \item \texttt{q = p} copia solo il riferimento (lezione~6): per copiare lo \emph{stato} serve uno dei due
+    \item di norma il \textbf{costruttore di copia}: più semplice e sotto controllo; \texttt{clone} quando la classe lo offre già (array, collezioni della lezione~12) o in una gerarchia, dove dà la copia della classe giusta
+\end{itemize}
+
+\column{0.4\textwidth}
+{\footnotesize Nel \texttt{main} di \texttt{ProvaClone}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Persona x = new Studente("Luca",
+        "Bianchi", "N86001234");
+Persona y = x.clone();   // ereditato
+System.out.println(y.getClass());
+System.out.println(y);
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+class Studente
+Luca Bianchi, matricola N86001234
+\end{lstlisting}
+\footnotesize
+\texttt{Studente} non ridefinisce \texttt{clone}: eredita quello di \texttt{Persona}, che chiama \texttt{super.clone()}. \texttt{Object.clone} crea un oggetto della classe \textbf{dell'oggetto}, non del riferimento: \texttt{y} porta a uno \texttt{Studente} completo di matricola. Se \texttt{Persona} avesse il costruttore di copia della lezione~5, \texttt{new Persona(x)} darebbe una \texttt{Persona}, senza matricola.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Relazioni tra classi}
+
+\begin{frame}[fragile]{Relazioni tra classi: contenimento (\emph{ha-un})}
+\begin{columns}[T]
+\column{0.56\textwidth}
+\begin{block}{Contenimento}
+\small Un oggetto, il \emph{contenitore}, ne contiene un altro, che ne è una parte: un'auto \textbf{ha un} motore, una biblioteca ha dei libri. In Java il contenitore ha una variabile di istanza di tipo riferimento che porta all'oggetto contenuto.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \textbf{contenimento stretto} (\emph{composizione}): l'oggetto contenuto non ha vita propria: nasce e muore con il contenitore, che lo \textbf{crea} nel costruttore e non lo cede mai all'esterno. Un'auto e il suo motore
+    \item \textbf{contenimento lasco} (\emph{aggregazione}): l'oggetto contenuto esiste per conto suo: lo crea il client e lo \textbf{passa} al contenitore (al costruttore o a un metodo), che ne memorizza il riferimento. Può stare in più contenitori e sopravvivere loro. Una biblioteca e i suoi libri
+\end{itemize}
+\vspace{0.05cm}
+È la composizione della lezione~5, vista più da vicino: lì il rombo pieno; per l'aggregazione il rombo è \textbf{vuoto}. Il rombo sta dal lato del contenitore; sull'altro lato, la molteplicità.
+
+\column{0.44\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.42\textheight,center}
+\begin{mermaid}
+---
+config:
+  class:
+    hideEmptyMembersBox: true
+---
+classDiagram
+  direction LR
+  class Auto
+  class Motore
+  class Biblioteca
+  class Libro
+  Auto *-- "1" Motore : motore
+  Biblioteca o-- "0..*" Libro : libri
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\begin{center}
+\scriptsize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & \textbf{composizione} & \textbf{aggregazione} \\
+\midrule
+chi crea la parte & il contenitore & il client \\
+la parte è condivisa? & no & può esserlo \\
+se il contenitore muore & muore anche lei & resta \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Composizione: \texttt{Auto} e \texttt{Motore} -- \texttt{Auto.java}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Un'auto HA UN motore: composizione. */
+public class Auto {
+
+    private final String targa;
+    private final Motore motore;   // creato qui
+
+    public Auto(String targa, int cilindrata) {
+        this.targa = targa;
+        motore = new Motore(cilindrata);
+    }
+
+    public void accendi() {
+        motore.avvia();
+    }
+
+    @Override
+    public String toString() {
+        return "auto " + targa
+                + ", motore " + motore;
+    }
+\end{lstlisting}
+\footnotesize
+Non mostrati: \texttt{getTarga}; \texttt{isAccesa} e \texttt{spegni}, che delegano anch'essi al motore.
+
+\column{0.48\textwidth}
+{\footnotesize In \texttt{ProvaRelazioni}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Auto a = new Auto("AB123CD", 1200);
+a.accendi();
+System.out.println(a);
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+auto AB123CD, motore 1200 cc, acceso
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item il client passa la \textbf{cilindrata}, non un motore: è \texttt{Auto} a fare \texttt{new Motore(...)}. \texttt{Motore} (acceso o spento, \texttt{avvia()}, \texttt{spegni()}) non sa di stare in un'auto
+    \item nessun \texttt{getMotore}: il motore non esce dall'auto, nessun alias. I client parlano con l'auto (\texttt{accendi}), che \textbf{delega} al motore (\texttt{motore.avvia()})
+    \item \texttt{", motore " + motore} chiama il \texttt{toString} di \texttt{Motore}: un \texttt{toString} ne usa un altro
+    \item quando l'auto diventa orfana, lo diventa anche il motore: il garbage collector (lezione~5) li elimina insieme. Lo abbiamo già fatto ogni volta che un costruttore crea con \texttt{new} una variabile di istanza
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Aggregazione: \texttt{Biblioteca} e \texttt{Libro} -- \texttt{Biblioteca.java}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Biblioteca HA DEI libri: aggregazione. */
+public class Biblioteca {
+
+    private final String nome;
+    private final Libro[] libri;   // ricevuti
+    private int quanti;
+
+    public Biblioteca(String nome, int max) {
+        this.nome = nome;
+        libri = new Libro[max];
+        quanti = 0;
+    }
+
+    /** MODIFICA: false se e` piena. */
+    public boolean aggiungi(Libro l) {
+        if (quanti == libri.length) {
+            return false;
+        }
+        libri[quanti] = l;
+        quanti++;
+        return true;
+    }
+\end{lstlisting}
+\footnotesize
+Non mostrati: \texttt{getQuanti} e \texttt{toString}, che elenca i libri.
+
+\column{0.48\textwidth}
+{\footnotesize In \texttt{ProvaRelazioni}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Libro l1 = new Libro("Programmare in Java",
+        "Deitel");
+Libro l2 = new Libro("Effective Java",
+        "Bloch");
+Biblioteca b1 = new Biblioteca("Civica", 2);
+Biblioteca b2 = new Biblioteca("DIETI", 10);
+b1.aggiungi(l1);
+b1.aggiungi(l2);
+b2.aggiungi(l1);
+System.out.println(b1);
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Civica, libri: 2
+  Programmare in Java (Deitel)
+  Effective Java (Bloch)
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item i libri nascono nel client, \textbf{prima} della biblioteca, e le vengono passati: \texttt{aggiungi} memorizza il riferimento. L'array, creato qui, è composizione; i libri, aggregazione (\texttt{0..*})
+    \item \texttt{l1} sta in due biblioteche: un \textbf{alias voluto}, non un privacy leak: \texttt{Libro} è immutabile. Se \texttt{b1} diventa orfana, \texttt{l1} resta: \texttt{b2} e il client lo riferiscono
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Dipendenza; ereditarietà o contenimento?}
+\begin{columns}[T]
+\column{0.46\textwidth}
+\begin{block}{Dipendenza}
+\small \texttt{A} dipende da \texttt{B} se un metodo di \texttt{A} \textbf{crea} un oggetto \texttt{B}, \textbf{chiama} un metodo su un \texttt{B} o \textbf{riceve} un \texttt{B} come parametro. Se \texttt{B} cambia interfaccia, \texttt{A} va ricontrollata.
+\end{block}
+\footnotesize
+Il contenimento è una dipendenza \emph{stabile} (una variabile di istanza); le altre durano quanto il metodo. Oggi:
+\begin{itemize}\itemsep=2pt
+    \item \texttt{ProvaRelazioni} \textbf{crea} auto, libri e biblioteche
+    \item \texttt{Biblioteca.aggiungi(Libro l)} \textbf{riceve} un libro
+    \item \texttt{Auto.accendi()} \textbf{chiama} \texttt{motore.avvia()}
+\end{itemize}
+\vspace{0.05cm}
+In UML la dipendenza generica è una freccia tratteggiata da \texttt{A} a \texttt{B}; il contenimento ha i rombi visti.
+
+\column{0.54\textwidth}
+\footnotesize
+\textbf{Ereditarietà o contenimento?} Entrambe riusano una classe esistente.
+\begin{itemize}\itemsep=3pt
+    \item la domanda: \textbf{è-un} o \textbf{ha-un}? Uno \texttt{Studente} \emph{è} una \texttt{Persona}; un'\texttt{Auto} \emph{ha} un \texttt{Motore}, non è un motore
+    \item la prova: i metodi \texttt{public} della classe esistente devono far parte dell'interfaccia della nuova? \texttt{getNome()} su uno studente ha senso: ereditarietà. \texttt{avvia()} su un'auto no: l'auto offre \texttt{accendi()}, e il motore resta dentro. Con \texttt{Auto extends Motore}, ogni auto avrebbe \texttt{avvia()} e \texttt{spegni()} nell'interfaccia
+    \item l'\textbf{accoppiamento} (lezione~4): il contenimento, e l'aggregazione in particolare, accoppia meno: il contenitore usa solo l'interfaccia della classe contenuta, che può cambiare dentro senza conseguenze. La sottoclasse dipende dalla superclasse molto di più: costruttori da chiamare, metodi da ridefinire
+    \item nel dubbio, \textbf{contenimento}: più facile da modificare. L'ereditarietà quando l'è-un è vero e serve il polimorfismo
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Esercitazione}
+
+\begin{frame}[fragile]{Commentiamo insieme (20 min) -- il problema}
+\begin{columns}[T]
+\column{0.58\textwidth}
+\footnotesize
+\textbf{Il problema.} Un programma di calcolo lavora con numeri complessi $z = a + b\,i$: li somma, li moltiplica, ne calcola il modulo e li stampa. Soprattutto deve \textbf{confrontarli}: due numeri con la stessa parte reale e la stessa parte immaginaria sono uguali, anche se sono oggetti distinti, e \texttt{Arrays.equals} su due \texttt{Complex[]} deve funzionare.
+
+\vspace{0.1cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=2pt
+    \item un numero complesso ha parte reale e parte immaginaria, \texttt{double}; dopo la creazione non cambia più (immutabile)
+    \item somma e prodotto creano un numero nuovo: $(a+bi)+(c+di) = (a+c)+(b+d)i$ e $(a+bi)(c+di) = (ac-bd)+(ad+bc)i$; il modulo è $\sqrt{a^2+b^2}$
+    \item si stampa come \texttt{3.0 + 4.0i}; se la parte immaginaria è negativa, \texttt{1.0 - 2.0i}
+    \item \texttt{equals(Object)} e \texttt{hashCode} coerenti: numeri uguali, hash uguali
+\end{itemize}
+
+\vspace{0.1cm}
+La classe \texttt{Complex} e il programma \texttt{ProvaComplex} sono già scritti. Li leggiamo riga per riga, cercando i tre metodi di \texttt{Object} ridefiniti e i quattro passi di \texttt{equals}.
+
+\column{0.42\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.7\textheight,center}
+\begin{mermaid}
+classDiagram
+  class Complex {
+    -re : double
+    -im : double
+    +Complex(double, double)
+    +getRe() double
+    +getIm() double
+    +somma(Complex) Complex
+    +prodotto(Complex) Complex
+    +modulo() double
+    +toString() String
+    +equals(Object) boolean
+    +hashCode() int
+  }
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{Complex.java} (1/2)}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+import java.util.Objects;
+
+/** Un numero complesso, immutabile. */
+public class Complex {
+
+    private final double re;
+    private final double im;
+
+    public Complex(double re, double im) {
+        this.re = re;
+        this.im = im;
+    }
+
+    public double getRe() {
+        return re;
+    }
+
+    public double getIm() {
+        return im;
+    }
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    /** CREA la somma di this e z. */
+    public Complex somma(Complex z) {
+        return new Complex(re + z.re,
+                           im + z.im);
+    }
+
+    /** CREA il prodotto di this e z. */
+    public Complex prodotto(Complex z) {
+        double a = re * z.re - im * z.im;
+        double b = re * z.im + im * z.re;
+        return new Complex(a, b);
+    }
+
+    public double modulo() {
+        return Math.sqrt(re * re + im * im);
+    }
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item una classe immutabile come nella lezione~6: tutto \texttt{private final}, nessun \texttt{set}, le operazioni \textbf{creano} un nuovo \texttt{Complex}. \texttt{z.re} è lecito: siamo dentro \texttt{Complex}
+    \item \texttt{import java.util.Objects} serve a \texttt{hashCode}, nella prossima slide
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{Complex.java} (2/2)}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+@Override
+public String toString() {
+    if (im < 0) {
+        return re + " - " + (-im) + "i";
+    }
+    return re + " + " + im + "i";
+}
+
+@Override
+public int hashCode() {
+    return Objects.hash(re, im);
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item \texttt{re + " - "}: un \texttt{double} concatenato a una \texttt{String} diventa testo (lezione~2): \texttt{3.0}, non \texttt{3}
+    \item \texttt{Objects.hash} accetta argomenti di qualunque tipo (i \texttt{double} vengono inscatolati, lezione~4), sugli stessi due campi di \texttt{equals}. VS Code sa generare entrambi: \emph{Source Action\ldots} \textrightarrow{} \emph{Generate hashCode() and equals()}
+\end{itemize}
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+@Override
+public boolean equals(Object obj) {
+    if (this == obj) {
+        return true;
+    }
+    if (obj == null) {
+        return false;
+    }
+    if (getClass() != obj.getClass()) {
+        return false;
+    }
+    Complex c = (Complex) obj;
+    return Double.compare(re, c.re) == 0
+            && Double.compare(im, c.im) == 0;
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item i quattro passi: stesso oggetto; \texttt{null}; classe diversa; cast e confronto dei campi
+    \item per i \texttt{double} il confronto standard è \texttt{Double.compare(a, b) == 0}: fra \texttt{0.0} e \texttt{-0.0}, \texttt{==} dice \texttt{true} ma gli hash sono diversi e la regola salterebbe; \texttt{Double.compare} li distingue, come \texttt{Objects.hash}. Per gli \texttt{int} basta \texttt{==}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{ProvaComplex.java}}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Complex z = new Complex(3, 4);
+Complex w = new Complex(3, 4);
+Complex u = new Complex(1, -2);
+
+System.out.println(z);
+System.out.println(z.somma(u));
+System.out.println(z.prodotto(u));
+
+System.out.println(z == w);
+System.out.println(z.equals(w));
+System.out.println(z.hashCode() == w.hashCode());
+System.out.println(z.equals(u));
+System.out.println(z.equals("3.0 + 4.0i"));
+System.out.println(z.equals(null));
+
+Complex[] a = { z, u };
+Complex[] b = { w, new Complex(1, -2) };
+System.out.println(Arrays.equals(a, b));
+\end{lstlisting}
+
+\column{0.46\textwidth}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+3.0 + 4.0i
+4.0 + 2.0i
+11.0 - 2.0i
+false
+true
+true
+false
+false
+false
+true
+\end{lstlisting}
+\footnotesize
+\textbf{Rispondiamo insieme:}
+\begin{enumerate}\itemsep=0pt
+    \item perché \texttt{z == w} è \texttt{false} e \texttt{z.equals(w)} è \texttt{true}?
+    \item senza \texttt{toString}, che cosa stamperebbe la seconda riga?
+    \item \texttt{z.equals("3.0 + 4.0i")} dà \texttt{false}: quale passo decide? E con \texttt{null}?
+    \item con un \texttt{equals(Complex)} come nella lezione~6 (solo il confronto dei campi) al posto di \texttt{equals(Object)}, quali righe cambierebbero?
+    \item un \texttt{hashCode} sempre \texttt{0} rispetta la regola? Che cosa si perde?
+\end{enumerate}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo (30 min) -- il problema}
+\begin{columns}[T]
+\column{0.62\textwidth}
+\footnotesize
+\textbf{Il problema.} Un'anagrafe tiene le persone con il loro indirizzo: via e città. Una persona può \textbf{trasferirsi}, cambiando città. Serve poter \textbf{copiare} una persona in modo che la copia sia indipendente: se la copia si trasferisce, l'originale resta dov'è.
+
+\vspace{0.05cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=2pt
+    \item una persona ha nome e cognome, che non cambiano, e un indirizzo
+    \item l'indirizzo è \emph{parte} della persona: nasce con lei, dai dati passati al costruttore, e non esce mai dalla classe (composizione). Di fuori si legge solo la città
+    \item una persona si stampa come \texttt{Anna Russo, via Roma 1, Napoli}
+    \item due persone sono uguali se hanno nome, cognome e indirizzo uguali; \texttt{hashCode} coerente
+    \item \texttt{clone()} restituisce una copia \textbf{profonda}: con il proprio indirizzo
+\end{itemize}
+
+\vspace{0.05cm}
+\texttt{Indirizzo} e \texttt{ProvaPersone} sono già scritti: leggiamo prima il programma di prova, poi \texttt{Indirizzo}, e scriviamo \texttt{Persona}.
+
+\column{0.38\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.5\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 34
+    wrappingWidth: 600
+---
+flowchart TB
+  A["<b>ProvaPersone</b><br/>già scritta"] -- "usa" --> B["<b>Persona</b><br/>da scrivere"]
+  B -- "ha un" --> C["<b>Indirizzo</b><br/>già scritta"]
+  style A fill:#fef3c7,stroke:#b45309
+  style B fill:#fee2e2,stroke:#b91c1c,stroke-dasharray: 5 5
+  style C fill:#fef3c7,stroke:#b45309
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+\texttt{Persona} è client di \texttt{Indirizzo} ed è usata da \texttt{ProvaPersone}: i due ruoli insieme, come nella lezione~5.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo -- \texttt{ProvaPersone.java}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static void main(String[] args)
+        throws CloneNotSupportedException {
+    Persona p = new Persona("Anna", "Russo",
+            "via Roma 1", "Napoli");
+    Persona q = p.clone();
+    System.out.println(p);
+    System.out.println(q);
+    System.out.println(p == q);
+    System.out.println(p.equals(q));
+
+    q.trasferisci("Milano");
+    System.out.println(p);
+    System.out.println(q);
+    System.out.println(p.equals(q));
+    System.out.println(p.getCitta());
+}
+\end{lstlisting}
+
+\column{0.48\textwidth}
+{\footnotesize Deve stampare:}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Anna Russo, via Roma 1, Napoli
+Anna Russo, via Roma 1, Napoli
+false
+true
+Anna Russo, via Roma 1, Napoli
+Anna Russo, via Roma 1, Milano
+false
+Napoli
+\end{lstlisting}
+\footnotesize
+Come sempre, il client viene prima della classe: leggendolo ricaviamo l'\textbf{interfaccia} di \texttt{Persona}: il costruttore con quattro \texttt{String}, \texttt{clone}, \texttt{toString} (implicito in \texttt{println}), \texttt{equals}, \texttt{trasferisci}, \texttt{getCitta}.
+
+\vspace{0.05cm}
+Due indizi: dopo \texttt{q.trasferisci("Milano")} la città di \texttt{p} è ancora Napoli, quindi i due indirizzi sono oggetti \textbf{distinti}; e \texttt{p.equals(q)} passa da \texttt{true} a \texttt{false}, quindi \texttt{equals} guarda anche l'indirizzo.
+
+\vspace{0.05cm}
+Il \texttt{main} dichiara \texttt{throws CloneNotSupportedException} perché chiama \texttt{clone}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo -- \texttt{Indirizzo.java} (già scritta)}
+\begin{columns}[T]
+\column{0.49\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class Indirizzo implements Cloneable {
+
+    private final String via;
+    private String citta;
+
+    public Indirizzo(String via,
+                     String citta) {
+        this.via = via;
+        this.citta = citta;
+    }
+
+    @Override
+    public String toString() {
+        return via + ", " + citta;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(via, citta);
+    }
+\end{lstlisting}
+\footnotesize
+Non mostrati: \texttt{setCitta(String)}, i due \texttt{get}, l'\texttt{import} di \texttt{Objects}. \texttt{clone} è superficiale, e basta: contiene solo \texttt{String}.
+
+\column{0.51\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        Indirizzo altro = (Indirizzo) obj;
+        return via.equals(altro.via)
+                && citta.equals(altro.citta);
+    }
+
+    @Override
+    public Indirizzo clone()
+            throws CloneNotSupportedException {
+        return (Indirizzo) super.clone();
+    }
+}
+\end{lstlisting}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo -- dal programma di prova alla classe}
+\begin{columns}[T]
+\column{0.6\textwidth}
+\footnotesize
+\textbf{Prima di scrivere codice, decidiamo insieme:}
+\begin{enumerate}\itemsep=2pt
+    \item quali \textbf{variabili di istanza}? \textrightarrow{} \texttt{nome} e \texttt{cognome}, \texttt{private final}; \texttt{indirizzo}, \texttt{private} ma \textbf{non} \texttt{final}: \texttt{clone} dovrà sostituirlo nella copia
+    \item il \textbf{costruttore}? \textrightarrow{} riceve quattro \texttt{String} e crea lui l'\texttt{Indirizzo}: composizione, nessun riferimento esterno da copiare
+    \item che cosa espone dell'indirizzo? \textrightarrow{} solo \texttt{getCitta()}, che delega a \texttt{indirizzo.getCitta()}. Nessun \texttt{getIndirizzo}: restituirebbe il riferimento interno
+    \item \texttt{trasferisci}? \textrightarrow{} delega: \texttt{indirizzo.setCitta(citta)}
+    \item \texttt{toString}? \textrightarrow{} \texttt{nome + " " + cognome + ", " + indirizzo}: la concatenazione chiama il \texttt{toString} di \texttt{Indirizzo}
+    \item \texttt{equals}? \textrightarrow{} i quattro passi; nell'ultimo anche \texttt{indirizzo.equals(altra.indirizzo)}, che è quello di \texttt{Indirizzo}. \texttt{hashCode} con \texttt{Objects.hash(nome, cognome, indirizzo)}
+    \item \texttt{clone}? \textrightarrow{} \texttt{implements Cloneable}; \texttt{super.clone()} per la copia superficiale, poi \texttt{c.indirizzo = indirizzo.clone()} per renderla profonda
+\end{enumerate}
+
+\column{0.4\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.74\textheight,center}
+\begin{mermaid}
+classDiagram
+  class Persona {
+    -nome : String
+    -cognome : String
+    -indirizzo : Indirizzo
+    +Persona(String, String, String, String)
+    +getNome() String
+    +getCognome() String
+    +getCitta() String
+    +trasferisci(String)
+    +toString() String
+    +equals(Object) boolean
+    +hashCode() int
+    +clone() Persona
+  }
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione (1/2) -- \texttt{Persona.java}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Una persona e il suo indirizzo. */
+public class Persona implements Cloneable {
+
+    private final String nome;
+    private final String cognome;
+    private Indirizzo indirizzo;   // non final
+
+    public Persona(String nome, String cognome,
+                   String via, String citta) {
+        this.nome = nome;
+        this.cognome = cognome;
+        indirizzo = new Indirizzo(via, citta);
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public String getCognome() {
+        return cognome;
+    }
+\end{lstlisting}
+
+\column{0.48\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    public String getCitta() {
+        return indirizzo.getCitta();
+    }
+
+    /** MODIFICA: cambia citta`. */
+    public void trasferisci(String citta) {
+        indirizzo.setCitta(citta);
+    }
+
+    @Override
+    public String toString() {
+        return nome + " " + cognome
+                + ", " + indirizzo;
+    }
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item \texttt{new Indirizzo(via, citta)} nel costruttore: l'indirizzo nasce con la persona e nessun altro ne ha il riferimento (\texttt{import} di \texttt{Objects} non mostrato)
+    \item \texttt{getCitta} e \texttt{trasferisci} \textbf{delegano} all'indirizzo: il client parla con la persona, come con l'auto
+    \item \texttt{", " + indirizzo}: Java chiama \texttt{indirizzo.toString()}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione (2/2) -- \texttt{Persona.java}}
+\begin{columns}[T]
+\column{0.53\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+@Override
+public boolean equals(Object obj) {
+    if (this == obj) {
+        return true;
+    }
+    if (obj == null) {
+        return false;
+    }
+    if (getClass() != obj.getClass()) {
+        return false;
+    }
+    Persona altra = (Persona) obj;
+    return nome.equals(altra.nome)
+            && cognome.equals(altra.cognome)
+            && indirizzo.equals(altra.indirizzo);
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item \texttt{indirizzo.equals(altra.indirizzo)} e \texttt{Objects.hash(..., indirizzo)} usano \texttt{equals} e \texttt{hashCode} di \texttt{Indirizzo}: se non li ridefinisse, due persone con indirizzi uguali ma distinti sarebbero diverse
+\end{itemize}
+
+\column{0.47\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+@Override
+public int hashCode() {
+    return Objects.hash(nome, cognome,
+            indirizzo);
+}
+
+@Override
+public Persona clone()
+        throws CloneNotSupportedException {
+    // 1. copia superficiale
+    Persona c = (Persona) super.clone();
+    // 2. profonda: anche l'indirizzo
+    c.indirizzo = indirizzo.clone();
+    return c;
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item dopo \texttt{super.clone()}, \texttt{c.indirizzo} porta allo \textbf{stesso} \texttt{Indirizzo} di \texttt{this}: il passo 2 lo sostituisce con una copia (\texttt{c.indirizzo} è lecito: siamo dentro \texttt{Persona}). \texttt{nome} e \texttt{cognome} restano condivisi: \texttt{String}, immutabili
+    \item senza il passo 2, \texttt{ProvaPersone} stamperebbe Milano anche per \texttt{p}, e l'ultimo \texttt{equals} darebbe \texttt{true}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Wrap-up}
+
+\begin{frame}{Riepilogo: cosa abbiamo trattato}
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\scriptsize
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Concetto (unità)} & \textbf{Dove compare oggi} \\
+\hline
+\texttt{Object}, radice di ogni classe, e i suoi metodi (U15) & \texttt{ProvaObject}: le versioni ereditate \\
+\hline
+\texttt{toString} (U15) & \texttt{Persona} versione 4, \texttt{Complex} e tutte le classi di oggi \\
+\hline
+\texttt{equals(Object)}: overload o ridefinizione, i quattro passi (U15) & \texttt{Persona}, \texttt{Studente}, \texttt{Complex}, \texttt{Indirizzo} \\
+\hline
+\texttt{hashCode} e la sua regola (U15) & \texttt{Objects.hash} nelle stesse classi \\
+\hline
+\texttt{getClass}, \texttt{instanceof}, downcasting sicuro (U15) & \texttt{ProvaInstanceof}; il passo 3 di \texttt{equals} \\
+\hline
+\texttt{clone}, \texttt{Cloneable}, copia superficiale e profonda (U15, U23) & \texttt{Persona.clone}; \texttt{Persona}--\texttt{Indirizzo} \\
+\hline
+Costruttore di copia o \texttt{clone} (U23) & la tabella; \texttt{x.clone()} su uno \texttt{Studente} \\
+\hline
+Composizione e aggregazione (U16) & \texttt{Auto}--\texttt{Motore}, \texttt{Persona}--\texttt{Indirizzo}; \texttt{Biblioteca}--\texttt{Libro} \\
+\hline
+Dipendenza (U16) & \texttt{ProvaRelazioni}; \texttt{Biblioteca.aggiungi(Libro)}; \texttt{Auto.accendi()} \\
+\hline
+Ereditarietà o contenimento (U16) & \texttt{Studente} è-una \texttt{Persona}; \texttt{Auto} ha-un \texttt{Motore} \\
+\hline
+\end{tabular}
+\end{center}
+
+\vspace{0.1cm}
+\textbf{Prossima lezione (L9)}: le interfacce -- \texttt{interface} e \texttt{implements} (finalmente \texttt{Cloneable}), ereditarietà multipla di tipo, metodi \texttt{default} e \texttt{static}, interfacce o classi astratte; i package -- \texttt{package}, \texttt{import}, compilazione con le directory, il \texttt{protected} della lezione~7 e il riepilogo dei modificatori.
+\end{frame}
+
+% ========================================================================
+\begin{frame}{Homework 8 (da svolgere entro la prossima lezione)}
+\footnotesize\setlength{\parskip}{0pt}
+Tre esercizi, ciascuno con il suo programma di prova (\texttt{ProvaData}, \texttt{ProvaAppuntamento}, \texttt{ProvaAnagrafe}). Ogni classe ridefinisce \texttt{toString}, \texttt{equals(Object)} con i quattro passi e \texttt{hashCode} con \texttt{Objects.hash}, tranne \texttt{Anagrafe}, che ridefinisce solo \texttt{toString}. Niente \texttt{try}/\texttt{catch}: \texttt{throws CloneNotSupportedException} dove serve, come oggi.
+\begin{enumerate}\itemsep=1pt
+    \item \textbf{\texttt{Data.java}}: una data del calendario, immutabile: giorno, mese e anno \texttt{int} (precondizione: data valida). Tre \texttt{get}; \texttt{isPrimaDi(Data altra)}; \texttt{toString()} nella forma \texttt{03/11/2026}, giorno e mese sempre a due cifre (un metodo \texttt{private static} aggiunge lo zero). \texttt{ProvaData} crea due date uguali e una diversa e stampa: \texttt{==} ed \texttt{equals} fra le due uguali, il confronto dei loro \texttt{hashCode}, \texttt{isPrimaDi} nei due versi, una data concatenata a una stringa, e \texttt{Arrays.equals} su due \texttt{Data[]} con date uguali ma oggetti distinti.
+    \item \textbf{\texttt{Appuntamento.java}} (con \texttt{Orario.java}): \texttt{Orario} modificabile, ore e minuti, con \texttt{aggiungiMinuti(int n)} (\texttt{n} $\geq$ 0; passata la mezzanotte si riparte da \texttt{00:00}), \texttt{toString} nella forma \texttt{09:30} e \texttt{clone()} superficiale. \texttt{Appuntamento} ha un titolo e un \texttt{Orario} che crea nel costruttore \texttt{Appuntamento(String titolo, int ore, int minuti)} (composizione); \texttt{getOre()} e \texttt{getMinuti()} delegano all'orario; \texttt{posticipa(int n)}; \texttt{toString} come \texttt{Ricevimento alle 09:30}; \texttt{clone()} con copia \textbf{profonda}. \texttt{ProvaAppuntamento} clona un appuntamento, posticipa solo la copia e stampa entrambi ed \texttt{equals}, prima e dopo.
+    \item \textbf{\texttt{Anagrafe.java}}: copiate \texttt{Persona} e \texttt{Studente} (versione 4) in \texttt{homework/}. \texttt{Anagrafe} tiene un \texttt{Persona[]}, con la capienza data al costruttore, e quante persone contiene (aggregazione: le persone nascono fuori). \texttt{aggiungi(Persona p)}: \texttt{false} se è piena o se c'è già una persona uguale a \texttt{p}; \texttt{contiene(Persona p)}, con \texttt{equals}; \texttt{quantiStudenti()}, con \texttt{instanceof}; \texttt{toString()} con una persona per riga. \texttt{ProvaAnagrafe} aggiunge una persona, uno studente, una persona uguale alla prima (rifiutata) e uno studente con il nome e il cognome della prima (accettato: perché?); stampa un \texttt{contiene}, il numero di persone, gli studenti e l'anagrafe.
+\end{enumerate}
+\end{frame}
+
+% ========================================================================
+\begin{frame}
+\begin{center}
+{\Huge Domande?}\\[2em]
+{\normalsize \href{mailto:mattia.fonisto@unina.it}{\texttt{mattia.fonisto@unina.it}}}
+\end{center}
+\end{frame}
+
+\end{document}

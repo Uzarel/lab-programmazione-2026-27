@@ -23,7 +23,7 @@ Lezioni il **martedì**, 2 ore, fino al 15 dicembre 2026 (8 dicembre festivo).
 | 5 | 13 ott | Concetti OO, classi in Java | U4, U5 | [PDF](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L05/lezione.pdf) | [tex](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L05/lezione.tex) | [cartella](https://github.com/Uzarel/lab-programmazione-2026-27/tree/main/lezioni/L05/esercizi) |
 | 6 | 20 ott | Classi: aspetti avanzati | U10 | [PDF](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L06/lezione.pdf) | [tex](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L06/lezione.tex) | [cartella](https://github.com/Uzarel/lab-programmazione-2026-27/tree/main/lezioni/L06/esercizi) |
 | 7 | 27 ott | Ereditarietà e polimorfismo | U13, U14 | [PDF](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L07/lezione.pdf) | [tex](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L07/lezione.tex) | [cartella](https://github.com/Uzarel/lab-programmazione-2026-27/tree/main/lezioni/L07/esercizi) |
-| 8 | TBD | `Object`, relazioni tra classi, `clone` | U15, U16, U23 | — | — | — |
+| 8 | 28 ott | `Object`, relazioni tra classi, `clone` | U15, U16, U23 | [PDF](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L08/lezione.pdf) | [tex](https://github.com/Uzarel/lab-programmazione-2026-27/blob/main/lezioni/L08/lezione.tex) | [cartella](https://github.com/Uzarel/lab-programmazione-2026-27/tree/main/lezioni/L08/esercizi) |
 | 9 | TBD | Interfacce e package | U17, U18 | — | — | — |
 | 10 | TBD | Eccezioni e ricorsione | U19, U21 | — | — | — |
 | 11 | TBD | Ricerca binaria, tipi generici | U20, U22 | — | — | — |

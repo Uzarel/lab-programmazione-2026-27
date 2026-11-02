@@ -1,0 +1,1106 @@
+% ============================================================================
+%  Laboratorio di Programmazione -- Lezione 9 (3 novembre 2026)
+%  Compilare con:  pdflatex -shell-escape Lezione09_Interfacce_Package.tex
+%  Richiede: mermaid.sty (nel progetto) + Mermaid CLI `mmdc` nel PATH
+%  NB: ogni frame che contiene codice (lstlisting) o un diagramma (mermaid)
+%      deve essere dichiarato [fragile].
+% ============================================================================
+\documentclass[10pt,aspectratio=169]{beamer}
+\usetheme{Madrid}
+\usecolortheme{default}
+
+% `provide=*` carica la localizzazione italiana dai file .ini di babel: funziona anche
+% su installazioni TeX prive di texlive-lang-italian; con una TeX Live completa e`
+% equivalente al classico \usepackage[italian]{babel}.
+\usepackage[italian,provide=*]{babel}
+\usepackage[utf8]{inputenc}
+
+% Localizzazione dei nomi dei blocchi Beamer
+\uselanguage{italian}
+\languagepath{italian}
+\deftranslation[to=italian]{Definition}{Definizione}
+\deftranslation[to=italian]{Theorem}{Teorema}
+\deftranslation[to=italian]{Example}{Esempio}
+\deftranslation[to=italian]{Proof}{Dimostrazione}
+\deftranslation[to=italian]{Corollary}{Corollario}
+\deftranslation[to=italian]{Lemma}{Lemma}
+
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{mermaid}
+
+% Mermaid: sfondo trasparente e dimensione massima adatta a una slide 16:9
+\MermaidRendererOptions{-b transparent}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+% Configurazione colori per il codice
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\definecolor{keywordblue}{rgb}{0.0,0.0,0.7}
+
+% Stile per snippet Java
+\lstdefinestyle{javastyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen}\itshape,
+    keywordstyle=\color{keywordblue}\bfseries,
+    numberstyle=\scriptsize\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=none,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    aboveskip=0.6\medskipamount,
+    belowskip=0.6\medskipamount,
+    language=Java,
+    morekeywords={default},
+    literate={à}{{\`a}}1 {è}{{\`e}}1 {é}{{\'e}}1 {ì}{{\`i}}1
+             {ò}{{\`o}}1 {ù}{{\`u}}1 {È}{{\`E}}1
+}
+\lstset{style=javastyle}
+
+% Stile per righe di terminale
+\lstdefinestyle{shell}{
+    language=bash,
+    backgroundcolor=\color{black!85},
+    basicstyle=\ttfamily\footnotesize\color{white},
+    keywordstyle=\color{white},
+    stringstyle=\color{white},
+    commentstyle=\color{green!70},
+    numbers=none,
+    frame=none,
+    aboveskip=0.6\medskipamount,
+    belowskip=0.6\medskipamount,
+    showstringspaces=false
+}
+
+\title[Lezione 9 -- Interfacce e package]{Lezione 9 -- Interfacce e package}
+\subtitle{\texttt{interface} e \texttt{implements}, più tipi per una classe, metodi \texttt{default} e \texttt{static}; \texttt{package}, \texttt{import} e visibilità}
+\author[Mattia Fonisto]{Mattia Fonisto}
+\institute[Lab.\ di Programmazione]{Laboratorio di Programmazione -- Ingegneria Informatica, II anno\\
+           Università degli Studi di Napoli Federico II -- Sede di San Giovanni a Teduccio}
+\date{3 novembre 2026}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% ========================================================================
+\begin{frame}{Agenda della lezione (2h)}
+\begin{enumerate}
+    \item \textbf{Ripasso e Homework 8} \hfill (\emph{15 min})
+    \begin{itemize}
+        \item uno di voi alla lavagna con \texttt{Data}, \texttt{Appuntamento} o \texttt{Anagrafe}: lo commentiamo insieme
+    \end{itemize}
+    \item \textbf{Le interfacce} \hfill (\emph{25 min})
+    \begin{itemize}
+        \item \texttt{interface} e \texttt{implements}; l'interfaccia come tipo; più interfacce per una classe
+        \item metodi \texttt{default} e \texttt{static}; interfacce o classi astratte; finalmente \texttt{Cloneable}
+    \end{itemize}
+    \item \textbf{I package} \hfill (\emph{20 min})
+    \begin{itemize}
+        \item \texttt{package}, nomi qualificati, cartelle; compilare ed eseguire; \texttt{import}
+        \item visibilità di package e riepilogo dei modificatori
+    \end{itemize}
+    \item \textbf{Esercitazione} -- tutti insieme \hfill (\emph{50 min})
+    \begin{itemize}
+        \item \emph{Commentiamo insieme}: un simulatore di dispositivi con due interfacce
+        \item \emph{Insieme, passo passo}: lo stesso simulatore riorganizzato in package
+    \end{itemize}
+    \item \textbf{Wrap-up e Homework 9} \hfill (\emph{10 min})
+\end{enumerate}
+\end{frame}
+
+% ========================================================================
+\section{Le interfacce}
+
+\begin{frame}[fragile]{Interfacce: il problema}
+\begin{columns}[T]
+\column{0.58\textwidth}
+\footnotesize
+Una \texttt{Fattura} e un \texttt{Dipendente}: classi diverse, nessuna relazione \emph{è-un} fra loro. Eppure la contabilità li tratta allo stesso modo: ognuno \textbf{va pagato}, di ognuno serve l'\textbf{importo}. Vorremmo un array con entrambi e un metodo \texttt{totale} che sommi gli importi.
+
+\vspace{0.1cm}
+Con l'ereditarietà (lezione~7), una superclasse astratta \texttt{Pagabile} con \texttt{importo()} astratto? Due problemi:
+\begin{itemize}\itemsep=2pt
+    \item \texttt{Pagabile} non avrebbe \textbf{nulla} da dare in eredità: niente variabili di istanza, costruttori, metodi con il corpo; solo l'intestazione di \texttt{importo()}
+    \item una classe ha \textbf{una sola} superclasse: se \texttt{Dipendente} estendesse già \texttt{Persona}, non potrebbe estendere \texttt{Pagabile}
+\end{itemize}
+\begin{block}{Interfaccia}
+\small Un'\emph{interfaccia} (\texttt{interface}) è un tipo che elenca le intestazioni dei metodi che un oggetto offre, di norma senza corpo e sempre senza stato: dice \textbf{che cosa} si può chiedere a un oggetto, non \textbf{come} lo fa. Una classe che la \emph{implementa} si impegna a scrivere quei metodi. È l'interfaccia della lezione~4 come tipo di Java.
+\end{block}
+
+\column{0.42\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.52\textheight,center}
+\begin{mermaid}
+classDiagram
+  direction TB
+  class Pagabile {
+    <<interface>>
+    +importo() double
+  }
+  class Fattura {
+    -numero : String
+    -quantita : int
+    -prezzo : double
+    +importo() double
+  }
+  class Dipendente {
+    -nome : String
+    -stipendio : double
+    +aumenta(double)
+    +importo() double
+  }
+  Pagabile <|.. Fattura
+  Pagabile <|.. Dipendente
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+In UML: \texttt{<<interface>>} sopra il nome; la freccia \textbf{tratteggiata} con il triangolo è la \emph{realizzazione}: \texttt{Fattura} implementa \texttt{Pagabile}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Dichiarare un'interfaccia -- \texttt{Pagabile.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Qualcosa che va pagato: ha un importo. */
+public interface Pagabile {
+
+    double importo();  // public abstract
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \texttt{interface} al posto di \texttt{class}; i metodi hanno solo l'\textbf{intestazione} (la firma più il tipo di risultato), chiusa dal punto e virgola, come i metodi astratti della lezione~7
+    \item sono \textbf{implicitamente} \texttt{public abstract}: scriverlo è lecito ma ridondante. Niente \texttt{protected}: ciò che un'interfaccia offre è tutto pubblico
+    \item può dichiarare \textbf{costanti}: \texttt{double TARIFFA = 2.0;} è implicitamente \texttt{public static final}, si usa come \texttt{Pagabile.TARIFFA}
+    \item \textbf{non} può avere variabili di istanza né costruttori: non descrive uno stato, solo un comportamento
+    \item sta nel file \texttt{Pagabile.java}: ``una \texttt{public} per file, con il suo nome'' vale anche per le interfacce
+\end{itemize}
+
+\column{0.5\textwidth}
+\begin{block}{Che cosa contiene un'interfaccia}
+\small Intestazioni di metodi (astratti) e costanti. Da Java~8 anche metodi con il corpo, \texttt{default} e \texttt{static} (fra quattro slide). Mai variabili di istanza né costruttori.
+\end{block}
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.2}\setlength{\tabcolsep}{4pt}
+\scriptsize
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & \textbf{classe} & \textbf{interfaccia} \\
+\midrule
+parola chiave & \texttt{class} & \texttt{interface} \\
+variabili di istanza & sì & no \\
+costanti \texttt{static final} & sì & sì (implicito) \\
+costruttori & sì & no \\
+metodi con il corpo & sì & \texttt{default} e \texttt{static} \\
+metodi astratti & solo se \texttt{abstract} & sì, è la norma \\
+\texttt{new} & sì (se concreta) & no \\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{0.1cm}
+Il nome è spesso un aggettivo: che cosa l'oggetto \emph{sa fare}: \texttt{Pagabile}, \texttt{Stampabile}, \texttt{Cloneable}, \texttt{Comparable}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Implementare un'interfaccia: \texttt{implements} -- \texttt{Fattura.java}}
+\begin{columns}[T]
+\column{0.51\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Una fattura: quantita` per prezzo. */
+public class Fattura implements Pagabile {
+
+    private final String numero;
+    private final int quantita;
+    private final double prezzo;
+
+    public Fattura(String numero, int quantita,
+                   double prezzo) {
+        this.numero = numero;
+        this.quantita = quantita;
+        this.prezzo = prezzo;
+    }
+
+    @Override
+    public double importo() {
+        return quantita * prezzo;
+    }
+\end{lstlisting}
+\footnotesize
+Non mostrato il \texttt{toString} (\texttt{"fattura " + numero}). \texttt{Dipendente} è fatta allo stesso modo: \texttt{nome} e \texttt{stipendio}, costruttore, \texttt{importo()} che restituisce lo stipendio, \texttt{toString}, e in più \texttt{aumenta(double aumento)}.
+
+\column{0.49\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Un dipendente: va pagato lo stipendio. */
+public class Dipendente implements Pagabile {
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \texttt{implements Pagabile} dopo il nome: la classe \textbf{promette} tutti i metodi dell'interfaccia. Se ne manca uno: \emph{``Fattura is not abstract and does not override abstract method importo() in Pagabile''}: o lo si scrive, o la classe diventa \texttt{abstract}
+    \item il metodo va dichiarato \textbf{\texttt{public}}: nell'interfaccia lo è; con meno visibilità, \emph{``attempting to assign weaker access privileges''}. \texttt{@Override} vale anche qui
+    \item il resto è libero: ogni classe ha le \emph{sue} variabili di istanza, i suoi costruttori e altri metodi, come \texttt{aumenta}, che \texttt{Pagabile} non conosce
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{L'interfaccia come tipo: polimorfismo -- \texttt{ProvaPagabili.java}}
+\begin{columns}[T]
+\column{0.56\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** LEGGE: la somma degli importi. */
+public static double totale(Pagabile[] elenco) {
+    double somma = 0;
+    for (Pagabile p : elenco) {
+        somma += p.importo();
+    }
+    return somma;
+}
+
+public static void main(String[] args) {
+    Pagabile[] daPagare = {
+        new Fattura("F-01", 3, 250),
+        new Dipendente("Anna Russo", 1800),
+        new Fattura("F-02", 1, 99.5)
+    };
+    for (Pagabile p : daPagare) {
+        System.out.println(p + ": " + p.importo());
+    }
+    System.out.println(totale(daPagare));
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+fattura F-01: 750.0
+dipendente Anna Russo: 1800.0
+fattura F-02: 99.5
+2649.5
+\end{lstlisting}
+
+\column{0.44\textwidth}
+\begin{block}{L'interfaccia è un tipo}
+\small Variabili e array possono essere di tipo \texttt{Pagabile}, parametri compresi (variabili locali inizializzate dalla chiamata, lezione~3): un riferimento \texttt{Pagabile} porta a un oggetto di \textbf{qualunque} classe che la implementa (upcasting implicito, come con le superclassi).
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item \texttt{p.importo()}: \textbf{binding dinamico} (lezione~7): la JVM esegue l'\texttt{importo} della classe dell'oggetto. \texttt{totale} vale anche per classi future
+    \item attraverso \texttt{p} si vedono solo i metodi di \texttt{Pagabile} (e di \texttt{Object}): \texttt{p.aumenta(100)} non compila. Per usarlo: \texttt{p instanceof Dipendente}, poi il cast \texttt{(Dipendente) p}. \texttt{instanceof} vale anche per le interfacce
+    \item \texttt{new Pagabile()} non compila: gli oggetti nascono dalle classi
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Più interfacce per una classe -- versione 2}
+\begin{columns}[T]
+\column{0.58\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Un pagabile che si puo` pagare a rate. */
+public interface Rateizzabile extends Pagabile {
+
+    int numeroRate();  // public abstract
+\end{lstlisting}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Una fattura: a rate e stampabile. */
+public class Fattura
+        implements Rateizzabile, Stampabile {
+\end{lstlisting}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+@Override
+public int numeroRate() {
+    return rate;
+}
+
+@Override
+public void stampa() {
+    System.out.println("FATTURA n. " + numero);
+    System.out.println("totale " + importo()
+            + " in " + rate + " rate");
+}
+\end{lstlisting}
+
+\column{0.42\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.26\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 28px
+  class:
+    hideEmptyMembersBox: true
+---
+classDiagram
+  direction TB
+  class Pagabile {
+    <<interface>>
+  }
+  class Rateizzabile {
+    <<interface>>
+  }
+  class Stampabile {
+    <<interface>>
+  }
+  class Fattura
+  class Dipendente
+  Pagabile <|-- Rateizzabile
+  Rateizzabile <|.. Fattura
+  Stampabile <|.. Fattura
+  Pagabile <|.. Dipendente
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item \texttt{implements A, B}: la classe promette i metodi di \textbf{entrambe} (\texttt{Stampabile}: solo \texttt{stampa()}). Una sola superclasse, ma quanti tipi interfaccia vuole: \texttt{Fattura} è \texttt{Rateizzabile}, \texttt{Stampabile} e \texttt{Pagabile}: \emph{ereditarietà multipla} di tipi, senza stato
+    \item \texttt{extends} e \texttt{implements} insieme: \texttt{class C extends S implements A, B}
+    \item un'interfaccia può \textbf{estendere} un'altra: chi implementa \texttt{Rateizzabile} scrive \texttt{importo()} \textbf{e} \texttt{numeroRate()}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Metodi \texttt{default} e \texttt{static} -- \texttt{ProvaPagabili.java} (versione 2)}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public interface Pagabile {
+
+    double importo();  // public abstract
+
+    static double totale(Pagabile[] elenco) {
+        double somma = 0;
+        for (Pagabile p : elenco) {
+            somma += p.importo();
+        }
+        return somma;
+    }
+}
+\end{lstlisting}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public interface Rateizzabile extends Pagabile {
+
+    int numeroRate();  // public abstract
+
+    default double rata() {
+        return importo() / numeroRate();
+    }
+}
+\end{lstlisting}
+
+\column{0.48\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Fattura f = new Fattura("F-01", 3, 250, 2);
+Dipendente d = new Dipendente("Anna", 1800);
+
+Pagabile[] conti = { f, d };
+System.out.println(Pagabile.totale(conti));
+System.out.println(f.rata());   // default
+// System.out.println(d.rata()); // errore
+// System.out.println(f.totale()); // errore
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+2550.0
+375.0
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item un metodo \textbf{\texttt{default}} ha il corpo e lo \textbf{ereditano} le classi che implementano l'interfaccia: \texttt{f.rata()} funziona senza che \texttt{Fattura} l'abbia scritto. Usa solo i metodi dell'interfaccia (non c'è stato); si può ridefinire. \texttt{d.rata()} non compila: \texttt{d} non è \texttt{Rateizzabile}
+    \item un metodo \textbf{\texttt{static}} si chiama con il nome dell'interfaccia: \texttt{Pagabile.totale(conti)}. \textbf{Diversamente dalle classi} (lezione~6), \texttt{f.totale()} \textbf{non compila}: i metodi \texttt{static} di un'interfaccia non passano alle classi che la implementano
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Interfacce o classi astratte? E finalmente \texttt{Cloneable}}
+\begin{columns}[T]
+\column{0.56\textwidth}
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.0}
+\scriptsize
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.1cm}>{\raggedright\arraybackslash}p{2.8cm}>{\raggedright\arraybackslash}p{2.8cm}@{}}
+\toprule
+ & \textbf{classe astratta} (L7) & \textbf{interfaccia} (oggi) \\
+\midrule
+stato & variabili di istanza & no, solo costanti \\
+costruttori & sì, con \texttt{super(...)} & no \\
+metodi con il corpo & tutti quelli che servono & solo \texttt{default} e \texttt{static} \\
+quante per classe & una (\texttt{extends}) & quante si vuole (\texttt{implements}) \\
+la relazione & \emph{è-un}, con una parte comune da ereditare & \emph{sa fare}: un comportamento \\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{itemize}\itemsep=2pt
+    \item \textbf{classe astratta} quando le sottoclassi condividono \emph{stato e codice} (\texttt{Forma}: \texttt{colore}, \texttt{piuGrandeDi}); \textbf{interfaccia} per classi non imparentate con gli stessi metodi, o per dare più tipi a una classe
+    \item un ADT (lezione~5) è una struttura dati incapsulata dalle sue operazioni: la sua \emph{interfaccia} è l'elenco delle operazioni, il corpo la realizzazione. Un'\texttt{interface} di Java è proprio quell'elenco, separato dalle realizzazioni: nella lezione~12 la pila sarà un'\texttt{interface} realizzata da due classi, con un array e con una lista; il client non cambia
+\end{itemize}
+
+\column{0.44\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public interface Cloneable {
+}
+\end{lstlisting}
+\begin{block}{\texttt{Cloneable}: nessun metodo}
+\small Dalla lezione~8: \texttt{implements Cloneable} non obbliga a scrivere nulla, nemmeno \texttt{clone()}, che c'è già in \texttt{Object} (la classe lo ridefinisce \texttt{public} solo per offrirlo ai client). \textbf{Marca} la classe come copiabile: \texttt{Object.clone()} controlla se l'oggetto è \texttt{instanceof Cloneable}; se no, lancia \texttt{CloneNotSupportedException}: ecco il \texttt{throws} (lezione~10).
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item \texttt{Cloneable} sta in \texttt{java.lang}, come \texttt{Object}: niente \texttt{import}
+    \item lezione~12: \texttt{Comparable}, con \texttt{compareTo}, per \texttt{Arrays.sort} sui nostri oggetti
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{I package}
+
+\begin{frame}[fragile]{Package: il concetto -- \texttt{contabilita\_pkg/}}
+\begin{columns}[T]
+\column{0.58\textwidth}
+\begin{block}{Package}
+\small Un \emph{package} è un gruppo di classi e interfacce correlate, con un nome: è l'unità con cui Java organizza il codice in cartelle e librerie. \texttt{java.util} è il package con \texttt{Scanner}, \texttt{Arrays} e \texttt{Objects}; \texttt{contabilita} è il nostro.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item si dichiara con \texttt{package contabilita;} come \textbf{prima riga} del file (prima solo commenti); il file sta nella \textbf{cartella con lo stesso nome} del package: \texttt{contabilita/Fattura.java}
+    \item il \textbf{nome qualificato} di una classe è package più classe: \texttt{contabilita.Fattura}; due classi \texttt{Persona} in package diversi convivono
+    \item i package si \textbf{innestano}: \texttt{java.util.Arrays} è la classe \texttt{Arrays} nel package \texttt{util} dentro \texttt{java}. Nomi in minuscolo
+    \item finora nessun file aveva la riga \texttt{package}: le classi senza package stanno nel \textbf{package di default}, senza nome, che \texttt{javac} e \texttt{java} cercano nella cartella corrente. Un package raggruppa classi coese: il \emph{modulo} della lezione~4, su scala maggiore
+\end{itemize}
+
+\column{0.42\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.6\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 10
+    rankSpacing: 26
+    wrappingWidth: 600
+---
+flowchart TB
+  R["<b>contabilita_pkg/</b><br/>la radice: qui si compila"]
+  C["<b>contabilita/</b><br/>package contabilita"]
+  A["<b>app/</b><br/>package app"]
+  C1["Pagabile.java<br/>Rateizzabile.java<br/>Stampabile.java<br/>Fattura.java<br/>Dipendente.java"]
+  A1["ProvaPagabili.java"]
+  R --> C --> C1
+  R --> A --> A1
+  style R fill:#fef3c7,stroke:#b45309
+  style C fill:#dbeafe,stroke:#1d4ed8
+  style A fill:#dcfce7,stroke:#15803d
+  style C1 fill:#dbeafe,stroke:#1d4ed8
+  style A1 fill:#dcfce7,stroke:#15803d
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Compilare ed eseguire con i package}
+\begin{columns}[T]
+\column{0.5\textwidth}
+{\footnotesize In \texttt{contabilita/Fattura.java}, prima riga:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+package contabilita;
+
+/** Una fattura: a rate e stampabile. */
+public class Fattura
+        implements Rateizzabile, Stampabile {
+\end{lstlisting}
+{\footnotesize Dal terminale, nella cartella \textbf{radice} \texttt{contabilita\_pkg/}:}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+$ javac app/ProvaPagabili.java
+$ java app.ProvaPagabili
+2550.0
+FATTURA n. F-01
+totale 750.0 in 2 rate
+\end{lstlisting}
+{\footnotesize Dentro \texttt{app/}, invece, \textbf{non} funziona:}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+$ cd app
+$ java ProvaPagabili
+Error: Could not find or load main class
+ProvaPagabili
+Caused by: java.lang.NoClassDefFoundError:
+ProvaPagabili (wrong name: app/ProvaPagabili)
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item ci si mette nella cartella \textbf{superiore} ai package, la radice del progetto
+    \item \texttt{javac} riceve il \textbf{percorso} del file con il \texttt{main}. Come nella lezione~4, compila da solo anche le classi che servono, cercandole dalla cartella corrente: \texttt{contabilita.Fattura} in \texttt{contabilita/Fattura.java}. I \texttt{.class} finiscono accanto ai sorgenti
+    \item \texttt{java} riceve il \textbf{nome qualificato} della classe: non un percorso, non \texttt{.class}. La JVM lo traduce in \texttt{app/ProvaPagabili.class} dalla cartella corrente: per questo da dentro \texttt{app/} non lo trova (\emph{wrong name})
+    \item finora tutte le nostre classi stavano nel package di default, lo stesso per tutte, e si vedevano con il nome semplice. Una classe del package di default, però, \textbf{non ha nome qualificato}: da \texttt{app} non si può né importare né nominare. Quindi, quando un progetto adotta i package, \textbf{tutte} le classi vanno in un package, anche quella con il \texttt{main}
+    \item in VS Code basta aprire la cartella radice e usare \emph{Run}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{\texttt{import}: usare le classi di un altro package -- \texttt{app/ProvaPagabili.java}}
+\begin{columns}[T]
+\column{0.57\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+package app;
+
+import contabilita.Fattura;
+import contabilita.Pagabile;
+
+/** Il client, in un altro package. */
+public class ProvaPagabili {
+
+    public static void main(String[] args) {
+        Fattura f = new Fattura("F-01", 3, 250, 2);
+        contabilita.Dipendente d;   // qualificato
+        d = new contabilita.Dipendente("Anna", 1800);
+        Pagabile[] conti = { f, d };
+        System.out.println(Pagabile.totale(conti));
+        f.stampa();
+    }
+}
+\end{lstlisting}
+\footnotesize
+\texttt{Dipendente} non è importato: si usa con il nome qualificato. \texttt{Fattura}, invece, usa \texttt{Rateizzabile} e \texttt{Stampabile} senza \texttt{import}: le classi dello \textbf{stesso} package si vedono con il nome semplice.
+
+\column{0.43\textwidth}
+\begin{block}{\texttt{import}}
+\small Fuori dal suo package una classe si chiama con il nome qualificato; \texttt{import contabilita.Fattura;}, in testa al file, permette di scrivere solo \texttt{Fattura}. \texttt{import} non copia nulla: dice al compilatore \textbf{dove cercare}.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item tre forme: nome qualificato; \texttt{import} di una classe; \texttt{import contabilita.*;} per tutto il package
+    \item classi con lo \textbf{stesso nome} in package diversi: se ne importa una sola; se servono entrambe, i due \texttt{import} sono un errore: la seconda si usa con il nome qualificato
+    \item \texttt{java.lang} è importato \textbf{da solo}: \texttt{String}, \texttt{System}, \texttt{Math}, \texttt{Object}. \texttt{java.util} no: \texttt{Scanner}, \texttt{Arrays} e \texttt{Objects} li abbiamo sempre importati
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Visibilità di package e riepilogo dei modificatori}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\scriptsize
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{membro} & \textbf{stessa} & \textbf{stesso} & \textbf{sottoclasse in} & \textbf{ovunque} \\
+ & \textbf{classe} & \textbf{package} & \textbf{altro package} & \\
+\midrule
+\texttt{private} & sì & -- & -- & -- \\
+(nessuno) & sì & sì & -- & -- \\
+\texttt{protected} & sì & sì & sì & -- \\
+\texttt{public} & sì & sì & sì & sì \\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{block}{Visibilità di package}
+\small Un membro \textbf{senza modificatore} è visibile da tutte le classi del suo package e da nessun'altra. Una \textbf{classe senza \texttt{public}} è visibile solo nel suo package: fuori non si può nominare, né importare. Il file non conta: conta il package.
+\end{block}
+
+\column{0.5\textwidth}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item il \texttt{protected} della lezione~7 è ora completo: sottoclassi \textbf{e} tutto il package
+    \item per le classi solo due scelte: \texttt{public} (al più una per file, con il nome del file) o niente (visibile nel package): una classe scritta in un file non può essere \texttt{private}
+    \item nelle interfacce ciò che si offre è \texttt{public}: costanti, metodi, e i metodi che le implementano
+    \item la regola di sempre, completata: \texttt{private} per lo stato; \texttt{public} per l'interfaccia offerta ai client; \textbf{niente modificatore} per le classi e i metodi di servizio che devono vedere solo le classi dello stesso package; \texttt{protected} raramente
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Esercitazione}
+
+\begin{frame}[fragile]{Commentiamo insieme (20 min) -- il problema}
+\footnotesize
+\textbf{Il problema.} Un simulatore di casa domotica gestisce dispositivi diversi: lampade, ventilatori, un allarme. Il programma deve poterli \textbf{accendere e spegnere tutti insieme}, senza sapere di che tipo è ciascuno, e \textbf{regolare} quelli che si regolano: la luce di una lampada, la velocità di un ventilatore. L'allarme è solo acceso o spento. Le due interfacce, le tre classi e il \texttt{Simulatore} sono già scritti: li leggiamo riga per riga, cercando che cosa promette ogni interfaccia, chi implementa che cosa e dove serve \texttt{instanceof}.
+
+\vspace{0.05cm}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\textbf{Le regole}
+\begin{itemize}\itemsep=2pt
+    \item ogni dispositivo si accende, si spegne, dice se è acceso e si può \emph{commutare} (spegnere se acceso, accendere se spento)
+    \item i dispositivi regolabili hanno un \textbf{livello} che si alza e si abbassa di un passo alla volta, solo se accesi, entro i limiti: la lampada da 1 a 10 (parte da 5), il ventilatore da 1 a 3 (parte da 1)
+    \item l'allarme non è regolabile
+    \item il programma stampa ogni dispositivo e quanti sono accesi
+\end{itemize}
+
+\column{0.5\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.5\textheight,center}
+\begin{mermaid}
+---
+config:
+  class:
+    hideEmptyMembersBox: true
+---
+classDiagram
+  direction TB
+  class Accendibile {
+    <<interface>>
+    +accendi()
+    +spegni()
+    +isAcceso() boolean
+    +commuta()
+    +quantiAccesi(Accendibile[])$ int
+  }
+  class Regolabile {
+    <<interface>>
+    +alza()
+    +abbassa()
+    +getLivello() int
+  }
+  class Lampada
+  class Ventilatore
+  class Allarme
+  Accendibile <|.. Lampada
+  Regolabile <|.. Lampada
+  Accendibile <|.. Ventilatore
+  Regolabile <|.. Ventilatore
+  Accendibile <|.. Allarme
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{Accendibile.java}}
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Un dispositivo: si accende e spegne. */
+public interface Accendibile {
+
+    void accendi();
+
+    void spegni();
+
+    boolean isAcceso();
+
+    /** default: inverte lo stato. */
+    default void commuta() {
+        if (isAcceso()) {
+            spegni();
+        } else {
+            accendi();
+        }
+    }
+\end{lstlisting}
+
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** static: LEGGE quanti sono accesi. */
+static int quantiAccesi(Accendibile[] elenco) {
+    int n = 0;
+    for (Accendibile d : elenco) {
+        if (d.isAcceso()) {
+            n++;
+        }
+    }
+    return n;
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item tre metodi astratti: ogni classe che implementa \texttt{Accendibile} li scriverà a modo suo
+    \item \texttt{commuta} è \texttt{default}: scritto una volta sola in termini di \texttt{isAcceso}, \texttt{spegni} e \texttt{accendi}, che l'interfaccia non sa come sono fatti ma sa che ci saranno. Lo ereditano lampade, ventilatori e allarme
+    \item \texttt{quantiAccesi} è \texttt{static}: lavora su un array di \texttt{Accendibile} qualsiasi e si chiama \texttt{Accendibile.quantiAccesi(...)}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{Regolabile.java} e \texttt{Lampada.java} (1/2)}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Ha un livello regolabile a passi. */
+public interface Regolabile {
+
+    void alza();
+
+    void abbassa();
+
+    int getLivello();
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item le due interfacce sono indipendenti: un dispositivo può implementarne una sola o entrambe
+    \item \texttt{Lampada} e \texttt{Ventilatore} le implementano entrambe, ma \textbf{non} sono imparentate: nessuna superclasse comune, ciascuna con le sue variabili di istanza (\texttt{luce}, \texttt{velocita}). Hanno in comune solo i due tipi interfaccia
+    \item \texttt{Ventilatore} è fatto come \texttt{Lampada}: cambiano i nomi e i limiti (\texttt{velocita} da 1 a 3)
+\end{itemize}
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Una lampada: luce regolabile da 1 a 10. */
+public class Lampada
+        implements Accendibile, Regolabile {
+
+    private static final int MAX = 10;
+
+    private final String stanza;
+    private boolean accesa;
+    private int luce;
+
+    public Lampada(String stanza) {
+        this.stanza = stanza;
+        accesa = false;
+        luce = 5;
+    }
+
+    @Override
+    public void accendi() {
+        accesa = true;
+    }
+\end{lstlisting}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{Lampada.java} (2/2) e \texttt{Allarme.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    @Override
+    public void spegni() {
+        accesa = false;
+    }
+
+    @Override
+    public boolean isAcceso() {
+        return accesa;
+    }
+
+    /** MODIFICA: piu` luce, se accesa. */
+    @Override
+    public void alza() {
+        if (accesa && luce < MAX) {
+            luce++;
+        }
+    }
+\end{lstlisting}
+\footnotesize
+I sei metodi promessi ci sono tutti, \texttt{public} e con \texttt{@Override}. Non mostrati: \texttt{abbassa()}, speculare ad \texttt{alza()}; \texttt{getLivello()}, che restituisce \texttt{luce}; \texttt{toString()}: \texttt{lampada cucina: accesa, luce 8/10} oppure \texttt{lampada cucina: spenta}.
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Un allarme: acceso o spento. */
+class Allarme implements Accendibile {
+
+    private boolean attivo;
+\end{lstlisting}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+    @Override
+    public void accendi() {
+        attivo = true;
+    }
+
+    @Override
+    public void spegni() {
+        attivo = false;
+    }
+
+    @Override
+    public boolean isAcceso() {
+        return attivo;
+    }
+\end{lstlisting}
+\footnotesize
+\texttt{Allarme} è dichiarata \textbf{senza} \texttt{public}: finché tutto sta nella stessa cartella non cambia nulla (ci torniamo fra poco). Non mostrati: il costruttore, che mette \texttt{attivo} a \texttt{false}, e \texttt{toString} (\texttt{allarme: attivo} o \texttt{allarme: disattivo}).
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{Simulatore.java}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Accendibile[] casa = {
+    new Lampada("cucina"),
+    new Ventilatore("studio"),
+    new Allarme(),
+    new Lampada("camera")
+};
+for (Accendibile d : casa) {
+    d.accendi();
+}
+for (Accendibile d : casa) {
+    if (d instanceof Regolabile) {
+        Regolabile r = (Regolabile) d;
+        r.alza();
+        r.alza();
+        r.alza();
+    }
+}
+casa[2].commuta();      // allarme: si spegne
+casa[3].spegni();
+for (Accendibile d : casa) {
+    System.out.println(d);
+}
+System.out.println("accesi: "
+        + Accendibile.quantiAccesi(casa));
+\end{lstlisting}
+
+\column{0.48\textwidth}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+lampada cucina: accesa, luce 8/10
+ventilatore studio: acceso, velocita 3/3
+allarme: disattivo
+lampada camera: spenta
+accesi: 2
+\end{lstlisting}
+\footnotesize
+\textbf{Rispondiamo insieme:}
+\begin{enumerate}\itemsep=1pt
+    \item perché \texttt{casa} può contenere lampade, ventilatori e allarmi, che non hanno una superclasse comune?
+    \item nel secondo ciclo, perché \texttt{d.alza()} non compilerebbe? E a che cosa servono \texttt{instanceof} e il cast?
+    \item il ventilatore riceve tre \texttt{alza()} e arriva a 3, non a 4; la lampada a 8: dove sta la differenza?
+    \item \texttt{Allarme} non ha scritto \texttt{commuta}: perché \texttt{casa[2].commuta()} funziona?
+    \item se togliessimo \texttt{isAcceso} da \texttt{Lampada}, quale errore darebbe il compilatore, e su quale classe?
+\end{enumerate}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo (30 min) -- il problema}
+\begin{columns}[T]
+\column{0.58\textwidth}
+\footnotesize
+\textbf{Il problema.} Il simulatore cresce: altri dispositivi, altri programmi che li usano. Le due interfacce e le tre classi dei dispositivi sono \textbf{riusabili}, il \texttt{Simulatore} no: è uno dei tanti programmi possibili. Vogliamo \textbf{riorganizzare il progetto in package}: i dispositivi formano una piccola libreria, separata dai programmi che la usano.
+
+\vspace{0.1cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=2pt
+    \item il codice delle classi non cambia: cambiano la posizione dei file e le righe iniziali
+    \item un package \texttt{dispositivi} per le interfacce e le classi dei dispositivi, un package \texttt{app} per il \texttt{Simulatore}
+    \item tutto ciò che \texttt{app} usa deve essere \textbf{visibile} da un altro package
+    \item alla fine il programma si compila e si esegue dalla radice e stampa quello di prima
+\end{itemize}
+
+\vspace{0.1cm}
+Partiamo dalla cartella \texttt{simulatore/} con i sei file. Un passo alla volta, compilando dal terminale per vedere \textbf{gli errori} che ogni passo produce finché il successivo non lo completa.
+
+\column{0.42\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.7\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 10
+    rankSpacing: 26
+    wrappingWidth: 600
+---
+flowchart TB
+  S["<b>simulatore/</b><br/>Accendibile.java<br/>Regolabile.java<br/>Lampada.java<br/>Ventilatore.java<br/>Allarme.java<br/>Simulatore.java"]
+  R["<b>simulatore_pkg/</b>"]
+  D["<b>dispositivi/</b><br/>Accendibile.java<br/>Regolabile.java<br/>Lampada.java<br/>Ventilatore.java<br/>Allarme.java"]
+  A["<b>app/</b><br/>Simulatore.java"]
+  S -- "riorganizziamo" --> R
+  R --> D
+  R --> A
+  style S fill:#fef3c7,stroke:#b45309
+  style R fill:#fef3c7,stroke:#b45309
+  style D fill:#dbeafe,stroke:#1d4ed8
+  style A fill:#dcfce7,stroke:#15803d
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo -- le decisioni}
+\begin{columns}[T]
+\column{0.6\textwidth}
+\footnotesize
+\textbf{Prima di toccare i file, decidiamo insieme:}
+\begin{enumerate}\itemsep=3pt
+    \item \textbf{quali package?} \textrightarrow{} \texttt{dispositivi}: le due interfacce e le tre classi, coese fra loro e senza dipendenze dal programma; \texttt{app}: il solo \texttt{Simulatore}, che dipende da \texttt{dispositivi} e non viceversa
+    \item \textbf{le cartelle?} \textrightarrow{} una radice \texttt{simulatore\_pkg/} con dentro \texttt{dispositivi/} e \texttt{app/}: stesso nome dei package, lettera per lettera
+    \item \textbf{la prima riga di ogni file?} \textrightarrow{} \texttt{package dispositivi;} nei cinque file dei dispositivi, \texttt{package app;} in \texttt{Simulatore.java}
+    \item \textbf{\texttt{Simulatore} come trova le classi?} \textrightarrow{} con gli \texttt{import}: uno per ogni nome che usa (\texttt{Accendibile}, \texttt{Regolabile}, \texttt{Lampada}, \texttt{Ventilatore}, \texttt{Allarme}), oppure \texttt{import dispositivi.*;}
+    \item \textbf{che cosa deve essere \texttt{public}?} \textrightarrow{} tutto ciò che \texttt{app} nomina: le due interfacce e le tre classi, con i loro costruttori. Le interfacce e \texttt{Lampada}, \texttt{Ventilatore} lo sono già; \texttt{Allarme} \textbf{no}: il compilatore ce lo dirà
+    \item \textbf{da dove si compila?} \textrightarrow{} dalla radice: \texttt{javac app/Simulatore.java}, poi \texttt{java app.Simulatore}
+\end{enumerate}
+
+\column{0.4\textwidth}
+\footnotesize
+\textbf{Gli errori che si incontrano}
+\begin{itemize}\itemsep=3pt
+    \item file spostati in \texttt{dispositivi/}, \texttt{Simulatore} ancora senza \texttt{import}: \emph{``cannot find symbol: class Lampada''}
+    \item \texttt{import} messi, ma in un file manca la riga \texttt{package}: \emph{``cannot access Accendibile: bad source file \ldots{} file does not contain class dispositivi.Accendibile''}
+    \item \texttt{import dispositivi.Allarme;} con \texttt{Allarme} senza \texttt{public}: \emph{``Allarme is not public in dispositivi; cannot be accessed from outside package''}
+    \item \texttt{java Simulatore} da dentro \texttt{app/}: \emph{``Could not find or load main class Simulatore''}
+\end{itemize}
+\vspace{0.1cm}
+Ogni messaggio dice esattamente qual è il passo che manca.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione (1/2) -- il package \texttt{dispositivi}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+{\footnotesize \texttt{dispositivi/Accendibile.java}, prime righe:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+package dispositivi;
+
+/** Un dispositivo: si accende e spegne. */
+public interface Accendibile {
+\end{lstlisting}
+{\footnotesize \texttt{dispositivi/Regolabile.java}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+package dispositivi;
+
+/** Ha un livello regolabile a passi. */
+public interface Regolabile {
+\end{lstlisting}
+{\footnotesize \texttt{dispositivi/Lampada.java} (e così \texttt{Ventilatore.java}):}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+package dispositivi;
+
+/** Una lampada: luce regolabile da 1 a 10. */
+public class Lampada
+        implements Accendibile, Regolabile {
+\end{lstlisting}
+
+\column{0.5\textwidth}
+{\footnotesize \texttt{dispositivi/Allarme.java}, ora \texttt{public}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+package dispositivi;
+
+/** Un allarme: acceso o spento. */
+public class Allarme implements Accendibile {
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item il resto dei cinque file è \textbf{identico} alla versione di prima: il codice non sa in che package sta
+    \item \texttt{Lampada} usa \texttt{Accendibile} e \texttt{Regolabile} senza \texttt{import}: stesso package
+    \item \texttt{Allarme} senza \texttt{public} compilava da sola e con le altre: \texttt{dispositivi} la vede. È \texttt{app} che non la vedeva: la visibilità di package, finora invisibile, qui conta. Il suo costruttore era già \texttt{public}: anche lui deve esserlo, altrimenti \texttt{new Allarme()} da \texttt{app} fallisce con un messaggio analogo, sul costruttore
+    \item nessun \texttt{import} di \texttt{java.lang}: \texttt{String} e \texttt{System} si vedono sempre
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione (2/2) -- il package \texttt{app}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+{\footnotesize \texttt{app/Simulatore.java}, prime righe:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+package app;
+
+import dispositivi.Accendibile;
+import dispositivi.Regolabile;
+import dispositivi.Lampada;
+import dispositivi.Ventilatore;
+import dispositivi.Allarme;
+
+/** Dispositivi diversi, tutti Accendibile. */
+public class Simulatore {
+
+    public static void main(String[] args) {
+        Accendibile[] casa = {
+            new Lampada("cucina"),
+\end{lstlisting}
+\footnotesize
+Il \texttt{main} prosegue come prima, senza una modifica. Cinque \texttt{import} o uno solo, \texttt{import dispositivi.*;}: con i nomi espliciti si legge subito da dove viene ogni classe.
+
+\column{0.5\textwidth}
+{\footnotesize Dalla radice \texttt{simulatore\_pkg/}:}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+$ javac app/Simulatore.java
+$ java app.Simulatore
+lampada cucina: accesa, luce 8/10
+ventilatore studio: acceso, velocita 3/3
+allarme: disattivo
+lampada camera: spenta
+accesi: 2
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \texttt{javac} compila \texttt{Simulatore} e, seguendo gli \texttt{import}, i cinque file di \texttt{dispositivi/}: i \texttt{.class} compaiono nelle due cartelle
+    \item \texttt{java app.Simulatore}: nome qualificato, dalla radice
+    \item stesso output di prima: la riorganizzazione \textbf{non} cambia il comportamento, cambia la struttura. Un nuovo programma in \texttt{app/} riusa i dispositivi con gli stessi \texttt{import}; un nuovo dispositivo va in \texttt{dispositivi/}, \texttt{public}, con la sua riga \texttt{package}: è l'homework
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Wrap-up}
+
+\begin{frame}{Riepilogo: cosa abbiamo trattato}
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.1}
+\scriptsize
+\begin{tabular}{|>{\raggedright\arraybackslash}p{6.2cm}|>{\raggedright\arraybackslash}p{7.6cm}|}
+\hline
+\textbf{Concetto (unità)} & \textbf{Dove compare oggi} \\
+\hline
+\texttt{interface}: solo intestazioni e costanti; quando usarla (U17) & \texttt{Pagabile}; \texttt{Accendibile}, \texttt{Regolabile} \\
+\hline
+\texttt{implements}, metodi \texttt{public}, errore se ne manca uno (U17) & \texttt{Fattura}, \texttt{Dipendente}; \texttt{Lampada}, \texttt{Ventilatore}, \texttt{Allarme} \\
+\hline
+L'interfaccia come tipo: polimorfismo, \texttt{instanceof}, niente \texttt{new} (U17) & \texttt{Pagabile[] daPagare}; \texttt{Accendibile[] casa}, \texttt{instanceof Regolabile} \\
+\hline
+Più interfacce per una classe; un'interfaccia ne estende un'altra (U17) & \texttt{Fattura implements Rateizzabile, Stampabile}; \texttt{Rateizzabile extends Pagabile} \\
+\hline
+Metodi \texttt{default} e \texttt{static} (U17) & \texttt{rata()}, \texttt{Pagabile.totale}; \texttt{commuta()}, \texttt{Accendibile.quantiAccesi} \\
+\hline
+Interfacce o classi astratte; \texttt{Cloneable} (U17) & la tabella; \texttt{implements Cloneable} della lezione~8 \\
+\hline
+\texttt{package}, nome qualificato, cartelle, package di default (U18) & \texttt{contabilita\_pkg}; \texttt{simulatore\_pkg} \\
+\hline
+Compilare ed eseguire dalla radice; \texttt{import}; \texttt{java.lang} (U18) & \texttt{javac app/Simulatore.java}; \texttt{java app.Simulatore}; \texttt{app/ProvaPagabili} \\
+\hline
+Visibilità di package e riepilogo dei modificatori (U18) & la tabella; \texttt{Allarme} senza \texttt{public} \\
+\hline
+\end{tabular}
+\end{center}
+
+\vspace{0.1cm}
+\textbf{Prossima lezione (L10)}: le eccezioni -- \texttt{try}/\texttt{catch}/\texttt{finally}, lo stack trace, \texttt{throws} (finalmente \texttt{CloneNotSupportedException}), eccezioni controllate e non, eccezioni nostre; la ricorsione -- casi base e ricorsivi, lo stack delle chiamate, da ricorsivo a iterativo.
+\end{frame}
+
+% ========================================================================
+\begin{frame}{Homework 9 (da svolgere entro la prossima lezione)}
+\footnotesize\setlength{\parskip}{0pt}\vspace{-0.15cm}
+Tre esercizi, ciascuno con il suo programma di prova; il secondo e il terzo usano i package.
+\begin{enumerate}\itemsep=1pt
+    \item \textbf{\texttt{Spedibile.java}} (con \texttt{Pacco.java} e \texttt{Lettera.java}): un'interfaccia con la costante \texttt{TARIFFA\_AL\_KG} = 2.0, il metodo \texttt{peso()} (in kg) e il metodo \texttt{default} \texttt{costoSpedizione()} = 3.0 + tariffa $\times$ peso. \texttt{Pacco} (destinatario, peso) usa il costo \texttt{default}; \texttt{Lettera} (destinatario, grammi \texttt{int}) converte in kg e \textbf{ridefinisce} \texttt{costoSpedizione()}: 1.20 fisso. \texttt{ProvaSpedizioni}: uno \texttt{Spedibile[]} con due pacchi e due lettere; stampa il costo di ciascuno (\texttt{printf}, due decimali), il totale con un suo metodo \texttt{static} \texttt{costoTotale(Spedibile[])}, quante lettere ci sono (\texttt{instanceof}), la costante.
+    \item \textbf{\texttt{Termostato.java}}: copiate la cartella \texttt{simulatore\_pkg} di oggi in \texttt{homework/termostato/}. Nel package \texttt{dispositivi} aggiungete \texttt{Termostato}, che implementa \texttt{Accendibile} e \texttt{Regolabile}: acceso o spento, temperatura \texttt{int} da 15 a 30 gradi (parte da 20), \texttt{alza}/\texttt{abbassa} di un grado solo se acceso; \texttt{toString} come \texttt{termostato: acceso, 22 gradi} (o \texttt{spento, 20 gradi}). In \texttt{app}, \texttt{ProvaTermostato}: un \texttt{Accendibile[]} con un termostato e una lampada; alza il termostato da spento (non cambia), accende tutti, alza due volte i regolabili con \texttt{instanceof}, stampa il termostato e il suo livello, lo commuta e ristampa, conta gli accesi con \texttt{quantiAccesi}.
+    \item \textbf{\texttt{Magazzino.java}} (package \texttt{magazzino}, con \texttt{Articolo.java} e \texttt{Scorta.java}): \texttt{Articolo} è \texttt{public} e immutabile (codice, nome, prezzo; \texttt{toString}; \texttt{equals} e \texttt{hashCode} sul solo codice). \texttt{Scorta} è \textbf{senza} \texttt{public}, come il costruttore e i metodi (tranne \texttt{toString}); variabili \texttt{private}: un articolo e la quantità; \texttt{aggiungi(int n)}, \texttt{togli(int n)} (\texttt{false} se i pezzi non bastano), \texttt{valore()}. \texttt{Magazzino} è \texttt{public}: uno \texttt{Scorta[]} con la capienza data al costruttore; \texttt{carica(Articolo a, int n)} aggiunge alla scorta di \texttt{a} se c'è (cercata con \texttt{equals}), altrimenti la crea (\texttt{false} se non c'è posto); \texttt{scarica(Articolo a, int n)}; \texttt{disponibili(Articolo a)}; \texttt{valoreTotale()}; \texttt{toString}. \texttt{app.ProvaMagazzino} carica due articoli, ricarica il primo con un \texttt{Articolo} nuovo con lo stesso codice, scarica più del disponibile e poi meno, stampa disponibilità, valore e magazzino; prova \texttt{new magazzino.Scorta(...)}: leggete l'errore, poi commentate la riga.
+\end{enumerate}
+\end{frame}
+
+% ========================================================================
+\begin{frame}
+\begin{center}
+{\Huge Domande?}\\[2em]
+{\normalsize \href{mailto:mattia.fonisto@unina.it}{\texttt{mattia.fonisto@unina.it}}}
+\end{center}
+\end{frame}
+
+\end{document}

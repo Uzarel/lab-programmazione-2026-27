@@ -1,0 +1,1252 @@
+% ============================================================================
+%  Laboratorio di Programmazione -- Lezione 10 (10 novembre 2026)
+%  Compilare con:  pdflatex -shell-escape Lezione10_Eccezioni_Ricorsione.tex
+%  Richiede: mermaid.sty (nel progetto) + Mermaid CLI `mmdc` nel PATH
+%  NB: ogni frame che contiene codice (lstlisting) o un diagramma (mermaid)
+%      deve essere dichiarato [fragile].
+% ============================================================================
+\documentclass[10pt,aspectratio=169]{beamer}
+\usetheme{Madrid}
+\usecolortheme{default}
+
+% `provide=*` carica la localizzazione italiana dai file .ini di babel: funziona anche
+% su installazioni TeX prive di texlive-lang-italian; con una TeX Live completa e`
+% equivalente al classico \usepackage[italian]{babel}.
+\usepackage[italian,provide=*]{babel}
+\usepackage[utf8]{inputenc}
+
+% Localizzazione dei nomi dei blocchi Beamer
+\uselanguage{italian}
+\languagepath{italian}
+\deftranslation[to=italian]{Definition}{Definizione}
+\deftranslation[to=italian]{Theorem}{Teorema}
+\deftranslation[to=italian]{Example}{Esempio}
+\deftranslation[to=italian]{Proof}{Dimostrazione}
+\deftranslation[to=italian]{Corollary}{Corollario}
+\deftranslation[to=italian]{Lemma}{Lemma}
+
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{mermaid}
+
+% Mermaid: sfondo trasparente e dimensione massima adatta a una slide 16:9
+\MermaidRendererOptions{-b transparent}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+% Configurazione colori per il codice
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\definecolor{keywordblue}{rgb}{0.0,0.0,0.7}
+
+% Stile per snippet Java
+\lstdefinestyle{javastyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen}\itshape,
+    keywordstyle=\color{keywordblue}\bfseries,
+    numberstyle=\scriptsize\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=none,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    aboveskip=0.6\medskipamount,
+    belowskip=0.6\medskipamount,
+    language=Java,
+    morekeywords={default},
+    literate={à}{{\`a}}1 {è}{{\`e}}1 {é}{{\'e}}1 {ì}{{\`i}}1
+             {ò}{{\`o}}1 {ù}{{\`u}}1 {È}{{\`E}}1
+}
+\lstset{style=javastyle}
+
+% Stile per righe di terminale
+\lstdefinestyle{shell}{
+    language=bash,
+    backgroundcolor=\color{black!85},
+    basicstyle=\ttfamily\footnotesize\color{white},
+    keywordstyle=\color{white},
+    stringstyle=\color{white},
+    commentstyle=\color{green!70},
+    numbers=none,
+    frame=none,
+    aboveskip=0.6\medskipamount,
+    belowskip=0.6\medskipamount,
+    showstringspaces=false
+}
+
+\title[Lezione 10 -- Eccezioni e ricorsione]{Lezione 10 -- Eccezioni e ricorsione}
+\subtitle{\texttt{try}, \texttt{catch}, \texttt{finally}, \texttt{throw} e \texttt{throws}, eccezioni controllate e non, le nostre eccezioni; casi base e ricorsivi, lo stack delle chiamate}
+\author[Mattia Fonisto]{Mattia Fonisto}
+\institute[Lab.\ di Programmazione]{Laboratorio di Programmazione -- Ingegneria Informatica, II anno\\
+           Università degli Studi di Napoli Federico II -- Sede di San Giovanni a Teduccio}
+\date{10 novembre 2026}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% ========================================================================
+\begin{frame}{Agenda della lezione (2h)}
+\begin{enumerate}
+    \item \textbf{Ripasso e Homework 9} \hfill (\emph{15 min})
+    \begin{itemize}
+        \item uno di voi alla lavagna con \texttt{Spedibile}, \texttt{Termostato} o \texttt{Magazzino}: lo commentiamo insieme
+    \end{itemize}
+    \item \textbf{Le eccezioni} \hfill (\emph{25 min})
+    \begin{itemize}
+        \item errori a tempo di esecuzione e stack trace; \texttt{try} e \texttt{catch}; \texttt{throw}
+        \item propagazione e rilancio; la gerarchia, \texttt{throws}, eccezioni controllate e non; \texttt{finally}; le nostre eccezioni
+    \end{itemize}
+    \item \textbf{La ricorsione} \hfill (\emph{20 min})
+    \begin{itemize}
+        \item casi base e ricorsivi; il fattoriale; lo stack delle chiamate; terminazione
+        \item ricorsione o iterazione; da ricorsivo a iterativo
+    \end{itemize}
+    \item \textbf{Esercitazione} -- tutti insieme \hfill (\emph{50 min})
+    \begin{itemize}
+        \item \emph{Commentiamo insieme}: tre metodi ricorsivi, letti riga per riga
+        \item \emph{Insieme, passo passo}: il conto bancario che segnala gli errori con le eccezioni
+    \end{itemize}
+    \item \textbf{Wrap-up e Homework 10} \hfill (\emph{10 min})
+\end{enumerate}
+\end{frame}
+
+% ========================================================================
+\section{Le eccezioni}
+
+\begin{frame}[fragile]{Eccezioni: errori a tempo di esecuzione -- \texttt{Divisione.java}}
+\begin{columns}[T]
+\column{0.56\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class Divisione {
+
+    public static int quoziente(int a, int b) {
+        return a / b;
+    }
+
+    public static void main(String[] args) {
+        Scanner in = new Scanner(System.in);
+        System.out.print("Due interi: ");
+        int a = in.nextInt();
+        int b = in.nextInt();
+        int q = quoziente(a, b);
+        System.out.println("quoziente: " + q);
+        System.out.println("fine");
+    }
+}
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Due interi: 7 0
+Exception in thread "main"
+java.lang.ArithmeticException: / by zero
+    at Divisione.quoziente(Divisione.java:7)
+    at Divisione.main(Divisione.java:15)
+\end{lstlisting}
+
+\column{0.44\textwidth}
+\begin{block}{Eccezione}
+\small Un'\emph{eccezione} è un oggetto che la JVM crea quando un'operazione non può essere completata. L'esecuzione si interrompe e l'eccezione è \textbf{sollevata} e rimandata a chi ha chiamato; se nessuno la gestisce, il programma termina con lo \emph{stack trace}.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item già incontrate: \texttt{ClassCastException} (lezione~7), \texttt{NullPointerException} (lezione~8)
+    \item \textbf{lo stack trace}: classe e messaggio (\texttt{/ by zero}), poi una riga per metodo, con file e numero di riga: in cima dove è nata (\texttt{quoziente}, riga 7 del file), sotto chi l'ha chiamata, fino al \texttt{main}
+    \item \texttt{fine} non viene stampato: anche \texttt{main} è terminato
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Gestire un'eccezione: \texttt{try} e \texttt{catch} -- \texttt{Divisione.java} (versione 2)}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+try {
+    int a = in.nextInt();
+    int b = in.nextInt();
+    int q = quoziente(a, b);
+    System.out.println("quoziente: " + q);
+} catch (InputMismatchException e) {
+    System.out.println("servono due interi");
+} catch (ArithmeticException e) {
+    System.out.println(e.getMessage());
+}
+System.out.println("fine");
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Due interi: 7 0
+/ by zero
+fine
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Due interi: 7 x
+servono due interi
+fine
+\end{lstlisting}
+\footnotesize
+\texttt{InputMismatchException} va importata da \texttt{java.util}, come \texttt{Scanner}; \texttt{ArithmeticException} sta in \texttt{java.lang}. \texttt{a}, \texttt{b} e \texttt{q} sono locali al blocco \texttt{try} (lezione~3): dopo non esistono più.
+
+\column{0.48\textwidth}
+\begin{block}{\texttt{try} e \texttt{catch}}
+\small Nel blocco \texttt{try} sta il codice che può sollevare un'eccezione; ogni \texttt{catch} dichiara il \textbf{tipo} che sa gestire e un parametro, \texttt{e}, riferimento all'oggetto eccezione. Se nel \texttt{try} viene sollevata un'eccezione, le istruzioni che seguono nel \texttt{try} sono saltate e viene eseguito il \textbf{primo} \texttt{catch} del tipo giusto; poi si prosegue dopo l'ultimo \texttt{catch}. Se non viene sollevato nulla, i \texttt{catch} sono ignorati.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item con \texttt{7 0}: la \texttt{println} del quoziente è saltata, si esegue il secondo \texttt{catch}, poi \texttt{fine}: il programma \textbf{non} termina. \texttt{e.getMessage()} è il messaggio; \texttt{println(e)} stampa classe e messaggio
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Sollevare un'eccezione: \texttt{throw} -- \texttt{Media.java}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** La media di v, che non deve essere vuoto. */
+public static double media(int[] v) {
+    if (v.length == 0) {
+        throw new IllegalArgumentException(
+                "media di un array vuoto");
+    }
+    int somma = 0;
+    for (int x : v) {
+        somma += x;
+    }
+    return (double) somma / v.length;
+}
+\end{lstlisting}
+\begin{block}{\texttt{throw}}
+\small Un metodo che rileva una situazione che non sa gestire crea un oggetto eccezione con \texttt{new} e lo solleva con \texttt{throw}: il metodo \textbf{termina subito}, senza restituire nulla, e l'eccezione passa al chiamante. \textbf{Rileva} chi se ne può accorgere (il metodo); \textbf{gestisce} chi sa che cosa fare (il client).
+\end{block}
+
+\column{0.48\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static void main(String[] args) {
+    int[] voti = { 27, 30, 24 };
+    int[] vuoto = {};
+    System.out.println(media(voti));
+    try {
+        System.out.println(media(vuoto));
+    } catch (IllegalArgumentException e) {
+        System.out.println(e.getMessage());
+    }
+}
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+27.0
+media di un array vuoto
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item un \texttt{boolean} di esito non basta quando il metodo deve restituire un \textbf{valore}: nessun \texttt{double} può dire ``media di niente'' (\texttt{0.0} è una media legittima)
+    \item \texttt{a / b} con \texttt{b} zero è come un \texttt{throw} di \texttt{ArithmeticException}, fatto dalla JVM. \texttt{IllegalArgumentException} sta in \texttt{java.lang}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Propagazione: lo stack unwinding -- \texttt{Catena.java}}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static void main(String[] args) {
+    primo();
+}
+
+public static void primo() {
+    secondo();
+}
+
+public static void secondo() {
+    terzo();
+}
+
+public static void terzo() {
+    throw new IllegalArgumentException("errore");
+}
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Exception in thread "main"
+java.lang.IllegalArgumentException: errore
+    at Catena.terzo(Catena.java:17)
+    at Catena.secondo(Catena.java:13)
+    at Catena.primo(Catena.java:9)
+    at Catena.main(Catena.java:5)
+\end{lstlisting}
+
+\column{0.45\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.37\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 32px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 10
+    wrappingWidth: 600
+---
+flowchart TB
+  T["<b>terzo</b>: throw, termina"]
+  S["<b>secondo</b>: nessun catch, termina"]
+  P["<b>primo</b>: nessun catch, termina"]
+  M["<b>main</b>: nessun catch, termina"]
+  E["la JVM stampa lo stack trace"]
+  T -- "l'eccezione risale" --> S --> P --> M --> E
+  style T fill:#fee2e2,stroke:#b91c1c
+  style E fill:#fef3c7,stroke:#b45309
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\begin{block}{Stack unwinding}
+\small Un'eccezione non catturata \textbf{risale la catena delle chiamate}: ogni metodo attraversato termina e viene rimosso dallo stack, finché un \texttt{catch} la cattura; se non la cattura nessuno, nemmeno il \texttt{main}, il programma termina.
+\end{block}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Catturare lungo la catena e rilanciare -- \texttt{CatenaRilancio.java}}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static void main(String[] args) {
+    primo();
+    System.out.println("fine");
+}
+
+public static void primo() {
+    try {
+        secondo();
+    } catch (IllegalArgumentException e) {
+        System.out.println(e);
+    }
+}
+
+public static void secondo() {
+    try {
+        terzo();
+    } catch (IllegalArgumentException e) {
+        System.out.println("secondo: rilancio");
+        throw e;
+    }
+}
+\end{lstlisting}
+
+\column{0.46\textwidth}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+secondo: rilancio
+java.lang.IllegalArgumentException: errore
+fine
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item il \texttt{catch} può stare in \textbf{qualunque} metodo della catena: \texttt{primo} cattura ciò che nasce in \texttt{terzo}, due livelli più in basso
+    \item la risalita si ferma al primo \texttt{catch} del tipo giusto; da lì l'esecuzione \textbf{prosegue normalmente}: \texttt{primo} stampa l'eccezione (classe e messaggio) e termina come sempre, \texttt{main} stampa \texttt{fine}
+    \item \textbf{rilancio}: \texttt{secondo} cattura, fa la sua parte (un messaggio) e rilancia \textbf{lo stesso oggetto} con \texttt{throw e}: l'eccezione riprende a risalire. \texttt{terzo} è quello di prima: chi la solleva non sa, e non deve sapere, chi la gestirà
+    \item il tipo nel \texttt{catch} può essere una \textbf{superclasse} di quella sollevata (upcasting, lezione~7): qui \texttt{catch (RuntimeException e)} funzionerebbe
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{La gerarchia delle eccezioni: controllate e non controllate}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.5\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 28px
+  class:
+    hideEmptyMembersBox: true
+---
+classDiagram
+  direction LR
+  class Throwable
+  class Error
+  class Exception
+  class RuntimeException
+  class StackOverflowError
+  class CloneNotSupportedException
+  class ArithmeticException
+  class IllegalArgumentException
+  class NullPointerException
+  class ClassCastException
+  Throwable <|-- Error
+  Throwable <|-- Exception
+  Error <|-- StackOverflowError
+  Exception <|-- CloneNotSupportedException
+  Exception <|-- RuntimeException
+  RuntimeException <|-- ArithmeticException
+  RuntimeException <|-- IllegalArgumentException
+  RuntimeException <|-- NullPointerException
+  RuntimeException <|-- ClassCastException
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+Le eccezioni sono \textbf{oggetti di classi}, in una gerarchia (lezione~7) la cui radice è la classe \texttt{Throwable} (una classe, non un'interfaccia). Una parte: \texttt{InputMismatchException} e \texttt{ArrayIndexOutOfBoundsException} discendono da \texttt{RuntimeException}, \texttt{StackOverflowError} da \texttt{Error}, a più livelli.
+
+\vspace{0.1cm}
+Fra più \texttt{catch} vince il \textbf{primo} compatibile: la sottoclasse va scritta prima della superclasse.
+
+\column{0.48\textwidth}
+\begin{block}{Controllate e non controllate}
+\small Le sottoclassi di \texttt{RuntimeException} sono \emph{non controllate} (\emph{unchecked}): di solito errori di programmazione, che si evitano scrivendo bene il codice. Le altre sottoclassi di \texttt{Exception} sono \emph{controllate} (\emph{checked}): situazioni da prevedere; il \textbf{compilatore controlla} che chi può riceverne una la gestisca o la dichiari.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item \texttt{Error}: guasti gravi, come lo \emph{stack overflow} (con la ricorsione): non controllati, non si dovrebbero catturare
+    \item un \texttt{catch} cattura anche le \textbf{sottoclassi} del suo tipo: \texttt{catch (Exception e)} prende tutte le eccezioni, anche quelle che non ci aspettavamo: meglio il tipo più specifico
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Dichiarare le eccezioni: \texttt{throws} -- \texttt{ProvaClone.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+{\footnotesize In \texttt{Persona implements Cloneable}, come nella lezione~8:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+@Override
+public Persona clone()
+        throws CloneNotSupportedException {
+    return (Persona) super.clone();
+}
+\end{lstlisting}
+{\footnotesize Il client \textbf{cattura}, invece di dichiarare \texttt{throws} sul \texttt{main}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static void main(String[] args) {
+    Persona p = new Persona("Anna", "Russo");
+    try {
+        Persona q = p.clone();
+        System.out.println("copia: " + q);
+    } catch (CloneNotSupportedException e) {
+        System.out.println(e);
+    }
+}
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+copia: Anna Russo
+\end{lstlisting}
+\footnotesize
+Per le eccezioni non controllate \texttt{throws} non è obbligatorio: \texttt{media} non dichiara la sua.
+
+\column{0.5\textwidth}
+\begin{block}{\texttt{throws}}
+\small Nell'intestazione, \texttt{throws} elenca le eccezioni \textbf{controllate} che possono uscire dal metodo, sollevate da lui stesso o da un metodo che chiama, e che il metodo non cattura: le \textbf{rimanda al chiamante}. Chi lo chiama, a sua volta, deve \textbf{catturarle} (\texttt{try}/\texttt{catch}) oppure \textbf{rimandarle al proprio chiamante}, dichiarandole con \texttt{throws}.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item finalmente la riga della lezione~8: \texttt{Object.clone()} dichiara \texttt{throws CloneNotSupportedException} e la solleva se l'oggetto non è \texttt{Cloneable} (lezione~9). Senza \texttt{throws} né \texttt{catch}: \emph{``unreported exception CloneNotSupportedException; must be caught or declared''}
+    \item senza \texttt{implements Cloneable} si compila lo stesso, ma si arriva al \texttt{catch}:
+\end{itemize}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+java.lang.CloneNotSupportedException: Persona
+\end{lstlisting}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{\texttt{finally} e multi-catch -- \texttt{DivisioneFinally.java}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+try {
+    int a = in.nextInt();
+    int b = in.nextInt();
+    System.out.println(a / b);
+} catch (InputMismatchException
+        | ArithmeticException e) {
+    System.out.println("errore: " + e);
+} finally {
+    System.out.println("tentativo concluso");
+}
+System.out.println("fine");
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Due interi: 7 0
+errore: java.lang.ArithmeticException: / by zero
+tentativo concluso
+fine
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Due interi: 7 2
+3
+tentativo concluso
+fine
+\end{lstlisting}
+
+\column{0.48\textwidth}
+\begin{block}{\texttt{finally}}
+\small Il blocco \texttt{finally}, dopo i \texttt{catch}, viene eseguito \textbf{sempre}: che il \texttt{try} finisca normalmente, che un \texttt{catch} gestisca l'eccezione, che l'eccezione sia rimandata al chiamante o che il \texttt{try} esegua un \texttt{return}.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item serve per il lavoro da fare \textbf{comunque}: ad esempio chiudere un file (lezione~13)
+    \item \textbf{multi-catch}: un solo \texttt{catch} per più tipi separati da \texttt{|}, ammesso che abbiano una gestione comune. \texttt{e} ha il tipo dell'antenato comune più vicino: qui \texttt{RuntimeException}
+    \item l'unico vincolo è fra i tipi \textbf{elencati}: nessuno può essere sottoclasse di un altro dell'elenco (\texttt{ArithmeticException | RuntimeException} non compila). Avere antenati in comune non conta: \texttt{StackOverflowError | InputMismatchException} è lecito, ed \texttt{e} è un \texttt{Throwable}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Le nostre eccezioni -- \texttt{ParcheggioPienoException.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Sollevata da entra(): parcheggio pieno. */
+public class ParcheggioPienoException
+        extends Exception {
+
+    public ParcheggioPienoException() {
+        super("parcheggio pieno");
+    }
+}
+\end{lstlisting}
+{\footnotesize In \texttt{Parcheggio} (\texttt{nome}, \texttt{posti}, \texttt{occupati}):}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Occupa un posto libero. */
+public void entra()
+        throws ParcheggioPienoException {
+    if (occupati == posti) {
+        throw new ParcheggioPienoException();
+    }
+    occupati++;
+}
+\end{lstlisting}
+\footnotesize
+Controllata: \texttt{p.entra()} senza \texttt{try} né \texttt{throws} non compila: \emph{``unreported exception ParcheggioPienoException; must be caught or declared to be thrown''}.
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Parcheggio p = new Parcheggio("P1", 2);
+try {
+    p.entra();
+    p.entra();
+    p.entra();
+    System.out.println("tre auto dentro");
+} catch (ParcheggioPienoException e) {
+    System.out.println(e.getMessage());
+}
+System.out.println(p);
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+parcheggio pieno
+P1: 2/2
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item un'eccezione nostra è una \textbf{sottoclasse} di \texttt{Exception} (controllata) o di \texttt{RuntimeException} (non controllata); il nome finisce per convenzione in \texttt{Exception}
+    \item il costruttore passa il messaggio con \texttt{super(...)} (lezione~7): è quello che restituisce \texttt{getMessage()}. Può avere variabili di istanza e metodi, come ogni classe: nell'esercitazione
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Quando (non) usare le eccezioni -- \texttt{Quoziente.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+int a = 7;
+int b = 0;
+// NO: l'eccezione usata come un if
+try {
+    System.out.println(a / b);
+} catch (ArithmeticException e) {
+    System.out.println("divisore nullo");
+}
+// SI': il controllo normale, con un if
+if (b != 0) {
+    System.out.println(a / b);
+} else {
+    System.out.println("divisore nullo");
+}
+\end{lstlisting}
+\footnotesize
+Le due versioni stampano lo stesso messaggio; la seconda dice nell'\texttt{if} qual è il caso particolare, la prima lo nasconde in un \texttt{catch}.
+
+\column{0.5\textwidth}
+\footnotesize
+\begin{itemize}\itemsep=4pt
+    \item le eccezioni servono quando \textbf{chi rileva} il problema non sa come gestirlo e \textbf{chi sa} gestirlo non sa come rilevarlo: \texttt{media} sa che l'array è vuoto, ma solo il client sa se avvisare, ripetere o rinunciare
+    \item \textbf{non} al posto del normale controllo di flusso: se basta un \texttt{if} (e un \texttt{boolean}), si usa l'\texttt{if}. Prima di dividere si controlla il divisore; prima di un cast, \texttt{instanceof} (lezione~8)
+    \item \textbf{controllata o non controllata?} Controllata se il chiamante \textbf{deve} prevedere il caso e può rimediare (il parcheggio pieno: cercarne un altro). Non controllata se il chiamante l'avrebbe evitata scrivendo bene il codice: una precondizione violata, come l'array vuoto passato a \texttt{media}
+    \item un'eccezione non gestita termina il programma: meglio pensarci prima
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{La ricorsione}
+
+\begin{frame}[fragile]{Ricorsione: definire qualcosa in termini di se stesso}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{block}{Ricorsione}
+\small Una definizione è \emph{ricorsiva} quando descrive una cosa usando la cosa stessa, applicata a un caso \textbf{più piccolo}: la definizione si riapplica al caso più piccolo, e poi a quello ancora più piccolo, finché si arriva a un caso così semplice da avere la risposta \textbf{diretta}. Un metodo è ricorsivo se, per risolvere un problema, chiama se stesso su un problema dello stesso tipo ma più piccolo.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item il \textbf{fattoriale}: $0! = 1$; per $n \geq 1$, $n! = n \cdot (n-1)!$: il fattoriale di $n$ è definito con il fattoriale di $n-1$
+    \item una \textbf{stringa} è la stringa vuota, oppure un carattere seguito da una stringa: \texttt{"java"} è \texttt{'j'} seguito da \texttt{"ava"} (\texttt{s.charAt(0)} e \texttt{s.substring(1)}, lezione~2)
+    \item cercare una parola nel \textbf{dizionario}: si apre a metà e si cerca nella metà giusta, che è ancora un dizionario, più piccolo (la ricerca binaria, lezione~11)
+\end{itemize}
+
+\column{0.48\textwidth}
+\footnotesize
+\textbf{Come si svolge un calcolo ricorsivo: $3!$}
+\begin{enumerate}\itemsep=2pt
+    \item \textbf{si scende}, applicando la definizione finché compare un caso con risposta diretta:\\
+    $3! = 3 \cdot 2!$ \quad $2! = 2 \cdot 1!$ \quad $1! = 1 \cdot 0!$ \quad $0! = 1$
+    \item \textbf{si risale}, sostituendo i valori ottenuti, dall'ultimo al primo:\\
+    $1! = 1 \cdot 1 = 1$ \quad $2! = 2 \cdot 1 = 2$ \quad $3! = 3 \cdot 2 = 6$
+\end{enumerate}
+Ogni passo in discesa lascia in sospeso un calcolo ($3 \cdot {?}$), che si completa in risalita. Da qui gli ingredienti di un metodo ricorsivo:
+\begin{itemize}\itemsep=2pt
+    \item uno o più \textbf{casi base}: la risposta è diretta, senza chiamate ($0! = 1$; la stringa vuota)
+    \item il \textbf{caso ricorsivo}: una chiamata su un problema \textbf{più piccolo}, il cui risultato si combina con il resto ($n \cdot (n-1)!$)
+    \item la \textbf{convergenza}: ogni chiamata si avvicina a un caso base, altrimenti la discesa non finisce
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{La ricorsione in Java: il fattoriale -- \texttt{Fattoriale.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** n!, con 0 <= n <= 12. */
+public static int fattoriale(int n) {
+    if (n < 0) {
+        throw new IllegalArgumentException(
+                "n negativo: " + n);
+    }
+    if (n == 0) {
+        return 1;       // caso base
+    }
+    // caso ricorsivo
+    return n * fattoriale(n - 1);
+}
+
+public static void main(String[] args) {
+    System.out.println(fattoriale(3));
+    System.out.println(fattoriale(12));
+}
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+6
+479001600
+\end{lstlisting}
+\footnotesize
+$13! = 6\,227\,020\,800$ non sta in un \texttt{int}: da qui la precondizione $n \leq 12$. Un solo codice, tante attivazioni: come un metodo che ne chiama un altro.
+
+\column{0.5\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.46\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 30px
+  flowchart:
+    nodeSpacing: 20
+    rankSpacing: 16
+    wrappingWidth: 900
+---
+flowchart TB
+  M["<b>main</b>: fattoriale(3)"]
+  F3["<b>n = 3</b>: 3 * fattoriale(2) = 6"]
+  F2["<b>n = 2</b>: 2 * fattoriale(1) = 2"]
+  F1["<b>n = 1</b>: 1 * fattoriale(0) = 1"]
+  F0["<b>n = 0</b>: caso base = 1"]
+  M --> F3 --> F2 --> F1 --> F0
+  style F0 fill:#dcfce7,stroke:#15803d
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item \textbf{fase discendente} (dall'alto): ogni chiamata aspetta la successiva; lo stack cresce a ogni chiamata, ciascuna con il \textbf{suo} \texttt{n} (lezione~3)
+    \item \textbf{fase ascendente} (dal basso): il caso base restituisce 1; ogni chiamata moltiplica, restituisce e viene rimossa dallo stack
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Terminazione e \texttt{StackOverflowError} -- \texttt{SenzaBase.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Nessun controllo su n < 0. */
+public static int fattoriale(int n) {
+    if (n == 0) {
+        return 1;
+    }
+    return n * fattoriale(n - 1);
+}
+
+public static void main(String[] args) {
+    System.out.println(fattoriale(-1));
+}
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Exception in thread "main"
+java.lang.StackOverflowError
+    at SenzaBase.fattoriale(SenzaBase.java:9)
+    at SenzaBase.fattoriale(SenzaBase.java:9)
+    at SenzaBase.fattoriale(SenzaBase.java:9)
+    ... (1024 righe at in tutto)
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\begin{block}{Terminazione}
+\small Un metodo ricorsivo termina se ogni catena di chiamate arriva a un caso base: a ogni chiamata il problema deve \textbf{diminuire}, verso un caso base che prima o poi viene raggiunto. Il numero di chiamate annidate è la \emph{profondità} della ricorsione.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item con $n = -1$: $-2$, $-3$, \ldots: $n$ diminuisce ma \textbf{si allontana} da 0. Ogni chiamata occupa spazio sullo stack, che ha una dimensione \textbf{finita}: quando è pieno, la JVM solleva \texttt{StackOverflowError}, un \texttt{Error}: non va catturato, va corretto il codice
+    \item è l'equivalente ricorsivo del ciclo infinito; con un ciclo, però, il programma resta bloccato, qui termina con un errore
+    \item il rimedio è nella versione della slide precedente: la precondizione $n \geq 0$ controllata con un \texttt{throw}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Ricorsione o iterazione? -- \texttt{ContoAllaRovescia.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static void contoAllaRovescia(int n) {
+    if (n == 0) {
+        System.out.println("via!");
+    } else {
+        System.out.println(n);
+        contoAllaRovescia(n - 1);
+    }
+}
+
+public static void contoIterativo(int n) {
+    while (n != 0) {
+        System.out.println(n);
+        n = n - 1;
+    }
+    System.out.println("via!");
+}
+\end{lstlisting}
+\footnotesize
+Con \texttt{3}, entrambi stampano \texttt{3}, \texttt{2}, \texttt{1}, \texttt{via!}
+
+\column{0.5\textwidth}
+\footnotesize
+\begin{itemize}\itemsep=4pt
+    \item lo stesso problema, risolto in due modi: nella versione ricorsiva il ``ripeti'' è la chiamata a se stesso e l'arresto è il caso base; in quella iterativa il ``ripeti'' è il \texttt{while} e l'arresto è la sua condizione
+    \item ogni metodo ricorsivo ha una versione iterativa: qui basta un \texttt{while}, per il fattoriale un \texttt{for} che accumula il prodotto; per altri problemi (la Torre di Hanoi dell'homework) è molto più complicata
+    \item \textbf{quando usarla}: se il problema è ricorsivo per natura e la soluzione ricorsiva è più semplice e leggibile; l'iterazione se il ciclo è ovvio e le prestazioni contano
+\end{itemize}
+\vspace{0.1cm}
+\begin{center}
+\renewcommand{\arraystretch}{1.05}
+\scriptsize
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & \textbf{iterazione} & \textbf{ricorsione} \\
+\midrule
+costrutto & \texttt{while}, \texttt{for} & \texttt{if} + chiamata \\
+si ferma & condizione del ciclo & caso base \\
+se non si ferma & ciclo infinito & \texttt{StackOverflowError} \\
+costo & nessuna chiamata & una chiamata per passo \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Esercitazione}
+
+\begin{frame}[fragile]{Commentiamo insieme (20 min) -- il problema}
+\begin{columns}[T]
+\column{0.55\textwidth}
+\footnotesize
+\textbf{Il problema.} Tre piccoli problemi da risolvere \textbf{senza cicli}, solo con la ricorsione. Il codice è già scritto, nella classe \texttt{Ricorsivi}: lo leggiamo riga per riga cercando, in ogni metodo, il caso base, il caso ricorsivo e perché la ricorsione termina.
+
+\vspace{0.1cm}
+\textbf{I tre problemi}
+\begin{enumerate}\itemsep=3pt
+    \item la \textbf{somma delle cifre} di un intero non negativo: per \texttt{1234}, $1 + 2 + 3 + 4 = 10$. L'ultima cifra è \texttt{n \% 10}, il numero senza l'ultima cifra è \texttt{n / 10}
+    \item la \textbf{stampa inversa} di un array: per \texttt{\{ 3, 8, 1, 6 \}}, \texttt{6 1 8 3}, senza indici che scendono
+    \item i \textbf{numeri di Fibonacci}: $F_0 = 0$, $F_1 = 1$ e ciascuno dei successivi è la somma dei due precedenti: 0, 1, 1, 2, 3, 5, 8, 13, \ldots{} Il programma conta anche quante chiamate servono per calcolare $F_{20}$
+\end{enumerate}
+
+\column{0.45\textwidth}
+\footnotesize
+\textbf{Le chiamate per calcolare $F_4$}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.6\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 30
+    wrappingWidth: 600
+---
+flowchart TB
+  A["fib(4)"] --> B["fib(3)"]
+  A --> C["fib(2)"]
+  B --> D["fib(2)"]
+  B --> E["fib(1)"]
+  D --> F["fib(1)"]
+  D --> G["fib(0)"]
+  C --> H["fib(1)"]
+  C --> I["fib(0)"]
+  style C fill:#fef3c7,stroke:#b45309
+  style D fill:#fef3c7,stroke:#b45309
+  style E fill:#dcfce7,stroke:#15803d
+  style F fill:#dcfce7,stroke:#15803d
+  style G fill:#dcfce7,stroke:#15803d
+  style H fill:#dcfce7,stroke:#15803d
+  style I fill:#dcfce7,stroke:#15803d
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+In verde i casi base; in giallo lo stesso calcolo, fatto due volte.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{sommaCifre} e \texttt{stampaInversa}}
+\begin{columns}[T]
+\column{0.46\textwidth}
+{\footnotesize Nella classe \texttt{Ricorsivi}:}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+private static int chiamate = 0;
+
+/** La somma delle cifre di n, n >= 0. */
+public static int sommaCifre(int n) {
+    if (n < 10) {
+        return n;
+    }
+    return n % 10 + sommaCifre(n / 10);
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item caso base: un numero di una cifra; caso ricorsivo: l'ultima cifra più la somma delle cifre del resto
+    \item \texttt{sommaCifre(1234)} $=$ \texttt{4 + sommaCifre(123)} $=$ \texttt{4 + 3 + sommaCifre(12)} $=$ \texttt{4 + 3 + 2 + 1}
+    \item \texttt{n / 10} ha una cifra in meno: dopo al più dieci chiamate si arriva sotto 10
+\end{itemize}
+
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Stampa v[i], v[i+1], ... in ordine inverso. */
+public static void stampaInversa(int[] v, int i) {
+    if (i < v.length) {
+        stampaInversa(v, i + 1);
+        System.out.print(v[i] + " ");
+    }
+}
+
+/** Stampa tutto v al contrario: parte da 0. */
+public static void stampaInversa(int[] v) {
+    stampaInversa(v, 0);
+    System.out.println();
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item il problema ``più piccolo'' è la parte di array da \texttt{i} in poi: \texttt{i} cresce fino a \texttt{v.length}, dove la parte è vuota e non c'è nulla da fare (caso base \textbf{implicito}: l'\texttt{if} è falso)
+    \item prima la chiamata, \textbf{poi} la stampa: \texttt{v[0]} viene stampato per ultimo, quando tutte le chiamate successive sono già tornate
+    \item due metodi in \textbf{overloading} (lezione~3): il client chiama quello senza indice
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{fibonacci} e \texttt{main}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** L'n-esimo numero di Fibonacci. */
+public static int fibonacci(int n) {
+    chiamate++;
+    if (n <= 1) {
+        return n;
+    }
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+public static void main(String[] args) {
+    System.out.println(sommaCifre(1234));
+    int[] v = { 3, 8, 1, 6 };
+    stampaInversa(v);
+    System.out.println(fibonacci(20));
+    System.out.println(chiamate + " chiamate");
+}
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+10
+6 1 8 3
+6765
+21891 chiamate
+\end{lstlisting}
+
+\column{0.48\textwidth}
+\footnotesize
+\textbf{Rispondiamo insieme:}
+\begin{enumerate}\itemsep=3pt
+    \item in \texttt{sommaCifre}, il caso base potrebbe essere \texttt{n == 0}, con \texttt{return 0}? Che cosa cambierebbe?
+    \item in \texttt{stampaInversa}, che cosa stamperebbe il metodo scambiando la chiamata ricorsiva e la \texttt{print}?
+    \item \texttt{fibonacci} ha \textbf{due} casi base in un solo \texttt{if}: quali? Perché ne servono due?
+    \item per $F_{20}$ servono 21\,891 chiamate: perché così tante? Guardate l'albero di $F_4$. Come lo calcolereste con un ciclo e due variabili?
+    \item perché \texttt{chiamate} è una variabile \texttt{static} della classe e non una variabile locale di \texttt{fibonacci}?
+\end{enumerate}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo (30 min) -- il problema}
+\begin{columns}[T]
+\column{0.6\textwidth}
+\footnotesize
+\textbf{Il problema.} Un conto bancario deve \textbf{rifiutare} le operazioni impossibili e dire al client \textbf{perché}: un importo non positivo è un errore di chi scrive il programma; un prelievo più grande del saldo è una situazione normale, che il programma deve prevedere, e il client deve poter sapere \textbf{quanto manca}. Scriviamo \texttt{ContoBancario} e l'eccezione \texttt{SaldoInsufficienteException}. Il programma di prova \texttt{ProvaConto} è già scritto: legge l'importo da prelevare dalla tastiera, insistendo finché non arriva un numero positivo.
+
+\vspace{0.1cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=2pt
+    \item un conto ha un intestatario (che non cambia) e un saldo, che parte da 0; si leggono con due \texttt{get}
+    \item \texttt{versa(importo)} e \texttt{preleva(importo)}: con un importo non positivo, nessuna modifica e un'eccezione con il messaggio \texttt{non positivo: -5.0}
+    \item \texttt{preleva} con un importo maggiore del saldo: nessuna modifica e un'eccezione che dice quanto manca
+    \item \texttt{trasferisci(altro, importo)}: un prelievo da questo conto e un versamento su \texttt{altro}; se il prelievo fallisce, nessun versamento
+    \item \texttt{toString}: \texttt{Anna: saldo 100.0}
+\end{itemize}
+
+\column{0.4\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.66\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 30
+    wrappingWidth: 600
+---
+flowchart TB
+  P["<b>ProvaConto.java</b><br/>già scritto"]
+  C["<b>ContoBancario.java</b><br/>da scrivere"]
+  E["<b>SaldoInsufficienteException.java</b><br/>da scrivere"]
+  P -- "usa" --> C
+  C -- "solleva" --> E
+  P -- "cattura" --> E
+  style P fill:#dcfce7,stroke:#15803d
+  style C fill:#fef3c7,stroke:#b45309
+  style E fill:#fef3c7,stroke:#b45309
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo -- \texttt{ProvaConto.java} (1/2): l'input robusto}
+\begin{columns}[T]
+\column{0.56\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Legge un importo positivo: insiste. */
+public static double leggiImporto(Scanner in) {
+    double importo = 0;
+    while (importo <= 0) {
+        System.out.print("Importo: ");
+        try {
+            importo = in.nextDouble();
+        } catch (InputMismatchException e) {
+            in.nextLine();   // scarta l'input
+            System.out.println("non e' un numero");
+        }
+    }
+    return importo;
+}
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Importo: abc
+non e' un numero
+Importo: -5
+Importo: 250
+\end{lstlisting}
+
+\column{0.44\textwidth}
+\footnotesize
+\begin{itemize}\itemsep=4pt
+    \item \textbf{input robusto}: un programma che legge dalla tastiera non deve terminare con uno stack trace perché l'utente ha scritto una parola al posto di un numero; deve chiedere di nuovo
+    \item se \texttt{nextDouble} trova \texttt{abc}, solleva \texttt{InputMismatchException} e \textbf{lascia} \texttt{abc} nell'input: \texttt{nextLine()} lo scarta. Senza quella riga il ciclo rileggerebbe \texttt{abc} all'infinito
+    \item \texttt{importo} resta a 0 e il ciclo ripete; un numero non positivo, come \texttt{-5}, è letto ma non fa uscire dal ciclo: qui basta la condizione del \texttt{while}, senza eccezioni
+    \item il \texttt{catch} sta \textbf{dentro} il ciclo: dopo un errore si riprova; fuori dal ciclo, al primo errore il ciclo finirebbe
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo -- \texttt{ProvaConto.java} (2/2): il \texttt{main}}
+\begin{columns}[T]
+\column{0.57\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Scanner in = new Scanner(System.in);
+ContoBancario anna = new ContoBancario("Anna");
+ContoBancario luca = new ContoBancario("Luca");
+anna.versa(100);
+try {
+    anna.preleva(leggiImporto(in));
+    System.out.println("prelievo eseguito");
+} catch (SaldoInsufficienteException e) {
+    System.out.println("mancano " + e.getMancante());
+} finally {
+    System.out.println(anna);
+}
+try {
+    anna.trasferisci(luca, 70);
+} catch (SaldoInsufficienteException e) {
+    System.out.println(e.getMessage());
+}
+System.out.println(anna + ", " + luca);
+\end{lstlisting}
+
+\column{0.43\textwidth}
+{\footnotesize Con \texttt{abc}, \texttt{-5}, \texttt{250} (dopo i prompt):}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+mancano 150.0
+Anna: saldo 100.0
+Anna: saldo 30.0, Luca: saldo 70.0
+\end{lstlisting}
+{\footnotesize Con \texttt{40}:}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Importo: 40
+prelievo eseguito
+Anna: saldo 60.0
+saldo insufficiente, mancano 10.0 euro
+Anna: saldo 60.0, Luca: saldo 0.0
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item il primo \texttt{catch} usa \texttt{getMancante()}, un metodo della \textbf{nostra} eccezione; il \texttt{finally} stampa il conto in entrambi i casi
+    \item \texttt{IllegalArgumentException} non viene catturata: un importo non positivo è un errore del programma, che si evita a monte (qui \texttt{leggiImporto} accetta solo importi positivi), non si gestisce
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo -- le decisioni}
+\begin{columns}[T]
+\column{0.62\textwidth}
+\footnotesize
+\textbf{Prima di scrivere il codice, decidiamo insieme:}
+\begin{enumerate}\itemsep=3pt
+    \item \textbf{importo non positivo?} \textrightarrow{} \texttt{IllegalArgumentException}, non controllata: è una precondizione violata, il client la evita controllando l'importo (come fa \texttt{leggiImporto})
+    \item \textbf{saldo insufficiente?} \textrightarrow{} un'eccezione nostra, \textbf{controllata} (\texttt{extends Exception}): dipende dallo stato del conto, il client deve prevederla e il compilatore glielo ricorda
+    \item \textbf{che cosa porta con sé?} \textrightarrow{} quanto manca: una variabile di istanza \texttt{final} con il suo \texttt{get}; il messaggio, costruito nel costruttore, con \texttt{super(...)}
+    \item \textbf{le intestazioni?} \textrightarrow{} \texttt{versa} e \texttt{preleva} sono \texttt{void}: l'esito non è più un \texttt{boolean}, chi chiama sa che l'operazione è riuscita se non arriva un'eccezione. Solo \texttt{preleva} e \texttt{trasferisci} dichiarano \texttt{throws}
+    \item \textbf{in che ordine i controlli di \texttt{preleva}?} \textrightarrow{} prima l'importo, poi il saldo; il saldo si modifica solo dopo entrambi
+    \item \textbf{\texttt{trasferisci}?} \textrightarrow{} chiama \texttt{preleva}, poi \texttt{altro.versa}: se \texttt{preleva} solleva l'eccezione, \texttt{trasferisci} termina lì e il versamento non avviene. Non la cattura: la rimanda al client, che sa che cosa fare
+\end{enumerate}
+
+\column{0.38\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.44\textheight,center}
+\begin{mermaid}
+classDiagram
+  class ContoBancario {
+    -intestatario : String
+    -saldo : double
+    +ContoBancario(String)
+    +getIntestatario() String
+    +getSaldo() double
+    +versa(double)
+    +preleva(double)
+    +trasferisci(ContoBancario, double)
+    +toString() String
+  }
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.2\textheight,center}
+\begin{mermaid}
+classDiagram
+  class SaldoInsufficienteException {
+    -mancante : double
+    +SaldoInsufficienteException(double)
+    +getMancante() double
+  }
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione (1/2) -- l'eccezione e l'inizio del conto}
+\begin{columns}[T]
+\column{0.49\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Sollevata se il saldo non basta. */
+public class SaldoInsufficienteException
+        extends Exception {
+
+    private final double mancante;
+
+    public SaldoInsufficienteException(
+            double mancante) {
+        super("saldo insufficiente, mancano "
+                + mancante + " euro");
+        this.mancante = mancante;
+    }
+
+    public double getMancante() {
+        return mancante;
+    }
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item \texttt{extends Exception}: controllata. Il costruttore riceve quanto manca, costruisce il messaggio per \texttt{getMessage()} e lo passa a \texttt{super(...)}, di norma la prima istruzione
+    \item \texttt{mancante} è \texttt{final}: un'eccezione descrive un fatto avvenuto, non cambia
+\end{itemize}
+
+\column{0.51\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Un conto: errori con le eccezioni. */
+public class ContoBancario {
+
+    private final String intestatario;
+    private double saldo;
+
+    public ContoBancario(String intestatario) {
+        this.intestatario = intestatario;
+        saldo = 0;
+    }
+
+    public String getIntestatario() {
+        return intestatario;
+    }
+
+    public double getSaldo() {
+        return saldo;
+    }
+\end{lstlisting}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione (2/2) -- \texttt{ContoBancario.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Versa importo, che deve essere > 0. */
+public void versa(double importo) {
+    if (importo <= 0) {
+        throw new IllegalArgumentException(
+                "non positivo: " + importo);
+    }
+    saldo += importo;
+}
+
+/** Preleva importo, se il saldo basta. */
+public void preleva(double importo)
+        throws SaldoInsufficienteException {
+    if (importo <= 0) {
+        throw new IllegalArgumentException(
+                "non positivo: " + importo);
+    }
+    if (importo > saldo) {
+        throw new SaldoInsufficienteException(
+                importo - saldo);
+    }
+    saldo -= importo;
+}
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Sposta importo su altro. */
+public void trasferisci(ContoBancario altro,
+                        double importo)
+        throws SaldoInsufficienteException {
+    preleva(importo);
+    altro.versa(importo);
+}
+
+@Override
+public String toString() {
+    return intestatario + ": saldo " + saldo;
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item in \texttt{preleva} i due \texttt{throw} lasciano il saldo com'era: si modifica solo all'ultima riga
+    \item \texttt{versa} non dichiara nulla: \texttt{IllegalArgumentException} è non controllata
+    \item \texttt{trasferisci} non cattura: se \texttt{preleva} la solleva, l'eccezione attraversa \texttt{trasferisci} e arriva al client; \texttt{altro.versa} non viene eseguito
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Wrap-up}
+
+\begin{frame}{Riepilogo: cosa abbiamo trattato}
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.1}
+\scriptsize
+\begin{tabular}{|>{\raggedright\arraybackslash}p{6.4cm}|>{\raggedright\arraybackslash}p{7.4cm}|}
+\hline
+\textbf{Concetto (unità)} & \textbf{Dove compare oggi} \\
+\hline
+Eccezioni a tempo di esecuzione, stack trace (U19) & \texttt{Divisione} con \texttt{7 0}; \texttt{Catena}; \texttt{SenzaBase} \\
+\hline
+\texttt{try} e \texttt{catch}, più \texttt{catch}, multi-catch, \texttt{finally} (U19) & \texttt{Divisione} v2, \texttt{DivisioneFinally}; \texttt{ProvaConto} \\
+\hline
+\texttt{throw}; stack unwinding; rilancio (U19) & \texttt{Media}; \texttt{Catena}, \texttt{CatenaRilancio}; \texttt{trasferisci} \\
+\hline
+Gerarchia; controllate e non; \texttt{throws} (U19) & \texttt{ProvaClone}; \texttt{preleva}, \texttt{trasferisci} \\
+\hline
+Le nostre eccezioni; quando non usare le eccezioni (U19) & \texttt{ParcheggioPienoException}, \texttt{SaldoInsufficienteException}; \texttt{Quoziente} \\
+\hline
+Input robusto con \texttt{Scanner} (U19) & \texttt{leggiImporto} in \texttt{ProvaConto} \\
+\hline
+Ricorsione: caso base, caso ricorsivo, convergenza (U21) & \texttt{fattoriale}; \texttt{sommaCifre}, \texttt{stampaInversa}, \texttt{fibonacci} \\
+\hline
+Lo stack delle chiamate; terminazione e profondità (U21) & il diagramma di \texttt{fattoriale(3)}; \texttt{StackOverflowError} \\
+\hline
+Ricorsione e iterazione; quando usare la ricorsione (U21) & \texttt{ContoAllaRovescia}; le 21\,891 chiamate di \texttt{fibonacci(20)} \\
+\hline
+\end{tabular}
+\end{center}
+
+\vspace{0.1cm}
+\textbf{Prossima lezione (L11)}: la ricerca binaria, iterativa e ricorsiva, e quanto costa; la programmazione generica -- classi e metodi generici, vincoli con \texttt{extends}, interfacce generiche, il carattere jolly \texttt{?}.
+\end{frame}
+
+% ========================================================================
+\begin{frame}{Homework 10 (da svolgere entro la prossima lezione)}
+\footnotesize\setlength{\parskip}{0pt}
+Tre esercizi, ciascuno con il suo programma di prova, nella cartella \texttt{homework/}. Nei primi due, niente cicli: solo ricorsione.
+\begin{enumerate}\itemsep=3pt
+    \item \textbf{\texttt{Hanoi.java}} (con \texttt{ProvaHanoi.java}): la \textbf{Torre di Hanoi}. Tre paletti \texttt{A}, \texttt{B}, \texttt{C}; su \texttt{A} \texttt{n} dischi dal più grande (in basso) al più piccolo; vanno portati su \texttt{C} spostando un disco alla volta, mai uno più grande sopra uno più piccolo. Per spostare \texttt{n} dischi da \texttt{A} a \texttt{C}: si spostano \texttt{n-1} dischi su \texttt{B}, il disco \texttt{n} su \texttt{C}, gli \texttt{n-1} da \texttt{B} su \texttt{C}. \texttt{Hanoi} è un modulo con il metodo \texttt{static} \texttt{sposta(int n, char da, char a, char appoggio)}, che stampa ogni mossa (\texttt{disco 1: A -> C}), e un contatore \texttt{private static} delle mosse con \texttt{getMosse()} e \texttt{azzera()}. \texttt{ProvaHanoi} legge \texttt{n} da \texttt{args[0]}: se l'argomento manca stampa come si usa (con un \texttt{if}); se non è un intero, \texttt{Integer.parseInt} solleva \texttt{NumberFormatException} (non controllata): catturatela. Se $n < 1$, un messaggio; altrimenti alla fine stampa le mosse e le attese, $2^n - 1$.
+    \item \textbf{\texttt{Stringhe.java}} (con \texttt{ProvaStringhe.java}): un modulo con tre metodi \texttt{static} ricorsivi, che usano solo \texttt{length}, \texttt{charAt} e \texttt{substring}: \texttt{inverti(String s)} (\texttt{"ricorsione"} \textrightarrow{} \texttt{"enoisrocir"}), \texttt{isPalindroma(String s)} (primo e ultimo carattere uguali e la parte in mezzo palindroma) e \texttt{conta(char c, String s)} (quante volte \texttt{c} compare in \texttt{s}).
+    \item \textbf{\texttt{Distributore.java}} (con \texttt{CreditoInsufficienteException.java}, \texttt{EsauritoException.java} e \texttt{ProvaDistributore.java}): un distributore di un solo prodotto: costruttore \texttt{Distributore(String prodotto, double prezzo, int pezzi)}, credito iniziale 0. \texttt{inserisci(double monete)} solleva \texttt{IllegalArgumentException} se le monete non sono positive; \texttt{eroga()} consegna un pezzo e scala il prezzo dal credito, oppure solleva \texttt{EsauritoException} (pezzi finiti, controllato per primo) o \texttt{CreditoInsufficienteException} (con \texttt{getMancante()}), entrambe controllate; \texttt{restituisci()} azzera il credito e lo restituisce; \texttt{toString}. \texttt{ProvaDistributore} ha un metodo \texttt{static} \texttt{provaErogazione(Distributore d)} che chiama \texttt{eroga} e gestisce le due eccezioni con due \texttt{catch} diversi; il \texttt{main} prova un credito insufficiente, due erogazioni riuscite, il prodotto esaurito, il resto e un inserimento negativo.
+\end{enumerate}
+\end{frame}
+
+% ========================================================================
+\begin{frame}
+\begin{center}
+{\Huge Domande?}\\[2em]
+{\normalsize \href{mailto:mattia.fonisto@unina.it}{\texttt{mattia.fonisto@unina.it}}}
+\end{center}
+\end{frame}
+
+\end{document}

@@ -42,9 +42,13 @@ jobs:
           fi
           # ogni radice è un progetto a sé. this-escape è escluso: segnala i costruttori
           # che chiamano metodi sovrascrivibili (es. versa(primo) in ContoBancario), un
-          # problema solo in presenza di sottoclassi, che il corso introduce più avanti
+          # problema solo in presenza di sottoclassi, che il corso introduce più avanti.
+          # Anche serial è escluso: chiede un serialVersionUID in ogni classe Serializable,
+          # quindi in ogni eccezione definita dall'utente (es. ParcheggioPienoException),
+          # ma la serializzazione è fuori dal programma del corso. E unchecked: il cast (T)
+          # in Contenitore.get (L11) è voluto, e la slide commenta proprio quell'avviso
           cut -f1 "$index" | sort -u | while IFS= read -r root; do
             echo "== $root"
             files=$(awk -F'\t' -v r="$root" '$1 == r { print $2 }' "$index")
-            javac -Xlint:all,-this-escape -Werror -d "$(mktemp -d)" $files
+            javac -Xlint:all,-this-escape,-serial,-unchecked -Werror -d "$(mktemp -d)" $files
           done

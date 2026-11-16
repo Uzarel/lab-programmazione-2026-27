@@ -1,0 +1,1174 @@
+% ============================================================================
+%  Laboratorio di Programmazione -- Lezione 11 (17 novembre 2026)
+%  Compilare con:  pdflatex -shell-escape Lezione11_Ricerca_Binaria_Generici.tex
+%  Richiede: mermaid.sty (nel progetto) + Mermaid CLI `mmdc` nel PATH
+%  NB: ogni frame che contiene codice (lstlisting) o un diagramma (mermaid)
+%      deve essere dichiarato [fragile].
+% ============================================================================
+\documentclass[10pt,aspectratio=169,xcolor={table}]{beamer}
+\usetheme{Madrid}
+\usecolortheme{default}
+
+% `provide=*` carica la localizzazione italiana dai file .ini di babel: funziona anche
+% su installazioni TeX prive di texlive-lang-italian; con una TeX Live completa e`
+% equivalente al classico \usepackage[italian]{babel}.
+\usepackage[italian,provide=*]{babel}
+\usepackage[utf8]{inputenc}
+
+% Localizzazione dei nomi dei blocchi Beamer
+\uselanguage{italian}
+\languagepath{italian}
+\deftranslation[to=italian]{Definition}{Definizione}
+\deftranslation[to=italian]{Theorem}{Teorema}
+\deftranslation[to=italian]{Example}{Esempio}
+\deftranslation[to=italian]{Proof}{Dimostrazione}
+\deftranslation[to=italian]{Corollary}{Corollario}
+\deftranslation[to=italian]{Lemma}{Lemma}
+
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{mermaid}
+
+% Mermaid: sfondo trasparente e dimensione massima adatta a una slide 16:9
+\MermaidRendererOptions{-b transparent}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+% Configurazione colori per il codice
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\definecolor{keywordblue}{rgb}{0.0,0.0,0.7}
+
+% Stile per snippet Java
+\lstdefinestyle{javastyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen}\itshape,
+    keywordstyle=\color{keywordblue}\bfseries,
+    numberstyle=\scriptsize\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=none,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    aboveskip=0.6\medskipamount,
+    belowskip=0.6\medskipamount,
+    language=Java,
+    morekeywords={default},
+    literate={à}{{\`a}}1 {è}{{\`e}}1 {é}{{\'e}}1 {ì}{{\`i}}1
+             {ò}{{\`o}}1 {ù}{{\`u}}1 {È}{{\`E}}1
+}
+\lstset{style=javastyle}
+
+% Stile per righe di terminale
+\lstdefinestyle{shell}{
+    language=bash,
+    backgroundcolor=\color{black!85},
+    basicstyle=\ttfamily\footnotesize\color{white},
+    keywordstyle=\color{white},
+    stringstyle=\color{white},
+    commentstyle=\color{green!70},
+    numbers=none,
+    frame=none,
+    aboveskip=0.6\medskipamount,
+    belowskip=0.6\medskipamount,
+    showstringspaces=false
+}
+
+% Celle della traccia della ricerca binaria
+\newcommand{\gr}[1]{\textcolor{gray!60}{#1}}
+\newcommand{\md}[1]{\cellcolor{yellow!55}\textbf{#1}}
+\newcommand{\ok}[1]{\cellcolor{green!40}\textbf{#1}}
+
+\title[Lezione 11 -- Ricerca binaria e tipi generici]{Lezione 11 -- Ricerca binaria e tipi generici}
+\subtitle{cercare in un array ordinato dimezzando; classi, interfacce e metodi generici, vincoli con \texttt{extends}, il carattere jolly \texttt{?}}
+\author[Mattia Fonisto]{Mattia Fonisto}
+\institute[Lab.\ di Programmazione]{Laboratorio di Programmazione -- Ingegneria Informatica, II anno\\
+           Università degli Studi di Napoli Federico II -- Sede di San Giovanni a Teduccio}
+\date{17 novembre 2026}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% ========================================================================
+\begin{frame}{Agenda della lezione (2h)}
+\begin{enumerate}
+    \item \textbf{Ripasso e Homework 10} \hfill (\emph{15 min})
+    \begin{itemize}
+        \item uno di voi alla lavagna con \texttt{Hanoi}, \texttt{Stringhe} o \texttt{Distributore}: lo commentiamo insieme
+    \end{itemize}
+    \item \textbf{La ricerca binaria} \hfill (\emph{15 min})
+    \begin{itemize}
+        \item l'idea e la precondizione; la versione iterativa e il suo invariante
+        \item la versione ricorsiva; la ricerca lineare a confronto
+    \end{itemize}
+    \item \textbf{I tipi generici} \hfill (\emph{30 min})
+    \begin{itemize}
+        \item il problema; classi generiche; più parametri di tipo generico; i limiti
+        \item metodi generici; interfacce generiche e vincoli con \texttt{extends}; il carattere jolly \texttt{?}
+    \end{itemize}
+    \item \textbf{Esercitazione} -- tutti insieme \hfill (\emph{50 min})
+    \begin{itemize}
+        \item \emph{Commentiamo insieme}: \texttt{Contenitore<T>}, un contenitore che cresce
+        \item \emph{Insieme, passo passo}: la ricerca binaria su array di qualunque tipo
+    \end{itemize}
+    \item \textbf{Wrap-up e Homework 11} \hfill (\emph{10 min})
+\end{enumerate}
+\end{frame}
+
+% ========================================================================
+\section{La ricerca binaria}
+
+\begin{frame}[fragile]{Ricerca binaria: l'idea}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{Ricerca binaria}
+\small Per cercare un valore \texttt{x} in un array \textbf{ordinato} in modo crescente si confronta \texttt{x} con l'elemento \textbf{di mezzo}: se è uguale, \texttt{x} è trovato; se \texttt{x} è più piccolo si continua nella metà di sinistra, se è più grande in quella di destra. A ogni confronto la parte in cui cercare si \textbf{dimezza}.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item è il modo in cui si cerca una parola nel dizionario (lezione~10): si apre a metà e si prosegue nella metà giusta
+    \item la \textbf{ricerca lineare} (un \texttt{for} dall'inizio) funziona su ogni array, ma nel caso peggiore fa \texttt{n} confronti
+    \item la \textbf{precondizione}: l'array deve essere ordinato (ripetizioni ammesse), altrimenti scartare una metà non ha senso. In ordine \textbf{decrescente} funziona lo stesso: cambia solo il verso in cui si prosegue. \texttt{Arrays.sort} ordina, \texttt{Arrays.binarySearch} (lezione~4) fa questa ricerca
+\end{itemize}
+
+\column{0.5\textwidth}
+\footnotesize
+\textbf{Cerchiamo 10}: in giallo l'elemento di mezzo, in grigio la parte scartata:
+\begin{center}
+\footnotesize\setlength{\tabcolsep}{2.4pt}\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{l|ccccccccccc}
+indice & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 \\
+\hline
+passo 1 & 1 & 3 & 5 & 10 & 15 & \md{23} & 31 & 47 & 47 & 56 & 64 \\
+passo 2 & 1 & 3 & \md{5} & 10 & 15 & \gr{23} & \gr{31} & \gr{47} & \gr{47} & \gr{56} & \gr{64} \\
+passo 3 & \gr{1} & \gr{3} & \gr{5} & \ok{10} & 15 & \gr{23} & \gr{31} & \gr{47} & \gr{47} & \gr{56} & \gr{64} \\
+\end{tabular}
+\end{center}
+\begin{itemize}\itemsep=2pt
+    \item passo 1: $10 < 23$, si scarta la metà destra; passo 2: $10 > 5$, si scarta la sinistra; passo 3: $10 = 10$, trovato in posizione 3 con \textbf{tre} confronti (la ricerca lineare ne farebbe quattro)
+\end{itemize}
+\textbf{Cerchiamo 8}: i primi due passi sono gli stessi; al passo 3 si confronta con 10: $8 < 10$, si scarta anche il 10 e la parte in cui cercare resta \textbf{vuota}: 8 non c'è, con tre confronti invece di undici
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Ricerca binaria iterativa: il codice e l'invariante -- \texttt{RicercaBinaria.java}}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** L'indice di x in v, ordinato. */
+public static int ricercaBinaria(int[] v, int x)
+        throws NonTrovatoException {
+    int sinistra = 0;
+    int destra = v.length - 1;
+    while (sinistra <= destra) {
+        int medio = (sinistra + destra) / 2;
+        if (v[medio] == x) {
+            return medio;
+        } else if (x < v[medio]) {
+            destra = medio - 1;
+        } else {
+            sinistra = medio + 1;
+        }
+    }
+    throw new NonTrovatoException(x);
+}
+\end{lstlisting}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class NonTrovatoException
+        extends Exception {
+
+    public NonTrovatoException(Object x) {
+        super("non trovato: " + x);
+    }
+}
+\end{lstlisting}
+
+\column{0.46\textwidth}
+\begin{block}{Invariante del ciclo}
+\small Un invariante è una proprietà vera prima del ciclo e di nuovo vera dopo ogni passo. Qui l'invariante è: \textbf{se \texttt{x} è in \texttt{v}, allora è in \texttt{v[sinistra..destra]}}.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item vera all'inizio; ogni passo scarta solo elementi che non possono essere \texttt{x}: se \texttt{x < v[medio]}, quelli da \texttt{medio} in poi sono maggiori di \texttt{x}, perché l'array è ordinato (simmetrico nell'altro caso). La proprietà resta vera
+    \item quando \texttt{sinistra > destra} la parte è vuota: per l'invariante \texttt{x} non c'è. Il ciclo termina perché la parte si restringe a ogni passo (\texttt{medio} viene escluso)
+    \item \textbf{se \texttt{x} non c'è}, il metodo solleva \texttt{NonTrovatoException}, una nostra eccezione \textbf{controllata} (lezione~10): il client deve prevedere il caso. Il costruttore accetta un \texttt{Object}: un \texttt{int} con l'autoboxing, o qualunque oggetto
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Ricerca binaria ricorsiva -- \texttt{RicercaBinaria.java}}
+\begin{columns}[T]
+\column{0.6\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static int ricercaRicorsiva(int[] v, int x,
+        int sinistra, int destra)
+        throws NonTrovatoException {
+    if (sinistra > destra) {
+        throw new NonTrovatoException(x);   // caso base
+    }
+    int medio = (sinistra + destra) / 2;
+    if (v[medio] == x) {
+        return medio;                       // caso base
+    } else if (x < v[medio]) {
+        return ricercaRicorsiva(v, x,
+                sinistra, medio - 1);
+    } else {
+        return ricercaRicorsiva(v, x,
+                medio + 1, destra);
+    }
+}
+public static int ricercaRicorsiva(int[] v, int x)
+        throws NonTrovatoException {
+    return ricercaRicorsiva(v, x, 0, v.length - 1);
+}
+\end{lstlisting}
+
+\column{0.4\textwidth}
+\footnotesize
+\textbf{Le chiamate per cercare 8}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.3\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 32px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 10
+    wrappingWidth: 600
+---
+flowchart TB
+  A["<b>[0..10]</b>: medio 5, 23 > 8"]
+  B["<b>[0..4]</b>: medio 2, 5 < 8"]
+  C["<b>[3..4]</b>: medio 3, 10 > 8"]
+  D["<b>[3..2]</b>: parte vuota, throw"]
+  A --> B --> C --> D
+  style D fill:#fee2e2,stroke:#b91c1c
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\begin{itemize}\itemsep=3pt
+    \item il problema ``più piccolo'' è la parte \texttt{v[sinistra..destra]}: l'array non si copia, si passano i due indici (come \texttt{stampaInversa}, lezione~10)
+    \item \textbf{due casi base}: la parte è vuota (l'eccezione risale le chiamate, lezione~10) oppure l'elemento di mezzo è \texttt{x}; il caso ricorsivo fa \textbf{una sola} chiamata, su una metà
+    \item il metodo a due parametri è per il client (overloading); entrambi dichiarano \texttt{throws}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{La ricerca lineare a confronto: quanti confronti? -- \texttt{Confronti.java}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+private static int confronti = 0;
+
+public static int ricercaLineare(int[] v, int x)
+        throws NonTrovatoException {
+    for (int i = 0; i < v.length; i++) {
+        confronti++;
+        if (v[i] == x) {
+            return i;
+        }
+    }
+    throw new NonTrovatoException(x);
+}
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+10: 10 4
+1000: 1000 10
+1000000: 1000000 20
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item la lineare scorre \texttt{v} dall'inizio: nessuna precondizione, ma per l'ultimo elemento (o uno assente) fa \texttt{n} confronti; la binaria \textbf{dimezza} a ogni confronto: $n$, $n/2$, $n/4$, \ldots, 1, cioè circa $\log_2 n$ confronti: \textbf{20 contro un milione}
+    \item il \textbf{prezzo}: l'array va ordinato, e ordinare costa più di una ricerca lineare; conviene se si cerca \textbf{molte volte} (il dizionario si ordina una volta sola)
+\end{itemize}
+
+\column{0.48\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public static void main(String[] args)
+        throws NonTrovatoException {
+    int[] taglie = { 10, 1000, 1000000 };
+    for (int n : taglie) {
+        int[] v = new int[n];
+        for (int i = 0; i < n; i++) {
+            v[i] = i;
+        }
+        confronti = 0;
+        ricercaLineare(v, n - 1);  // ultimo
+        int lineare = confronti;
+        confronti = 0;
+        ricercaBinaria(v, n - 1);
+        System.out.println(n + ": "
+            + lineare + " " + confronti);
+    }
+}
+\end{lstlisting}
+\footnotesize
+\texttt{ricercaBinaria} è quella della slide 4, con \texttt{confronti++} prima dell'\texttt{if}. Il contatore è una variabile \texttt{static} della classe, come \texttt{chiamate} nella lezione~10; si cerca l'\textbf{ultimo} elemento, il caso peggiore per entrambe: c'è di sicuro, quindi il \texttt{main} si limita a dichiarare \texttt{throws} (lezione~10).
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{I tipi generici}
+
+\begin{frame}[fragile]{Programmazione generica: il problema -- \texttt{Scatola.java} con \texttt{Object}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class Scatola {
+
+    private Object contenuto;
+
+    public Scatola(Object contenuto) {
+        this.contenuto = contenuto;
+    }
+
+    public Object getContenuto() {
+        return contenuto;
+    }
+
+    public void setContenuto(Object contenuto) {
+        this.contenuto = contenuto;
+    }
+}
+\end{lstlisting}
+\begin{block}{Programmazione generica}
+\small Scrivere \textbf{una volta sola} una classe o un metodo che lavorano su un tipo \texttt{T} non fissato: il tipo lo indica chi li usa e il compilatore controlla che sia rispettato. Non servono cast e gli errori di tipo escono a tempo di compilazione.
+\end{block}
+
+\column{0.48\textwidth}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item una scatola di \texttt{String} e una di \texttt{Integer} avrebbero lo \textbf{stesso codice} con un solo tipo diverso: non scriviamolo due volte
+    \item un riferimento \texttt{Object} porta a qualunque oggetto (lezione~8): una scatola per tutto, ma\ldots
+\end{itemize}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Scatola s = new Scatola("ciao");
+String testo = (String) s.getContenuto();
+// compila: 5 diventa un Integer
+s.setContenuto(5);
+String altro = (String) s.getContenuto();
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Exception in thread "main"
+java.lang.ClassCastException:
+class java.lang.Integer cannot be cast
+to class java.lang.String (...)
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item a ogni lettura serve un \textbf{cast} (lezione~7), che il compilatore non può controllare: \texttt{setContenuto(5)} compila, l'errore esce \textbf{a tempo di esecuzione}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Classi generiche: \texttt{Scatola<T>} -- \texttt{Scatola.java}}
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class Scatola<T> {
+    private T contenuto;
+
+    public Scatola(T contenuto) {
+        this.contenuto = contenuto;
+    }
+
+    public T getContenuto() {
+        return contenuto;
+    }
+
+    public void setContenuto(T contenuto) {
+        this.contenuto = contenuto;
+    }
+
+    @Override
+    public String toString() {
+        return "(" + contenuto + ")";
+    }
+}
+\end{lstlisting}
+
+\column{0.52\textwidth}
+\begin{block}{Parametro di tipo}
+\small \texttt{Scatola<T>} dichiara un \emph{parametro di tipo generico} \texttt{T}, usato nella classe come un tipo qualunque. Il client fornisce l'\emph{argomento di tipo generico}: in \texttt{Scatola<String>}, \texttt{T} vale \texttt{String}.
+\end{block}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Scatola<String> s = new Scatola<>("ciao");
+String testo = s.getContenuto();  // nessun cast
+// s.setContenuto(5);  // errore di compilazione
+Scatola<Integer> n = new Scatola<>(5);
+int doppio = 2 * n.getContenuto();  // unboxing
+System.out.println(s + " " + testo.length());
+System.out.println(n + " " + doppio);
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+(ciao) 4
+(5) 10
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item nel \emph{diamante} \texttt{<>} il compilatore deduce l'argomento dal contesto (qui la variabile); \texttt{s.setContenuto(5)} non compila. In \texttt{new Scatola<>(5)} il 5 diventa \texttt{Integer} per autoboxing (lezione~4)
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Più parametri di tipo generico: \texttt{Coppia<A, B>} -- \texttt{Coppia.java}}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class Coppia<A, B> {
+
+    private final A primo;
+    private final B secondo;
+
+    public Coppia(A primo, B secondo) {
+        this.primo = primo;
+        this.secondo = secondo;
+    }
+
+    public A getPrimo() {
+        return primo;
+    }
+
+    public B getSecondo() {
+        return secondo;
+    }
+
+    /** La coppia con i due valori scambiati. */
+    public Coppia<B, A> scambia() {
+        return new Coppia<>(secondo, primo);
+    }
+}
+\end{lstlisting}
+
+\column{0.46\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Coppia<String, Integer> esame =
+        new Coppia<>("Analisi", 28);
+String nome = esame.getPrimo();
+int voto = esame.getSecondo();
+Coppia<Integer, String> inversa =
+        esame.scambia();
+Coppia<Double, Double> punto =
+        new Coppia<>(1.5, -2.0);
+System.out.println(esame + " " + voto);
+System.out.println(inversa + " " + punto);
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+(Analisi, 28) 28
+(28, Analisi) (1.5, -2.0)
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item più parametri di tipo generico, separati da virgola; \texttt{Coppia<String, Integer>} e \texttt{Coppia<Integer, String>} sono \textbf{tipi diversi}
+    \item dentro la classe i parametri di tipo generico servono anche a costruire altri tipi parametrizzati: \texttt{scambia} restituisce una nuova \texttt{Coppia<B, A>}
+    \item \texttt{int voto = esame.getSecondo()}: unboxing da \texttt{Integer}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{I limiti dei generici: primitivi, \texttt{instanceof}, array -- \texttt{Limiti.java}}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Scatola<String> s = new Scatola<>("ciao");
+Scatola<Integer> n = new Scatola<>(5);
+System.out.println(s.getClass() == n.getClass());
+Object o = s;
+System.out.println(o instanceof Scatola<?>);
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+true
+true
+\end{lstlisting}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Scatola<int> k = new Scatola<>(5);
+Scatola<String>[] v = new Scatola<String>[3];
+boolean b = o instanceof Scatola<String>;
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+error: unexpected type
+error: generic array creation
+error: Object cannot be safely cast
+       to Scatola<String>
+\end{lstlisting}
+\begin{block}{Cancellazione dei tipi}
+\small Il compilatore usa gli argomenti di tipo generico per controllare il codice, poi \textbf{li toglie}: a run time esiste una sola classe \texttt{Scatola}, con \texttt{contenuto} di tipo \texttt{Object}; per \texttt{s} e \texttt{n}, \texttt{getClass()} (lezione~8) dà \texttt{class Scatola}.
+\end{block}
+
+\column{0.46\textwidth}
+\footnotesize
+Da questo derivano tre limiti:
+\begin{itemize}\itemsep=3pt
+    \item \textbf{niente tipi primitivi}: a run time \texttt{contenuto} è una variabile \texttt{Object}, che contiene un \textbf{riferimento} a un oggetto, e un \texttt{int} non lo è. Si usano i wrapper: in \texttt{new Scatola<>(5)} l'autoboxing crea l'\texttt{Integer} da mettere dentro
+    \item \textbf{niente \texttt{instanceof} con l'argomento di tipo generico}: \texttt{instanceof} guarda la classe dell'oggetto a run time (lezione~8), dove c'è solo \texttt{Scatola}: non distingue una scatola di \texttt{String} da una di \texttt{Integer}; si può chiedere solo \texttt{Scatola<?>} (il jolly, fra poco)
+    \item \textbf{niente array di tipi parametrizzati}: un array sa a run time di che tipo sono i suoi elementi e \textbf{rifiuta} quelli di un altro tipo; un array di \texttt{Scatola<String>} dovrebbe rifiutare una \texttt{Scatola<Integer>}, ma a run time sono uguali: il controllo è impossibile, e Java lo vieta (così come \texttt{new T[n]} nella classe). Rimedio: \texttt{Object[]} e un cast (esercitazione)
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Metodi generici: \texttt{<T>} prima del tipo di risultato -- \texttt{Utili.java}}
+\begin{columns}[T]
+\column{0.58\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class Utili {
+    public static <T> T primo(T[] v) {
+        return v[0];
+    }
+
+    public static <T> void scambia(T[] v,
+                                   int i, int j) {
+        T t = v[i];
+        v[i] = v[j];
+        v[j] = t;
+    }
+}
+\end{lstlisting}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+String[] nomi = { "Luca", "Anna", "Sara" };
+Integer[] numeri = { 4, 9, 2 };
+String n = Utili.primo(nomi);
+Integer k = Utili.primo(numeri);
+Utili.scambia(nomi, 0, 2);
+System.out.println(n + " " + k);
+System.out.println(Arrays.toString(nomi));
+// int[] interi = { 4, 9, 2 };
+// Utili.primo(interi);   // errore
+\end{lstlisting}
+
+\column{0.42\textwidth}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Luca 4
+[Sara, Anna, Luca]
+\end{lstlisting}
+\begin{block}{Metodo generico}
+\small Un \emph{metodo generico} dichiara i propri parametri di tipo generico fra \texttt{<} e \texttt{>}, \textbf{prima del tipo di risultato}; valgono per quella chiamata e il compilatore li \textbf{deduce} dagli argomenti. Può stare in una classe normale (\texttt{Utili}) o in una generica.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \texttt{Utili.primo(nomi)}: \texttt{T} è \texttt{String}, dedotto da \texttt{String[]}, e il risultato va in una \texttt{String} senza cast; in \texttt{Utili.primo(numeri)} \texttt{T} è \texttt{Integer}
+    \item \texttt{int[]} non compila: \texttt{int} non è un tipo riferimento; \texttt{Integer[]} sì. In \texttt{scambia}, \texttt{T t} è una variabile locale
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Interfacce generiche: \texttt{Comparable<T>} -- \texttt{Confrontabili.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+{\footnotesize In \texttt{java.lang} (semplificata):}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public interface Comparable<T> {
+    /** Negativo se this precede altro,
+        zero se uguali, positivo se segue. */
+    int compareTo(T altro);
+}
+\end{lstlisting}
+{\footnotesize \texttt{String}, \texttt{Integer}, \texttt{Double} e \texttt{Character} la implementano, ciascuna con il proprio argomento di tipo generico (\texttt{String implements Comparable<String>}):}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+System.out.println("Anna".compareTo("Luca"));
+Integer a = 4;
+System.out.println(a.compareTo(9));
+Double d = 2.5;
+System.out.println(d.compareTo(2.5));
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+-11
+-1
+0
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\begin{block}{Interfaccia generica}
+\small Anche un'interfaccia può avere parametri di tipo generico, con la stessa sintassi delle classi. Chi la implementa indica l'argomento di tipo generico, che compare nei metodi da scrivere: per \texttt{Comparable<String>}, \texttt{compareTo(String altro)}.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \texttt{Comparable<T>}: un oggetto sa \textbf{confrontarsi} con un altro dello stesso tipo \texttt{T}; su \texttt{String} è l'ordine dei codici dei caratteri (lezione~2), sui wrapper quello numerico
+    \item il parametro è \texttt{T}, non \texttt{Object}: \texttt{"Anna".compareTo(5)} non compila. Senza i generici sarebbe \texttt{compareTo(Object altro)}, con un cast in ogni classe
+    \item anche una classe nostra può implementarla, con \texttt{T} uguale alla classe stessa: \texttt{Persona implements Comparable<Persona>} scrive \texttt{compareTo(Persona altra)}; lezione~12, con \texttt{Arrays.sort} sui nostri oggetti
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Vincoli sui parametri di tipo generico: \texttt{<T extends Comparable<T>>}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Il massimo di v, non vuoto. */
+public static <T extends Comparable<T>>
+        T max(T[] v) {
+    T m = v[0];
+    for (T x : v) {
+        if (x.compareTo(m) > 0) {
+            m = x;
+        }
+    }
+    return m;
+}
+\end{lstlisting}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+System.out.println(Utili.max(nomi));
+System.out.println(Utili.max(numeri));
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Sara
+9
+\end{lstlisting}
+
+\begin{block}{Vincolo}
+\small \texttt{<T extends X>} limita \texttt{T} ai tipi che estendono la classe \texttt{X} o implementano l'interfaccia \texttt{X}: si scrive sempre \texttt{extends}, anche per le interfacce. In cambio, su un valore di tipo \texttt{T} si possono chiamare i metodi di \texttt{X}.
+\end{block}
+
+\column{0.5\textwidth}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item senza vincolo, \texttt{x.compareTo(m)} non compila: di un \texttt{T} qualunque il compilatore conosce solo i metodi di \texttt{Object}. Con \texttt{<T extends Comparable<T>>}, \texttt{T} sa confrontarsi con un altro \texttt{T}, e \texttt{x.compareTo(m) > 0} vuol dire che \texttt{x} viene dopo \texttt{m}; un array di una classe che non implementa \texttt{Comparable} è un errore di \textbf{compilazione}
+    \item \texttt{X} può essere qualunque classe o interfaccia, anche \textbf{non generica}: con \texttt{<T extends Stampabile>} (lezione~9) su \texttt{x} si chiama \texttt{stampa()}; se ha più parametri, si scrivono tutti gli argomenti
+    \item più vincoli con \texttt{\&}, quanti servono: \texttt{<T extends Forma \& Stampabile \& Comparable<T>>}: al più \textbf{una classe}, per prima (una sola superclasse), poi le interfacce. Vale anche per le classi generiche (homework)
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Il carattere jolly \texttt{?} -- \texttt{Scatole.java}}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Stampa il contenuto di ogni scatola. */
+public static void stampa(Scatola<?> s) {
+    System.out.println("contiene "
+            + s.getContenuto());
+}
+
+public static void main(String[] args) {
+    Scatola<String> s = new Scatola<>("ciao");
+    Scatola<Integer> n = new Scatola<>(5);
+    stampa(s);
+    stampa(n);
+    // Scatola<Object> o = s;      // errore
+    Scatola<?> q = s;              // lecito
+    Object c = q.getContenuto();   // lettura ok
+    // q.setContenuto("x");        // errore
+    System.out.println(c);
+}
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+contiene ciao
+contiene 5
+ciao
+\end{lstlisting}
+
+\column{0.48\textwidth}
+\begin{block}{Il carattere jolly}
+\small \texttt{Scatola<?>} è il tipo di una scatola di cui non sappiamo, o non ci interessa, l'argomento di tipo generico: si legge ``scatola di \textbf{qualcosa}''. Ogni \texttt{Scatola<X>} è una \texttt{Scatola<?>}.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \textbf{perché serve}: \texttt{stampa(Scatola<Object> s)} non accetterebbe una \texttt{Scatola<String>}, perché una \texttt{Scatola<String>} \textbf{non} è una \texttt{Scatola<Object>}, anche se ogni \texttt{String} è un \texttt{Object}. Se lo fosse, con \texttt{s.setContenuto(5)} si metterebbe un \texttt{Integer} in una scatola di \texttt{String}. Lo stesso vale per \texttt{Scatola<Studente>} e \texttt{Scatola<Persona>}
+    \item attraverso una \texttt{Scatola<?>} si \textbf{legge}, ottenendo un \texttt{Object}; non si \textbf{scrive}: il compilatore non sa che tipo accetti \texttt{setContenuto}
+    \item con \texttt{instanceof} è l'unica forma ammessa: \texttt{o instanceof Scatola<?>} (slide 10)
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Esercitazione}
+
+\begin{frame}[fragile]{Commentiamo insieme (20 min) -- il problema}
+\begin{columns}[T]
+\column{0.58\textwidth}
+\footnotesize
+\textbf{Il problema.} Vogliamo un contenitore di elementi tutti dello stesso tipo, scelto dal client, in cui aggiungere elementi \textbf{senza un limite} fissato in partenza e leggerli per posizione. Un array ha lunghezza fissa (lezione~3) e, per di più, \texttt{new T[n]} non è ammesso. La classe \texttt{Contenitore<T>} è già scritta: la leggiamo riga per riga insieme a \texttt{ProvaContenitore}, che la usa con \texttt{String} e con \texttt{Coppia<String, Integer>}.
+
+\vspace{0.1cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=2pt
+    \item \texttt{aggiungi(x)} mette \texttt{x} in coda; quando lo spazio finisce, l'array interno \textbf{raddoppia}
+    \item \texttt{get(i)} restituisce l'elemento in posizione \texttt{i}, con $0 \leq$ \texttt{i} $<$ \texttt{size()}; un indice fuori da questo intervallo solleva \texttt{IllegalArgumentException}
+    \item \texttt{size()}: quanti elementi ci sono
+    \item \texttt{indiceDi(x)}: la posizione della prima occorrenza di \texttt{x}, o \texttt{-1}; il confronto è con \texttt{equals}
+    \item \texttt{contiene(x)}: vero se \texttt{x} c'è
+    \item \texttt{toString}: \texttt{[Anna, Luca, Sara]}, come per gli array con \texttt{Arrays.toString}
+\end{itemize}
+
+\column{0.42\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.6\textheight,center}
+\begin{mermaid}
+classDiagram
+  class Contenitore~T~ {
+    -elementi : Object[]
+    -quanti : int
+    +Contenitore()
+    +aggiungi(T)
+    +get(int) T
+    +size() int
+    +indiceDi(T) int
+    +contiene(T) boolean
+    +toString() String
+  }
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+In UML il parametro di tipo generico si scrive accanto al nome della classe: \texttt{Contenitore<T>}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{Contenitore.java} (1/2)}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+import java.util.Arrays;
+
+public class Contenitore<T> {
+
+    private Object[] elementi;   // non T[]
+    private int quanti;
+
+    public Contenitore() {
+        elementi = new Object[4];
+        quanti = 0;
+    }
+
+    /** Aggiunge x in coda; raddoppia se pieno. */
+    public void aggiungi(T x) {
+        if (quanti == elementi.length) {
+            elementi = Arrays.copyOf(elementi,
+                    2 * elementi.length);
+        }
+        elementi[quanti] = x;
+        quanti++;
+    }
+\end{lstlisting}
+
+\column{0.46\textwidth}
+\footnotesize
+\begin{itemize}\itemsep=4pt
+    \item \textbf{due variabili di istanza}: l'array \texttt{elementi}, di solito più lungo del necessario, e \texttt{quanti}, le posizioni davvero usate, da \texttt{0} a \texttt{quanti - 1}; le altre valgono \texttt{null}
+    \item l'array è un \texttt{Object[]}, perché \texttt{new T[4]} non compila. Lo stato è \texttt{private} e \texttt{aggiungi(T x)} è l'unico metodo che scrive nell'array: dentro ci sono \textbf{soltanto} oggetti di tipo \texttt{T}
+    \item \texttt{aggiungi}: se le posizioni sono finite, \texttt{Arrays.copyOf} (lezione~4) crea un array lungo il doppio con gli stessi elementi e \texttt{elementi} passa al nuovo; il vecchio diventa orfano (lezione~5). Poi \texttt{x} va nella prima posizione libera
+    \item si parte da 4 e si raddoppia: 4, 8, 16, \ldots: \textbf{pochi} raddoppi anche per molti elementi
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{Contenitore.java} (2/2)}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** L'elemento i-esimo, 0 <= i < size(). */
+public T get(int i) {
+    if (i < 0 || i >= quanti) {
+        throw new IllegalArgumentException(
+                "indice non valido: " + i);
+    }
+    return (T) elementi[i];
+}
+
+/** La prima posizione di x, o -1. */
+public int indiceDi(T x) {
+    for (int i = 0; i < quanti; i++) {
+        if (elementi[i].equals(x)) {
+            return i;
+        }
+    }
+    return -1;
+}
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Quanti elementi contiene. */
+public int size() {
+    return quanti;
+}
+
+/** Vero se x e' nel contenitore. */
+public boolean contiene(T x) {
+    return indiceDi(x) != -1;
+}
+
+@Override
+public String toString() {
+    return Arrays.toString(
+            Arrays.copyOf(elementi, quanti));
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \texttt{get}: l'array contiene \texttt{Object}, il metodo promette un \texttt{T}: serve il cast \texttt{(T)}. javac avverte: \emph{``uses unchecked or unsafe operations''}: quel cast non può essere verificato a tempo di esecuzione; la garanzia la diamo noi, con \texttt{aggiungi}
+    \item \texttt{indiceDi} e \texttt{toString} si fermano a \texttt{quanti}, non a \texttt{elementi.length}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{ProvaContenitore.java} (1/2): con le \texttt{String}}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Contenitore<String> nomi = new Contenitore<>();
+nomi.aggiungi("Anna");
+nomi.aggiungi("Luca");
+nomi.aggiungi("Sara");
+nomi.aggiungi("Marco");
+nomi.aggiungi("Elena");    // l'array raddoppia
+System.out.println(nomi + " " + nomi.size());
+System.out.println(nomi.indiceDi("Sara"));
+System.out.println(nomi.contiene("Paolo"));
+String primo = nomi.get(0);   // nessun cast
+System.out.println(primo.toUpperCase());
+// nomi.aggiungi(5);   // errore
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+[Anna, Luca, Sara, Marco, Elena] 5
+2
+false
+ANNA
+\end{lstlisting}
+
+\column{0.46\textwidth}
+\footnotesize
+\begin{itemize}\itemsep=4pt
+    \item \texttt{Contenitore<String>}: da qui in poi il compilatore sa che dentro ci sono solo \texttt{String}: \texttt{get(0)} restituisce una \texttt{String}, su cui si chiama subito \texttt{toUpperCase}; \texttt{aggiungi(5)} non compila
+    \item al quinto \texttt{aggiungi} l'array interno passa da 4 a 8 posizioni: il client \textbf{non se ne accorge}, è un dettaglio della realizzazione nascosto dall'interfaccia pubblica (lezione~5)
+    \item \texttt{nomi.indiceDi("Sara")} confronta con \texttt{equals}, non con \texttt{==}: funzionerebbe anche con una stringa letta da tastiera, oggetto diverso da quello aggiunto (lezione~2)
+    \item \texttt{println(nomi)} chiama \texttt{toString} da solo (lezione~8)
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{ProvaContenitore.java} (2/2): con le \texttt{Coppia}}
+\begin{columns}[T]
+\column{0.6\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Contenitore<Coppia<String, Integer>> esami =
+        new Contenitore<>();
+esami.aggiungi(new Coppia<>("Analisi", 28));
+esami.aggiungi(new Coppia<>("Fisica", 30));
+System.out.println(esami);
+Coppia<String, Integer> c = new Coppia<>("Analisi", 28);
+System.out.println(esami.contiene(c));
+int somma = 0;
+for (int i = 0; i < esami.size(); i++) {
+    somma += esami.get(i).getSecondo();
+}
+double media = (double) somma / esami.size();
+System.out.println("media " + media);
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+[(Analisi, 28), (Fisica, 30)]
+false
+media 29.0
+\end{lstlisting}
+
+\column{0.4\textwidth}
+\footnotesize
+\textbf{Rispondiamo insieme:}
+\begin{enumerate}\itemsep=3pt
+    \item \texttt{Contenitore<Coppia<String, Integer>>}: un argomento di tipo generico che è a sua volta un tipo parametrizzato. Che tipo ha \texttt{esami.get(i)}? E \texttt{esami.get(i).getSecondo()}? Come fa \texttt{somma +=} ad accettarlo?
+    \item \texttt{esami.contiene(c)} restituisce \texttt{false}, eppure una coppia \texttt{(Analisi, 28)} c'è: perché? Che cosa manca a \texttt{Coppia}? (lezione~8)
+    \item perché \texttt{toString} copia con \texttt{Arrays.copyOf(elementi, quanti)} invece di stampare direttamente \texttt{elementi}?
+    \item che cosa succederebbe se \texttt{get} restituisse \texttt{elementi[i]} senza il cast \texttt{(T)}?
+    \item quante volte raddoppia l'array per arrivare a 1000 elementi?
+\end{enumerate}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo (30 min) -- il problema}
+\begin{columns}[T]
+\column{0.6\textwidth}
+\footnotesize
+\textbf{Il problema.} La ricerca binaria di oggi funziona solo sugli \texttt{int}. Vogliamo un modulo \texttt{Ricerche} che cerchi in un array ordinato di \textbf{qualunque tipo confrontabile}: \texttt{String}, \texttt{Integer}, \texttt{Double}, \ldots{} Il programma di prova \texttt{ProvaRicerche} è già scritto: ordina gli array con \texttt{Arrays.sort} e poi cerca.
+
+\vspace{0.1cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=2pt
+    \item \texttt{isOrdinato(v)}: vero se \texttt{v} è in ordine non decrescente (ogni elemento non viene prima del precedente)
+    \item \texttt{ricercaBinaria(v, x)}: l'indice di \texttt{x} in \texttt{v}; se \texttt{x} non c'è, \texttt{NonTrovatoException} (la classe di prima, copiata nella cartella); precondizione: \texttt{v} ordinato
+    \item \texttt{ricercaRicorsiva(v, x)}: lo stesso risultato, in ricorsione, con il metodo a quattro parametri che lavora su \texttt{v[sinistra..destra]}
+    \item gli elementi si confrontano solo con \texttt{compareTo}: niente \texttt{==}, \texttt{<}, \texttt{>}
+    \item un array di tipo primitivo (\texttt{int[]}) non deve essere accettato: errore di compilazione, non a tempo di esecuzione
+\end{itemize}
+
+\column{0.4\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.5\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 30
+    wrappingWidth: 600
+---
+flowchart TB
+  P["<b>ProvaRicerche.java</b><br/>già scritto"]
+  R["<b>Ricerche.java</b><br/>da scrivere"]
+  C["<b>Comparable&lt;T&gt;</b><br/>java.lang"]
+  P -- "usa" --> R
+  R -- "richiede T extends" --> C
+  style P fill:#dcfce7,stroke:#15803d
+  style R fill:#fef3c7,stroke:#b45309
+  style C fill:#dbeafe,stroke:#1d4ed8
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo -- \texttt{ProvaRicerche.java}}
+\begin{columns}[T]
+\column{0.6\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+String[] nomi = { "Sara", "Anna", "Marco",
+                  "Luca", "Elena" };
+System.out.println(Ricerche.isOrdinato(nomi));
+Arrays.sort(nomi);
+System.out.println(Arrays.toString(nomi));
+System.out.println(Ricerche.isOrdinato(nomi));
+Integer[] numeri = { 1, 3, 5, 10, 15, 23,
+                     31, 47, 47, 56, 64 };
+try {
+    int luca = Ricerche.ricercaBinaria(nomi, "Luca");
+    int dieci = Ricerche.ricercaRicorsiva(numeri, 10);
+    System.out.println(luca + " " + dieci);
+    int paolo = Ricerche.ricercaBinaria(nomi, "Paolo");
+    System.out.println(paolo);   // mai eseguito
+} catch (NonTrovatoException e) {
+    System.out.println(e.getMessage());
+}
+Double[] misure = { 2.5, 1.0, 3.75 };
+System.out.println(Ricerche.isOrdinato(misure));
+// int[] interi = { 1, 2, 3 };
+// Ricerche.ricercaBinaria(interi, 2);   // errore
+\end{lstlisting}
+
+\column{0.4\textwidth}
+{\footnotesize L'output atteso:}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+false
+[Anna, Elena, Luca, Marco, Sara]
+true
+2 3
+non trovato: Paolo
+false
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item l'array di nomi non è ordinato finché \texttt{Arrays.sort} non lo ordina; poi \texttt{"Luca"} è in posizione 2; \texttt{"Paolo"} non c'è: si va al \texttt{catch} e la \texttt{println} di \texttt{paolo} è saltata
+    \item \texttt{numeri} è un \texttt{Integer[]}: gli stessi valori della slide sull'idea, con autoboxing nel letterale
+    \item l'ultima riga, se si toglie il commento, deve dare un errore di compilazione
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo -- le decisioni}
+\begin{columns}[T]
+\column{0.6\textwidth}
+\footnotesize
+\textbf{Prima di scrivere il codice, decidiamo insieme:}
+\begin{enumerate}\itemsep=3pt
+    \item \textbf{come accettare array di tipi diversi?} \textrightarrow{} metodi \textbf{generici}: il parametro è \texttt{T[] v}, e anche \texttt{x} è un \texttt{T}, dello stesso tipo degli elementi
+    \item \textbf{come confrontare due \texttt{T}?} \textrightarrow{} con \texttt{compareTo}, quindi il vincolo \texttt{<T extends Comparable<T>>}: un \texttt{int[]} è già rifiutato da \texttt{T[]} (\texttt{int} non è un tipo riferimento); il vincolo rifiuta in più un array di una classe non confrontabile
+    \item \textbf{i tre casi del confronto?} \textrightarrow{} una sola chiamata \texttt{int c = v[medio].compareTo(x)}, poi \texttt{c == 0} (trovato), \texttt{c > 0} (\texttt{v[medio]} viene dopo \texttt{x}: si va a sinistra), altrimenti a destra
+    \item \textbf{se \texttt{x} non c'è?} \textrightarrow{} \texttt{NonTrovatoException}, come per gli \texttt{int}: i metodi dichiarano \texttt{throws}, il client cattura; il costruttore accetta un \texttt{Object}, quindi anche un \texttt{T}
+    \item \textbf{controllare che \texttt{v} sia ordinato dentro \texttt{ricercaBinaria}?} \textrightarrow{} no: costerebbe \texttt{n} confronti; la precondizione sta nel commento, \texttt{isOrdinato} è per il client
+    \item \textbf{la versione ricorsiva?} \textrightarrow{} due metodi in overloading, come prima; anche quello a quattro parametri dichiara il vincolo: ogni metodo generico ha i \textbf{suoi} parametri di tipo generico
+\end{enumerate}
+
+\column{0.4\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.4\textheight,center}
+\begin{mermaid}
+classDiagram
+  class Ricerche {
+    +isOrdinato(T[]) boolean$
+    +ricercaBinaria(T[], T) int$
+    +ricercaRicorsiva(T[], T, int, int) int$
+    +ricercaRicorsiva(T[], T) int$
+  }
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+Un modulo (lezione~4): solo metodi \texttt{static}, sottolineati in UML, senza \texttt{main}. In ogni intestazione, \texttt{T extends Comparable<T>}; nelle ricerche, \texttt{throws NonTrovatoException}.
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione (1/2) -- \texttt{isOrdinato} e \texttt{ricercaBinaria}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Vero se v e' in ordine non decrescente. */
+public static <T extends Comparable<T>>
+        boolean isOrdinato(T[] v) {
+    for (int i = 1; i < v.length; i++) {
+        if (v[i - 1].compareTo(v[i]) > 0) {
+            return false;
+        }
+    }
+    return true;
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item l'intestazione va a capo dopo il vincolo: è lunga, ma è una riga sola per il compilatore
+    \item \texttt{isOrdinato}: basta un elemento che viene \textbf{prima} del precedente per rispondere \texttt{false}; con zero o un elemento il ciclo non parte: \texttt{true}
+    \item \texttt{v[i - 1].compareTo(v[i]) > 0}: due elementi uguali vicini vanno bene (ordine non decrescente, come i due 47)
+    \item in \texttt{ricercaBinaria} cambiano solo i tipi e il confronto: la struttura è quella di prima, invariante compreso
+\end{itemize}
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** L'indice di x in v (ordinato). */
+public static <T extends Comparable<T>>
+        int ricercaBinaria(T[] v, T x)
+        throws NonTrovatoException {
+    int sinistra = 0;
+    int destra = v.length - 1;
+    while (sinistra <= destra) {
+        int medio = (sinistra + destra) / 2;
+        int c = v[medio].compareTo(x);
+        if (c == 0) {
+            return medio;
+        } else if (c > 0) { // v[medio] dopo x
+            destra = medio - 1;
+        } else {
+            sinistra = medio + 1;
+        }
+    }
+    throw new NonTrovatoException(x);
+}
+\end{lstlisting}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione (2/2) -- \texttt{ricercaRicorsiva}}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Cerca x in v[sinistra..destra]. */
+public static <T extends Comparable<T>>
+        int ricercaRicorsiva(T[] v, T x,
+                int sinistra, int destra)
+        throws NonTrovatoException {
+    if (sinistra > destra) {
+        throw new NonTrovatoException(x);
+    }
+    int medio = (sinistra + destra) / 2;
+    int c = v[medio].compareTo(x);
+    if (c == 0) {
+        return medio;
+    } else if (c > 0) {
+        return ricercaRicorsiva(v, x,
+                sinistra, medio - 1);
+    } else {
+        return ricercaRicorsiva(v, x,
+                medio + 1, destra);
+    }
+}
+\end{lstlisting}
+
+\column{0.46\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Cerca x in tutto v (ordinato). */
+public static <T extends Comparable<T>>
+        int ricercaRicorsiva(T[] v, T x)
+        throws NonTrovatoException {
+    return ricercaRicorsiva(v, x,
+            0, v.length - 1);
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=4pt
+    \item nelle chiamate ricorsive non si scrive \texttt{<T>}: il compilatore deduce \texttt{T} da \texttt{v} e \texttt{x}, come sempre
+    \item stesso nome, parametri diversi (overloading); il client chiama solo il secondo
+    \item con \texttt{8} le chiamate sarebbero \texttt{[0..10]}, \texttt{[0..4]}, \texttt{[3..4]}, \texttt{[3..2]}, e dall'ultima l'eccezione risale fino al client: la stessa catena della versione sugli \texttt{int}
+    \item \textbf{due modi, uno stesso vincolo}: per cercare servono solo confronti, e \texttt{Comparable<T>} è tutto ciò che chiediamo a \texttt{T}. Dalla lezione~12, anche array delle nostre classi
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Wrap-up}
+
+\begin{frame}{Riepilogo: cosa abbiamo trattato}
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.1}
+\scriptsize
+\begin{tabular}{|>{\raggedright\arraybackslash}p{6.4cm}|>{\raggedright\arraybackslash}p{7.4cm}|}
+\hline
+\textbf{Concetto (unità)} & \textbf{Dove compare oggi} \\
+\hline
+Ricerca binaria: l'idea, la precondizione; la ricerca lineare (U20) & la traccia su \texttt{\{1, 3, 5, 10, \ldots\}}; \texttt{ricercaLineare} in \texttt{Confronti} \\
+\hline
+Versione iterativa e invariante del ciclo; \texttt{NonTrovatoException} (U20, U19) & \texttt{ricercaBinaria} in \texttt{RicercaBinaria} e in \texttt{Ricerche} \\
+\hline
+Versione ricorsiva: due casi base, una chiamata (U20) & \texttt{ricercaRicorsiva}, nelle due versioni \\
+\hline
+Costo: $\log_2 n$ confronti contro $n$ (U20) & \texttt{Confronti}; i raddoppi di \texttt{Contenitore} \\
+\hline
+Il problema; classi generiche, parametri e argomenti di tipo generico (U22) & \texttt{Scatola} con \texttt{Object} e \texttt{Scatola<T>}; \texttt{Contenitore<T>} \\
+\hline
+Più parametri di tipo generico (U22) & \texttt{Coppia<A, B>}; \texttt{Contenitore<Coppia<String, Integer>>} \\
+\hline
+I limiti: primitivi, \texttt{instanceof}, array; la cancellazione (U22) & \texttt{Limiti}; l'\texttt{Object[]} e il cast di \texttt{Contenitore} \\
+\hline
+Metodi generici; interfacce generiche; vincoli con \texttt{extends} (U22) & \texttt{Utili.primo}, \texttt{scambia}, \texttt{max}; \texttt{Comparable<T>}; \texttt{Ricerche} \\
+\hline
+Il carattere jolly \texttt{?} (U22) & \texttt{Scatole.stampa(Scatola<?>)}; \texttt{instanceof Scatola<?>} \\
+\hline
+\end{tabular}
+\end{center}
+
+\vspace{0.1cm}
+\textbf{Prossima lezione (L12)}: \texttt{Comparable} sulle nostre classi e \texttt{Comparator}, l'ordinamento con \texttt{Arrays.sort}; collezioni e tipi di dato astratti: pila e coda con un array, il nodo e la lista collegata, pila e coda con una lista collegata.
+\end{frame}
+
+% ========================================================================
+\begin{frame}{Homework 11 (da svolgere entro la prossima lezione)}
+\footnotesize\setlength{\parskip}{0pt}
+Tre esercizi, ciascuno con il suo programma di prova, nella cartella \texttt{homework/}. Gli elementi di tipo \texttt{T} si confrontano solo con \texttt{compareTo}.
+\begin{enumerate}\itemsep=3pt
+    \item \textbf{\texttt{Intervallo.java}} (con \texttt{ProvaIntervallo.java}): una classe generica \textbf{con vincolo}, \texttt{Intervallo<T extends Comparable<T>>}, immutabile: l'intervallo chiuso $[\texttt{min}, \texttt{max}]$. Il costruttore \texttt{Intervallo(T min, T max)} solleva \texttt{IllegalArgumentException} se \texttt{min} viene dopo \texttt{max}; \texttt{getMin}, \texttt{getMax}; \texttt{contiene(T x)}, vero se \texttt{x} è nell'intervallo, estremi compresi; \texttt{interseca(Intervallo<T> altro)}, vero se i due intervalli hanno almeno un valore in comune; \texttt{toString}: \texttt{[18, 30]}. \texttt{ProvaIntervallo} lo usa con \texttt{Integer} (i voti da 18 a 30), con \texttt{String} (da \texttt{Anna} a \texttt{Luca}: \texttt{Elena} c'è, \texttt{Sara} no) e con \texttt{Double}, e cattura l'eccezione degli estremi invertiti.
+    \item \textbf{\texttt{Occorrenze.java}} (con \texttt{ProvaOccorrenze.java}): un modulo su array di \texttt{int} ordinati in modo crescente, in cui un valore può comparire \textbf{più volte} (come i due 47). \texttt{primaOccorrenza(int[] v, int x)} e \texttt{ultimaOccorrenza(int[] v, int x)} restituiscono il primo e l'ultimo indice in cui compare \texttt{x} (se non c'è, \texttt{NonTrovatoException}), con \textbf{una ricerca binaria ciascuno}: quando \texttt{v[medio] == x} si prende nota dell'indice e si continua nella metà di sinistra (o di destra), invece di fermarsi. \texttt{conta(int[] v, int x)} usa i due metodi per dire quante volte \texttt{x} compare, senza scorrere l'array: se catturano l'eccezione, la risposta è 0. \texttt{ProvaOccorrenze} lo prova sull'array della lezione e su un elenco di voti con ripetizioni, anche con un valore assente e un array vuoto.
+    \item \textbf{\texttt{Classifica.java}} (con \texttt{ProvaClassifica.java}): \texttt{Classifica<T extends Comparable<T>>}, un contenitore come quello dell'esercitazione (\texttt{Object[]} che raddoppia, \texttt{quanti}, \texttt{get}, \texttt{size}, \texttt{toString}) in cui però \texttt{aggiungi(T x)} inserisce \texttt{x} \textbf{nella posizione che mantiene l'ordine crescente}, spostando a destra gli elementi più grandi; in più \texttt{isVuota()}, \texttt{primo()} e \texttt{ultimo()} (il più piccolo e il più grande; la classifica non deve essere vuota). \texttt{ProvaClassifica} inserisce i tempi di una gara in ordine sparso (\texttt{52, 48, 61, 48, 55}) e stampa classifica, migliore e peggiore; poi tre nomi, e mostra l'eccezione di \texttt{get} con un indice fuori dall'intervallo.
+\end{enumerate}
+\end{frame}
+
+% ========================================================================
+\begin{frame}
+\begin{center}
+{\Huge Domande?}\\[2em]
+{\normalsize \href{mailto:mattia.fonisto@unina.it}{\texttt{mattia.fonisto@unina.it}}}
+\end{center}
+\end{frame}
+
+\end{document}

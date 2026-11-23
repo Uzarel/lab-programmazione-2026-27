@@ -1,0 +1,1321 @@
+% ============================================================================
+%  Laboratorio di Programmazione -- Lezione 12 (24 novembre 2026)
+%  Compilare con:  pdflatex -shell-escape Lezione12_Comparable_Collezioni_ADT.tex
+%  Richiede: mermaid.sty (nel progetto) + Mermaid CLI `mmdc` nel PATH
+%  NB: ogni frame che contiene codice (lstlisting) o un diagramma (mermaid)
+%      deve essere dichiarato [fragile].
+% ============================================================================
+\documentclass[10pt,aspectratio=169,xcolor={table}]{beamer}
+\usetheme{Madrid}
+\usecolortheme{default}
+
+% `provide=*` carica la localizzazione italiana dai file .ini di babel: funziona anche
+% su installazioni TeX prive di texlive-lang-italian; con una TeX Live completa e`
+% equivalente al classico \usepackage[italian]{babel}.
+\usepackage[italian,provide=*]{babel}
+\usepackage[utf8]{inputenc}
+
+% Localizzazione dei nomi dei blocchi Beamer
+\uselanguage{italian}
+\languagepath{italian}
+\deftranslation[to=italian]{Definition}{Definizione}
+\deftranslation[to=italian]{Theorem}{Teorema}
+\deftranslation[to=italian]{Example}{Esempio}
+\deftranslation[to=italian]{Proof}{Dimostrazione}
+\deftranslation[to=italian]{Corollary}{Corollario}
+\deftranslation[to=italian]{Lemma}{Lemma}
+
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{mermaid}
+
+% Mermaid: sfondo trasparente e dimensione massima adatta a una slide 16:9
+\MermaidRendererOptions{-b transparent}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+
+% Configurazione colori per il codice
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\definecolor{keywordblue}{rgb}{0.0,0.0,0.7}
+
+% Stile per snippet Java
+\lstdefinestyle{javastyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen}\itshape,
+    keywordstyle=\color{keywordblue}\bfseries,
+    numberstyle=\scriptsize\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=none,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    aboveskip=0.6\medskipamount,
+    belowskip=0.6\medskipamount,
+    language=Java,
+    morekeywords={default},
+    literate={à}{{\`a}}1 {è}{{\`e}}1 {é}{{\'e}}1 {ì}{{\`i}}1
+             {ò}{{\`o}}1 {ù}{{\`u}}1 {È}{{\`E}}1
+}
+\lstset{style=javastyle}
+
+% Stile per righe di terminale
+\lstdefinestyle{shell}{
+    language=bash,
+    backgroundcolor=\color{black!85},
+    basicstyle=\ttfamily\footnotesize\color{white},
+    keywordstyle=\color{white},
+    stringstyle=\color{white},
+    commentstyle=\color{green!70},
+    numbers=none,
+    frame=none,
+    aboveskip=0.6\medskipamount,
+    belowskip=0.6\medskipamount,
+    showstringspaces=false
+}
+
+% Celle dei diagrammi di pila e coda realizzate con array
+\newcommand{\vuota}{\cellcolor{gray!15}}
+\newcommand{\piena}[1]{\cellcolor{blue!12}\texttt{#1}}
+
+\title[Lezione 12 -- Comparable, collezioni e ADT]{Lezione 12 -- \texttt{Comparable}, collezioni e ADT}
+\subtitle{l'ordine naturale e i comparatori, l'ordinamento con \texttt{Arrays.sort}; pila e coda con un array, il nodo e la lista concatenata, pila e coda con una lista concatenata}
+\author[Mattia Fonisto]{Mattia Fonisto}
+\institute[Lab.\ di Programmazione]{Laboratorio di Programmazione -- Ingegneria Informatica, II anno\\
+           Università degli Studi di Napoli Federico II -- Sede di San Giovanni a Teduccio}
+\date{24 novembre 2026}
+
+\begin{document}
+
+\frame{\titlepage}
+
+% ========================================================================
+\begin{frame}{Agenda della lezione (2h)}
+\begin{enumerate}
+    \item \textbf{Ripasso e Homework 11} \hfill (\emph{15 min})
+    \begin{itemize}
+        \item uno di voi alla lavagna con \texttt{Intervallo}, \texttt{Occorrenze} o \texttt{Classifica}: lo commentiamo insieme
+    \end{itemize}
+    \item \textbf{\texttt{Comparable} e \texttt{Comparator}} \hfill (\emph{15 min})
+    \begin{itemize}
+        \item l'ordine naturale di una classe nostra; \texttt{Arrays.sort} su un array di oggetti
+        \item un ordine diverso: i comparatori
+    \end{itemize}
+    \item \textbf{Collezioni e tipi di dato astratti} \hfill (\emph{30 min})
+    \begin{itemize}
+        \item contenitori e politiche di accesso; precondizioni e postcondizioni
+        \item la pila e la coda con un array; il nodo e la lista concatenata; la pila con una lista concatenata
+    \end{itemize}
+    \item \textbf{Esercitazione} -- tutti insieme \hfill (\emph{50 min})
+    \begin{itemize}
+        \item \emph{Commentiamo insieme}: le parentesi bilanciate, con una pila
+        \item \emph{Insieme, passo passo}: la coda con una lista concatenata
+    \end{itemize}
+    \item \textbf{Wrap-up e Homework 12} \hfill (\emph{10 min})
+\end{enumerate}
+\end{frame}
+
+% ========================================================================
+\section{Comparable e Comparator}
+
+\begin{frame}[fragile]{\texttt{Comparable} sulle nostre classi: l'ordine naturale -- \texttt{Persona.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class Persona
+        implements Comparable<Persona> {
+
+    private final String nome;
+    private final String cognome;
+    private final int eta;
+\end{lstlisting}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Negativo se this e' piu' giovane. */
+@Override
+public int compareTo(Persona altra) {
+    return Integer.compare(eta, altra.eta);
+}
+
+@Override
+public String toString() {
+    return cognome + " " + nome
+            + " (" + eta + ")";
+}
+\end{lstlisting}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Persona p1 = new Persona("Anna", "Russo", 35);
+Persona p2 = new Persona("Luca", "Verde", 20);
+System.out.println(p1.compareTo(p2));   // 1
+System.out.println(p2.compareTo(p1));   // -1
+\end{lstlisting}
+
+\column{0.5\textwidth}
+\begin{block}{Ordine naturale}
+\small Una classe che implementa \texttt{Comparable<T>} con \texttt{T} uguale a se stessa dà ai suoi oggetti un \emph{ordine naturale}: \texttt{a.compareTo(b)} è negativo se \texttt{a} viene prima di \texttt{b}, zero se stanno nello stesso posto, positivo se viene dopo.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \texttt{Comparable<T>} è l'interfaccia generica della lezione~11: con l'argomento \texttt{Persona}, il metodo da scrivere è \texttt{compareTo(Persona altra)}, e dentro si legge \texttt{altra.eta} (stessa classe, lezione~5)
+    \item \textbf{l'ordine è una scelta}: qui per età. \texttt{Integer.compare} dà negativo, zero o positivo, come \texttt{Double.compare} (lezione~8); \texttt{eta - altra.eta} avrebbe lo stesso segno
+    \item due coetanei danno \texttt{0} anche se \texttt{equals} direbbe \texttt{false}: conta solo ciò che ordina
+    \item costruttore e \texttt{get} non mostrati; è una nuova \texttt{Persona}, con l'età
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Ordinare un array di oggetti: \texttt{Arrays.sort} -- \texttt{ProvaPersone.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Persona[] elenco = { p1, p2,
+    new Persona("Mario", "Annunziata", 33),
+    new Persona("Sara", "Esposito", 33) };
+Arrays.sort(elenco);      // ordine naturale
+for (Persona p : elenco) {
+    System.out.println(p);
+}
+System.out.println(Utili.max(elenco)); // max
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Verde Luca (20)
+Annunziata Mario (33)
+Esposito Sara (33)
+Russo Anna (35)
+Russo Anna (35)
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \texttt{Arrays.sort} ordina \textbf{sul posto} (lezione~4) chiamando il \texttt{compareTo} degli elementi: funziona su un array di qualunque classe che implementa \texttt{Comparable}; i due coetanei restano nell'ordine in cui erano
+    \item il \texttt{max} generico della lezione~11, con il vincolo \texttt{<T extends Comparable<T>>}, ora accetta un \texttt{Persona[]}, come ogni metodo con quel vincolo: la promessa della scorsa lezione
+\end{itemize}
+
+\column{0.5\textwidth}
+\footnotesize
+\textbf{E se \texttt{Persona} non implementasse \texttt{Comparable}?} (\texttt{ProvaSenzaComparable.java})
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Arrays.sort(elenco);   // compila, ma...
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Exception in thread "main"
+java.lang.ClassCastException: class Persona
+cannot be cast to class java.lang.Comparable
+(...)
+\end{lstlisting}
+\begin{itemize}\itemsep=3pt
+    \item con \texttt{Utili.max(elenco)} l'errore uscirebbe a tempo di \textbf{compilazione}: il vincolo rifiuta un \texttt{T} non confrontabile. \texttt{Arrays.sort} si comporta diversamente perché la sua intestazione è \texttt{sort(Object[] a)}, senza vincolo: accetta qualunque array di oggetti e fa il cast a \texttt{Comparable} elemento per elemento \textbf{a run time}
+    \item la regola: per ordinare con \texttt{Arrays.sort} o cercare con \texttt{Arrays.binarySearch} (lezione~4) un array di oggetti nostri, la classe deve implementare \texttt{Comparable}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Un altro ordine: \texttt{Comparator} -- \texttt{ComparaPerCognome.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public interface Comparator<T> {
+    int compare(T a, T b);   // come compareTo
+}
+\end{lstlisting}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+import java.util.Comparator;
+
+public class ComparaPerCognome
+        implements Comparator<Persona> {
+
+    @Override
+    public int compare(Persona a, Persona b) {
+        String ca = a.getCognome();
+        String cb = b.getCognome();
+        return ca.compareTo(cb);
+    }
+}
+\end{lstlisting}
+\begin{block}{Comparatore}
+\small Un \emph{comparatore} è un oggetto di una classe che implementa \texttt{Comparator<T>} (\texttt{java.util}, qui semplificata): di solito non ha dati, ha solo \texttt{compare(a, b)}, con le regole di segno di \texttt{compareTo}.
+\end{block}
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Arrays.sort(elenco, new ComparaPerCognome());
+for (Persona p : elenco) {
+    System.out.println(p);
+}
+ComparaPerCognome c = new ComparaPerCognome();
+System.out.println(c.compare(p1, p2));
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Annunziata Mario (33)
+Esposito Sara (33)
+Russo Anna (35)
+Verde Luca (20)
+-4
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item l'ordine naturale è \textbf{uno solo}; per un altro ordine si passa ad \texttt{Arrays.sort} un secondo argomento, il comparatore: \texttt{sort(T[] v, Comparator<T> c)} (semplificata). Ogni ordine in più è una classe in più (\texttt{ComparaPerNome}, con \texttt{getNome})
+    \item \texttt{compare} confronta i due \textbf{argomenti}, non \texttt{this}: il comparatore sta fuori da \texttt{Persona}, che non cambia, e usa i \texttt{get}; \texttt{-4} è \texttt{'R'} $-$ \texttt{'V'} (lezione~2)
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Collezioni e tipi di dato astratti}
+
+\begin{frame}[fragile]{Collezioni: contenitori e politiche di accesso}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{block}{Collezione}
+\small Una \emph{collezione} è un oggetto che contiene altri oggetti, i suoi elementi; la classe che la realizza si chiama anche \emph{contenitore}. Le collezioni si distinguono per la \emph{politica di accesso}: in quale posizione va un elemento quando viene inserito, e quale elemento viene letto o tolto per primo.
+\end{block}
+\scriptsize
+\begin{center}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{2.5cm}|>{\raggedright\arraybackslash}p{4.5cm}|}
+\hline
+\textbf{Politica} & \textbf{Chi decide la posizione di un elemento} \\
+\hline
+nessuna & il \textbf{client}: l'elemento va dove indica lui, come \texttt{v[3] = x} in un array \\
+\hline
+ordinata & il \textbf{valore} dell'elemento: 48 inserito in \texttt{[52, 55, 61]} va prima di 52, per mantenere l'ordine \\
+\hline
+LIFO (\emph{last in, first out}): la \textbf{pila} (\emph{stack}) & l'\textbf{ordine di arrivo}: esce per primo l'ultimo entrato (i piatti impilati) \\
+\hline
+FIFO (\emph{first in, first out}): la \textbf{coda} (\emph{queue}) & l'\textbf{ordine di arrivo}: esce per primo il primo entrato (la fila allo sportello) \\
+\hline
+\end{tabular}
+\end{center}
+
+\column{0.03\textwidth}
+\column{0.45\textwidth}
+\begin{block}{Precondizione e postcondizione}
+\small La \emph{precondizione} di un metodo è ciò che deve essere vero quando viene chiamato; la \emph{postcondizione} è ciò che è vero quando termina: il risultato e l'effetto sullo stato. Insieme dicono che cosa fa il metodo, senza dire come.
+\end{block}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item precondizione violata: il metodo non promette nulla; le classi di oggi sollevano \texttt{IllegalStateException} (non controllata, come \texttt{IllegalArgumentException}): l'oggetto non è nello stato giusto. Il client la \textbf{evita} chiedendo prima, e non la cattura (lezione~10)
+    \item pila e coda sono \textbf{tipi di dato astratti} (lezione~5): contano le operazioni, con pre e postcondizioni, non la struttura dati sotto
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{L'ADT pila (\emph{stack}): LIFO e l'interfaccia \texttt{Pila<T>} -- \texttt{Pila.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{|l|l|>{\raggedright\arraybackslash}p{3.6cm}|}
+\hline
+\textbf{Operazione} & \textbf{Pre} & \textbf{Post} \\
+\hline
+\texttt{push(x)} & non piena & \texttt{x} è in cima; un elemento in più \\
+\hline
+\texttt{pop()} & non vuota & restituisce l'elemento in cima e lo toglie \\
+\hline
+\texttt{isEmpty()} & -- & vero se non ci sono elementi \\
+\hline
+\texttt{isFull()} & -- & vero se non c'è posto per un altro \\
+\hline
+\end{tabular}
+\end{center}
+\begin{itemize}\itemsep=3pt
+    \item \textbf{LIFO}: si inserisce e si toglie sempre dallo stesso lato, la \textbf{cima}; l'elemento che esce è quello entrato per \textbf{ultimo}, mentre il primo entrato esce per ultimo, come l'ultimo piatto messo sulla pila è il primo che si prende
+    \item \textbf{l'interfaccia dell'ADT è un'\texttt{interface} di Java} (lezione~9): i metodi con le pre e postcondizioni nei commenti; il \textbf{corpo} è una classe che la implementa, e possono essercene più d'una. I nomi delle operazioni sono quelli inglesi, usati ovunque
+\end{itemize}
+
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** L'ADT pila (stack): politica LIFO. */
+public interface Pila<T> {
+
+    /** Mette x in cima. Pre: !isFull(). */
+    void push(T x);
+
+    /** Toglie e restituisce la cima.
+        Pre: !isEmpty(). */
+    T pop();
+
+    boolean isEmpty();
+
+    boolean isFull();
+}
+\end{lstlisting}
+\begin{center}
+\scriptsize\renewcommand{\arraystretch}{1.2}\setlength{\tabcolsep}{4pt}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{2.3cm}|>{\raggedright\arraybackslash}p{1.6cm}|>{\raggedright\arraybackslash}p{2.3cm}|}
+\hline
+\textbf{operazione} & \textbf{esce} & \textbf{pila (cima a destra)} \\
+\hline
+\texttt{push} di Anna, Luca, Sara & & \texttt{Anna Luca Sara} \\
+\hline
+\texttt{pop()} & \texttt{Sara} & \texttt{Anna Luca} \\
+\hline
+\texttt{push(Marco)} & & \texttt{Anna Luca Marco} \\
+\hline
+tre \texttt{pop()} & \texttt{Marco}, \texttt{Luca}, \texttt{Anna} & vuota \\
+\hline
+\end{tabular}
+\end{center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{La pila con un array: lo stato -- \texttt{PilaArray.java}}
+\begin{columns}[T]
+\column{0.44\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class PilaArray<T>
+        implements Pila<T> {
+
+    // non T[] (lezione 11)
+    private final Object[] elementi;
+    // prima posizione libera
+    private int cima;
+
+    public PilaArray(int capienza) {
+        elementi = new Object[capienza];
+        cima = 0;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return cima == 0;
+    }
+
+    @Override
+    public boolean isFull() {
+        return cima == elementi.length;
+    }
+\end{lstlisting}
+
+\column{0.56\textwidth}
+\footnotesize
+\textbf{Dopo \texttt{push("Anna")}, \texttt{push("Luca")}, \texttt{push("Sara")} su una pila di capienza 5:}
+\begin{center}
+\renewcommand{\arraystretch}{1.3}\setlength{\tabcolsep}{5pt}
+\begin{tabular}{l|c|c|c|c|c|}
+\cline{2-6}
+indice & 0 & 1 & 2 & 3 & 4 \\
+\cline{2-6}
+\texttt{elementi} & \piena{Anna} & \piena{Luca} & \piena{Sara} & \vuota & \vuota \\
+\cline{2-6}
+\multicolumn{1}{l}{} & \multicolumn{3}{l}{} & \multicolumn{2}{l}{$\uparrow$ \texttt{cima = 3}} \\
+\end{tabular}
+\end{center}
+\begin{itemize}\itemsep=3pt
+    \item \textbf{lo stato}: un array di \texttt{Object} (il rimedio della lezione~11 a \texttt{new T[n]}) di capienza fissa, e l'indice \texttt{cima}. La regola che vale sempre: gli elementi occupano le posizioni da \texttt{0} a \texttt{cima - 1}, la \textbf{cima della pila} è in \texttt{cima - 1} e \texttt{cima} è la prima posizione libera
+    \item \texttt{isEmpty} e \texttt{isFull} non fanno che leggere questa regola: vuota se \texttt{cima} è 0, piena se \texttt{cima} ha raggiunto la lunghezza dell'array
+    \item l'array è \texttt{final}: il riferimento non cambia mai, il contenuto sì (lezione~6); la capienza la sceglie il client nel costruttore
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{La pila con un array: \texttt{push} e \texttt{pop} -- \texttt{PilaArray.java}}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+@Override
+public void push(T x) {
+    if (isFull()) {
+        throw new IllegalStateException("piena");
+    }
+    elementi[cima] = x;
+    cima++;
+}
+
+@Override
+public T pop() {
+    if (isEmpty()) {
+        throw new IllegalStateException("vuota");
+    }
+    cima--;
+    return (T) elementi[cima];
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item ogni metodo controlla la \textbf{sua} precondizione, poi mantiene la regola: \texttt{push} scrive nella prima posizione libera e la fa avanzare; \texttt{pop} fa il contrario, nell'ordine contrario: per questo esce l'ultimo entrato
+    \item il cast \texttt{(T)} e l'avviso \emph{unchecked}: come nella lezione~11, la garanzia la dà \texttt{push}
+\end{itemize}
+
+\column{0.46\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Pila<String> p = new PilaArray<>(2);
+p.push("Anna");
+p.push("Luca");
+System.out.println(p.isFull());
+System.out.println(p.pop());
+System.out.println(p.pop());
+System.out.println(p.isEmpty());
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+true
+Luca
+Anna
+true
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item in \texttt{ProvaPile}, \texttt{p} è dichiarata di tipo \texttt{Pila<String>}, l'\textbf{interfaccia}, non \texttt{PilaArray<String>}: così il codice che usa \texttt{p} può chiamare solo le operazioni dell'ADT e non dipende dalla realizzazione; per passare a un'altra basta cambiare il \texttt{new}, e il resto non si tocca (lezione~9). Il \texttt{new}, invece, deve nominare una classe: un'interfaccia non si istanzia
+    \item su una pila di 2 un terzo \texttt{push} solleverebbe l'eccezione
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{L'ADT coda (\emph{queue}): FIFO e l'idea della coda circolare -- \texttt{Coda.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** L'ADT coda (queue): politica FIFO. */
+public interface Coda<T> {
+
+    /** Mette x in fondo. Pre: !isFull(). */
+    void enqueue(T x);
+
+    /** Toglie e restituisce il primo.
+        Pre: !isEmpty(). */
+    T dequeue();
+
+    boolean isEmpty();
+
+    boolean isFull();
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item le stesse precondizioni della pila; cambiano le postcondizioni: si inserisce da una parte, \textbf{in fondo}, e si toglie dall'altra, \textbf{in testa}: il primo arrivato è il primo servito
+    \item con un array servono \textbf{due indici}: \texttt{testa}, dove sta il primo, e \texttt{coda}, dove andrà il prossimo \texttt{enqueue}; \texttt{dequeue} fa avanzare \texttt{testa}, \texttt{enqueue} fa avanzare \texttt{coda}: i due indici si inseguono verso destra
+\end{itemize}
+
+\column{0.5\textwidth}
+\footnotesize
+\textbf{Coda circolare, capienza 4}: tre \texttt{enqueue}, \texttt{dequeue()}, due \texttt{enqueue}
+\begin{center}
+\scriptsize\renewcommand{\arraystretch}{1.3}\setlength{\tabcolsep}{3pt}
+\begin{tabular}{l|c|c|c|c|l}
+\cline{2-5}
+indice & 0 & 1 & 2 & 3 & \\
+\cline{2-5}
+3 \texttt{enqueue} & \piena{Anna} & \piena{Luca} & \piena{Sara} & \vuota & \texttt{testa 0, coda 3} \\
+\cline{2-5}
+\texttt{dequeue()} & \vuota & \piena{Luca} & \piena{Sara} & \vuota & \texttt{testa 1, coda 3} \\
+\cline{2-5}
+\texttt{enqueue(Marco)} & \vuota & \piena{Luca} & \piena{Sara} & \piena{Marco} & \texttt{testa 1, coda 0} \\
+\cline{2-5}
+\texttt{enqueue(Elena)} & \piena{Elena} & \piena{Luca} & \piena{Sara} & \piena{Marco} & \texttt{testa 1, coda 1} \\
+\cline{2-5}
+\end{tabular}
+\end{center}
+\begin{itemize}\itemsep=2pt
+    \item Anna esce dalla testa e Marco entra dal lato opposto, in fondo (posizione 3): la 0 resta libera; se gli indici avanzassero e basta, lo resterebbe per sempre
+    \item \textbf{coda circolare}: dopo l'ultima posizione si torna alla 0 con il resto della divisione, \texttt{(coda + 1) \% elementi.length}: Elena va in 0 ``girando l'angolo'', ed è comunque l'ultima della fila
+    \item quando i due indici coincidono (\texttt{testa == coda}) la coda può essere vuota o piena (ultima riga): le distingue \texttt{quanti}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{La coda con un array: lo stato e \texttt{enqueue} -- \texttt{CodaArray.java}}
+\begin{columns}[T]
+\column{0.46\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class CodaArray<T>
+        implements Coda<T> {
+
+    private final Object[] elementi;
+    private int testa;   // il primo
+    private int coda;    // il prossimo
+    private int quanti;
+
+    public CodaArray(int capienza) {
+        elementi = new Object[capienza];
+        testa = 0;
+        coda = 0;
+        quanti = 0;
+    }
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \textbf{lo stato}: l'array, i due indici e il contatore. La regola che vale sempre: gli elementi, nell'ordine di arrivo, stanno in \texttt{testa}, \texttt{testa + 1}, \ldots{} fino a \texttt{coda - 1}, \textbf{girando l'angolo} se serve; sono \texttt{quanti}
+    \item nel costruttore i tre \texttt{int} partono da 0: la coda è vuota, e il primo \texttt{enqueue} scrive in 0
+    \item vuota e piena si leggono da \texttt{quanti}: in entrambi i casi i due indici coincidono
+\end{itemize}
+
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+@Override
+public boolean isEmpty() {
+    return quanti == 0;
+}
+
+@Override
+public boolean isFull() {
+    return quanti == elementi.length;
+}
+
+@Override
+public void enqueue(T x) {
+    if (isFull()) {
+        throw new IllegalStateException("piena");
+    }
+    elementi[coda] = x;
+    coda = (coda + 1) % elementi.length;
+    quanti++;
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \texttt{enqueue} scrive dove indica \texttt{coda} e lo fa avanzare di uno, modulo la lunghezza: da \texttt{elementi.length - 1} si torna a \texttt{0}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{La coda con un array: \texttt{dequeue} -- \texttt{CodaArray.java}}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+@Override
+public T dequeue() {
+    if (isEmpty()) {
+        throw new IllegalStateException("vuota");
+    }
+    T x = (T) elementi[testa];
+    testa = (testa + 1) % elementi.length;
+    quanti--;
+    return x;
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \texttt{dequeue} è simmetrico a \texttt{enqueue}: legge il primo, poi fa avanzare \texttt{testa}, sempre modulo la lunghezza; l'elemento resta fisicamente nell'array, ma fuori dalle posizioni usate: sarà sovrascritto da un \texttt{enqueue}
+    \item il valore da restituire va salvato in \texttt{x} \textbf{prima} di spostare \texttt{testa}: dopo, \texttt{elementi[testa]} sarebbe il secondo
+    \item lo stesso cast \texttt{(T)} della pila, con lo stesso avviso
+\end{itemize}
+
+\column{0.46\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+Coda<String> c = new CodaArray<>(4);
+c.enqueue("Anna");
+c.enqueue("Luca");
+c.enqueue("Sara");
+System.out.println(c.dequeue());
+c.enqueue("Marco");   // in posizione 3
+c.enqueue("Elena");   // in posizione 0
+System.out.println(c.isFull());
+while (!c.isEmpty()) {
+    System.out.println(c.dequeue());
+}
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+Anna
+true
+Luca
+Sara
+Marco
+Elena
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \texttt{ProvaCodaArray}: la sequenza della slide precedente; Elena sta in posizione 0 ma esce per ultima: conta l'ordine di arrivo
+    \item il \texttt{while} con \texttt{isEmpty} è il modo giusto di svuotare: nessun \texttt{dequeue} senza aver chiesto
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Il nodo e la lista concatenata -- \texttt{Nodo.java}, \texttt{ListaConcatenata.java}}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+class Nodo<T> {
+
+    T dato;
+    Nodo<T> prossimo;
+
+    Nodo(T dato) {
+        this.dato = dato;
+        prossimo = null;
+    }
+}
+\end{lstlisting}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class ListaConcatenata<T> {
+
+    private Nodo<T> testa;   // null se vuota
+
+    public ListaConcatenata() {
+        testa = null;
+    }
+\end{lstlisting}
+\footnotesize
+\begin{itemize}
+    \item lista vuota: \texttt{testa == null}, ed è ciò che risponde \texttt{isEmpty()}. Una classe generica senza array né cast
+    \item \textbf{niente capienza}: un nodo si crea per ogni elemento inserito, e quello di un elemento tolto diventa orfano (lezione~5)
+\end{itemize}
+
+\column{0.5\textwidth}
+\begin{block}{Lista concatenata}
+\small Una \emph{lista concatenata} (\emph{linked list}) è una sequenza di \emph{nodi}, ognuno con un dato e il riferimento al \emph{prossimo}; l'ultimo ha \texttt{prossimo} uguale a \texttt{null}. La lista conosce solo il primo nodo, la \emph{testa}.
+\end{block}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.2\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 26px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 30
+    wrappingWidth: 600
+---
+flowchart LR
+  t["<b>testa</b><br/><span style='color:#9ca3af'><i>riferimento</i></span>"]
+  A["<b>Nodo</b><br/>dato: Anna<br/>prossimo<br/><span style='color:#9ca3af'><i>riferimento</i></span>"]
+  B["<b>Nodo</b><br/>dato: Luca<br/>prossimo<br/><span style='color:#9ca3af'><i>riferimento</i></span>"]
+  C["<b>Nodo</b><br/>dato: Sara<br/>prossimo<br/>null"]
+  t --> A --> B --> C
+  style t fill:#fef3c7,stroke:#b45309
+\end{mermaid}
+\vspace{-0.35cm}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \texttt{Nodo<T>} serve solo a \texttt{ListaConcatenata}: è dichiarata senza \texttt{public}, quindi la vedono solo le classi dello stesso package (lezione~9), e le sue variabili sono senza modificatore, così la lista le legge e le scrive direttamente (\texttt{q.prossimo = testa}), senza \texttt{get} e \texttt{set}; i client della lista non vedono mai un nodo: è dunque una \textbf{classe di servizio}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+
+% ========================================================================
+\begin{frame}[fragile]{Inserimento in testa e in coda -- \texttt{ListaConcatenata.java}}
+\begin{columns}[T]
+\column{0.46\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Inserisce x come primo elemento. */
+public void addFirst(T x) {
+    Nodo<T> q = new Nodo<>(x);
+    q.prossimo = testa;
+    testa = q;
+}
+
+/** Inserisce x come ultimo elemento. */
+public void addLast(T x) {
+    Nodo<T> q = new Nodo<>(x);
+    if (isEmpty()) {
+        testa = q;
+    } else {
+        Nodo<T> temp = testa;
+        while (temp.prossimo != null) {
+            temp = temp.prossimo;
+        }
+        temp.prossimo = q;
+    }
+}
+\end{lstlisting}
+
+\column{0.54\textwidth}
+\footnotesize
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+// nomi era [Anna, Luca]
+nomi.addFirst("Marco");
+\end{lstlisting}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.3\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 22px
+  flowchart:
+    nodeSpacing: 18
+    rankSpacing: 36
+    wrappingWidth: 600
+---
+flowchart LR
+  t["<b>testa</b><br/><span style='color:#9ca3af'><i>riferimento</i></span>"]
+  q["<b>q</b><br/><span style='color:#9ca3af'><i>riferimento</i></span>"]
+  M["<b>Nodo</b><br/>dato: Marco<br/>prossimo"]
+  A["<b>Nodo</b><br/>dato: Anna<br/>prossimo"]
+  B["<b>Nodo</b><br/>dato: Luca<br/>prossimo: null"]
+  q --> M
+  M -- "1" --> A
+  t -- "2" --> M
+  t -. "prima" .-> A
+  A --> B
+  style t fill:#fef3c7,stroke:#b45309
+  style M fill:#dcfce7,stroke:#15803d
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\begin{itemize}\itemsep=3pt
+    \item \textbf{in testa}: 1) \texttt{q.prossimo = testa}, \texttt{q} punta al vecchio primo; 2) \texttt{testa = q}. L'\textbf{ordine conta}: con prima \texttt{testa = q} il resto della lista non sarebbe più raggiungibile. Su una lista vuota funziona lo stesso: \texttt{q.prossimo} resta \texttt{null}. Costa \textbf{un passo}
+    \item \textbf{in coda}: \texttt{temp} scorre fino all'ultimo nodo, quello con \texttt{prossimo} uguale a \texttt{null}, e lo aggancia a \texttt{q}: costa quanto la lista è lunga; la lista vuota è un caso a parte: \texttt{q} diventa la testa
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Eliminazione in testa, interna e in coda -- \texttt{ListaConcatenata.java}}
+\begin{columns}[T]
+\column{0.56\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Toglie la prima x; vero se c'era. */
+public boolean remove(T x) {
+    if (isEmpty()) {
+        return false;
+    }
+    if (testa.dato.equals(x)) {
+        testa = testa.prossimo;   // era in testa
+        return true;
+    }
+    Nodo<T> temp = testa;         // nodo prima di x
+    while (temp.prossimo != null
+            && !temp.prossimo.dato.equals(x)) {
+        temp = temp.prossimo;
+    }
+    if (temp.prossimo == null) {
+        return false;             // x non c'e'
+    }
+    temp.prossimo = temp.prossimo.prossimo;
+    return true;
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=2pt
+    \item \textbf{in testa}: basta spostare \texttt{testa} al secondo nodo; il primo diventa orfano. \texttt{removeFirst()}, nel file, fa questo e restituisce il dato tolto (pre: non vuota), come il \texttt{pop} della pila
+\end{itemize}
+
+\column{0.44\textwidth}
+\footnotesize
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+// nomi era [Anna, Luca, Sara]
+nomi.remove("Luca");
+\end{lstlisting}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.34\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 26px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 50
+    wrappingWidth: 600
+---
+flowchart LR
+  tm["<b>temp</b>"]
+  A["dato: Anna<br/>prossimo"]
+  B["dato: Luca<br/>prossimo"]
+  C["dato: Sara<br/>prossimo: null"]
+  tm --> A
+  A -. "prima" .-> B
+  B --> C
+  A -- "dopo" --> C
+  style B fill:#fee2e2,stroke:#b91c1c
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\begin{itemize}\itemsep=2pt
+    \item \textbf{interna}: per scavalcare un nodo serve quello \textbf{prima}: \texttt{temp} si ferma sul nodo il cui prossimo contiene \texttt{x} (qui Anna), o sull'ultimo se \texttt{x} non c'è (l'\texttt{\&\&} non valuta \texttt{equals} quando \texttt{temp.prossimo} è \texttt{null}); la freccia ``dopo'' è \texttt{temp.prossimo = temp.prossimo.prossimo}
+    \item \textbf{in coda}: se \texttt{x} è nell'ultimo nodo, \texttt{temp.prossimo.prossimo} è \texttt{null} e \texttt{temp} diventa l'ultimo: lo stesso codice
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{La pila con una lista concatenata -- \texttt{PilaLista.java}}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class PilaLista<T>
+        implements Pila<T> {
+
+    private Nodo<T> testa;   // null se vuota
+\end{lstlisting}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+@Override
+public void push(T x) {
+    Nodo<T> q = new Nodo<>(x);
+    q.prossimo = testa;
+    testa = q;
+}
+
+@Override
+public T pop() {
+    if (isEmpty()) {
+        throw new IllegalStateException("vuota");
+    }
+    T x = testa.dato;
+    testa = testa.prossimo;
+    return x;
+}
+\end{lstlisting}
+
+\column{0.46\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+@Override
+public boolean isEmpty() {
+    return testa == null;
+}
+
+@Override
+public boolean isFull() {
+    return false;        // mai piena
+}
+\end{lstlisting}
+{\footnotesize Il costruttore (\texttt{testa = null}) non è mostrato.}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \textbf{la cima della pila è la testa della lista}: \texttt{push} inserisce in testa, \texttt{pop} elimina in testa: un passo ciascuno, e di nuovo esce l'ultimo entrato, perché il nuovo nodo va sempre davanti ai vecchi
+    \item \textbf{stessa interfaccia, altro corpo}: in \texttt{ProvaPile}, \texttt{Pila<String> q = new PilaLista<>()} con le stesse chiamate dà lo stesso output, tranne \texttt{isFull}: \texttt{false}, non c'è una capienza
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Esercitazione}
+
+\begin{frame}[fragile]{Commentiamo insieme (20 min) -- il problema}
+\begin{columns}[T]
+\column{0.56\textwidth}
+\footnotesize
+\textbf{Il problema.} In un'espressione le parentesi tonde, quadre e graffe devono essere \textbf{bilanciate}: ogni parentesi chiusa deve chiudere l'ultima ancora aperta, ed essere dello stesso tipo; alla fine non deve restarne nessuna aperta; gli altri caratteri non contano. Il modulo \texttt{Parentesi} è già scritto: lo leggiamo riga per riga insieme a \texttt{ProvaParentesi}.
+
+\vspace{0.1cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=2pt
+    \item \texttt{isBilanciata(s)} restituisce \texttt{true} per \texttt{(a + b) * [c - \{d\}]} e per la stringa vuota
+    \item \texttt{false} se una parentesi chiusa arriva quando non ce n'è nessuna aperta: \texttt{(a + b))}
+    \item \texttt{false} se la chiusa non è del tipo dell'ultima aperta: \texttt{[(a + b])}
+    \item \texttt{false} se alla fine qualcuna resta aperta: \texttt{((a + b)}
+    \item lo strumento: una \textbf{pila} di caratteri, usata solo attraverso l'interfaccia \texttt{Pila<Character>}
+\end{itemize}
+
+\column{0.44\textwidth}
+\footnotesize
+\textbf{Perché una pila}: in \texttt{[(a + b])} la \texttt{]} deve chiudere l'\textbf{ultima} aperta, cioè \texttt{(}: ciò che è aperto per ultimo va chiuso per primo, LIFO
+\begin{center}
+\scriptsize\renewcommand{\arraystretch}{1.25}\setlength{\tabcolsep}{4pt}
+\begin{tabular}{|c|l|l|}
+\hline
+\textbf{letto} & \textbf{azione} & \textbf{pila, cima a destra} \\
+\hline
+\texttt{[} & \texttt{push} & \texttt{[} \\
+\hline
+\texttt{(} & \texttt{push} & \texttt{[ (} \\
+\hline
+\texttt{a + b} & niente & \texttt{[ (} \\
+\hline
+\texttt{]} & \texttt{pop} dà \texttt{(} & \texttt{[} \\
+\hline
+ & \texttt{(} e \texttt{]} non corrispondono & \texttt{false} \\
+\hline
+\end{tabular}
+\end{center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{Parentesi.java}}
+\begin{columns}[T]
+\column{0.6\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Vero se le parentesi di s sono bilanciate. */
+public static boolean isBilanciata(String s) {
+    Pila<Character> pila = new PilaLista<>();
+    for (int i = 0; i < s.length(); i++) {
+        char c = s.charAt(i);
+        if (c == '(' || c == '[' || c == '{') {
+            pila.push(c);
+        } else if (c == ')' || c == ']' || c == '}') {
+            if (pila.isEmpty()
+                    || !corrispondono(pila.pop(), c)) {
+                return false;
+            }
+        }
+    }
+    return pila.isEmpty();   // nessuna aperta
+}
+
+private static boolean corrispondono(char a, char c) {
+    return (a == '(' && c == ')')
+            || (a == '[' && c == ']')
+            || (a == '{' && c == '}');
+}
+\end{lstlisting}
+
+\column{0.4\textwidth}
+\footnotesize
+\begin{itemize}\itemsep=4pt
+    \item \texttt{Pila<Character>}, non \texttt{Pila<char>}: l'argomento di tipo generico è un tipo riferimento (lezione~11); \texttt{push(c)} inscatola il \texttt{char}, e \texttt{pila.pop()} passato a un parametro \texttt{char} viene tirato fuori (autoboxing e unboxing, lezione~4)
+    \item \texttt{pila} è del tipo \textbf{interfaccia}: usa solo \texttt{push}, \texttt{pop}, \texttt{isEmpty}. Con \texttt{new PilaArray<>(s.length())} non cambierebbe nient'altro: più di \texttt{s.length()} parentesi non ci sono
+    \item chiusa con la pila vuota, o diversa dall'ultima aperta: \texttt{false}. L'\texttt{||} non valuta il secondo operando se il primo è vero (lezione~6): \texttt{pop} solo su una pila non vuota
+    \item alla fine, bilanciata se nessuna è rimasta aperta; \texttt{corrispondono} è \texttt{private} (lezione~4)
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Commentiamo insieme -- \texttt{ProvaParentesi.java}}
+\begin{columns}[T]
+\column{0.58\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+String[] prove = { "(a + b) * [c - {d}]", "((a + b)",
+                   "(a + b))", "[(a + b])", "" };
+for (String s : prove) {
+    System.out.println("\"" + s + "\" -> "
+            + Parentesi.isBilanciata(s));
+}
+\end{lstlisting}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+"(a + b) * [c - {d}]" -> true
+"((a + b)" -> false
+"(a + b))" -> false
+"[(a + b])" -> false
+"" -> true
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \texttt{"\textbackslash""} è il carattere \texttt{"} dentro una stringa (lezione~2)
+    \item per la stringa vuota il \texttt{for} non parte e la pila è vuota: \texttt{true}
+\end{itemize}
+
+\column{0.42\textwidth}
+\footnotesize
+\textbf{Rispondiamo insieme:}
+\begin{enumerate}\itemsep=3pt
+    \item seguiamo \texttt{((a + b)}: che cosa c'è nella pila alla fine del \texttt{for}? Quale delle tre regole scatta?
+    \item e \texttt{(a + b))}: a quale carattere si esce, e da quale \texttt{return}?
+    \item se si togliesse \texttt{pila.isEmpty() ||} dalla condizione, che cosa succederebbe con \texttt{(a + b))}?
+    \item perché \texttt{corrispondono} ha due parametri di tipo \texttt{char} e non \texttt{Character}? Che cosa succede nella chiamata \texttt{corrispondono(pila.pop(), c)}?
+    \item con una coda al posto della pila, \texttt{[(a + b])} verrebbe accettata? Perché?
+\end{enumerate}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo (30 min) -- il problema}
+\begin{columns}[T]
+\column{0.58\textwidth}
+\footnotesize
+\textbf{Il problema.} Vogliamo una seconda realizzazione dell'ADT coda, \texttt{CodaLista<T>}, \textbf{senza capienza}: una lista concatenata da cui si toglie in testa (\texttt{dequeue}) e si aggiunge in fondo (\texttt{enqueue}). Il programma di prova \texttt{ProvaCode} è già scritto: simula la fila a uno sportello, prima con \texttt{CodaArray} e poi con \texttt{CodaLista}, e deve stampare le stesse righe, tranne una; poi usa \texttt{toString} su una coda di numeri.
+
+\vspace{0.1cm}
+\textbf{Le regole}
+\begin{itemize}\itemsep=2pt
+    \item \texttt{CodaLista<T>} implementa \texttt{Coda<T>}: \texttt{enqueue}, \texttt{dequeue}, \texttt{isEmpty}, \texttt{isFull}, con le pre e postcondizioni dell'interfaccia
+    \item i nodi sono quelli di \texttt{Nodo<T>}; la classe non deve scorrere la lista per accodare: \texttt{enqueue} e \texttt{dequeue} costano un passo ciascuno
+    \item \texttt{isFull} non è mai vera
+    \item una precondizione violata solleva \texttt{IllegalStateException}
+    \item \texttt{toString}: gli elementi dal primo all'ultimo, \texttt{[Luca, Sara]}
+\end{itemize}
+
+\column{0.42\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.55\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 20px
+  flowchart:
+    nodeSpacing: 14
+    rankSpacing: 30
+    wrappingWidth: 600
+---
+flowchart TB
+  P["<b>ProvaCode.java</b><br/>già scritto"]
+  I["<b>Coda&lt;T&gt;</b><br/>l'interfaccia dell'ADT"]
+  A["<b>CodaArray.java</b><br/>già scritta"]
+  L["<b>CodaLista.java</b><br/>da scrivere"]
+  N["<b>Nodo.java</b><br/>già scritto"]
+  P -- "usa" --> I
+  A -- "implementa" --> I
+  L -- "implementa" --> I
+  L -- "usa" --> N
+  style P fill:#dcfce7,stroke:#15803d
+  style A fill:#dcfce7,stroke:#15803d
+  style N fill:#dcfce7,stroke:#15803d
+  style I fill:#dbeafe,stroke:#1d4ed8
+  style L fill:#fef3c7,stroke:#b45309
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo -- \texttt{ProvaCode.java}}
+\begin{columns}[T]
+\column{0.6\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+/** Chi arriva prima e' servito prima. */
+public static void sportello(Coda<String> fila) {
+    fila.enqueue("Anna");
+    fila.enqueue("Luca");
+    // fila era [Anna, Luca]
+    fila.enqueue("Sara");
+    System.out.println("piena: " + fila.isFull());
+    System.out.println("servito " + fila.dequeue());
+    fila.enqueue("Marco");
+    while (!fila.isEmpty()) {
+        System.out.println("servito " + fila.dequeue());
+    }
+}
+
+public static void main(String[] args) {
+    sportello(new CodaArray<>(3));
+    sportello(new CodaLista<>());
+    CodaLista<Integer> numeri = new CodaLista<>();
+    numeri.enqueue(7);
+    numeri.enqueue(4);
+    numeri.enqueue(9);
+    System.out.println(numeri.dequeue() + " " + numeri);
+}
+\end{lstlisting}
+
+\column{0.4\textwidth}
+{\footnotesize L'output atteso:}
+\begin{lstlisting}[style=shell,basicstyle=\ttfamily\scriptsize\color{white}]
+piena: true
+servito Anna
+servito Luca
+servito Sara
+servito Marco
+piena: false
+servito Anna
+servito Luca
+servito Sara
+servito Marco
+7 [4, 9]
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \texttt{sportello} ha un parametro di tipo \textbf{interfaccia}: riceve l'una o l'altra coda e non se ne accorge; cambia solo la riga di \texttt{isFull}
+    \item l'ultima riga usa \texttt{toString}, chiamato dalla concatenazione (lezione~8), dopo che il 7 è uscito
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Insieme, passo passo -- le decisioni}
+\begin{columns}[T]
+\column{0.62\textwidth}
+\footnotesize
+\textbf{Prima di scrivere il codice, decidiamo insieme:}
+\begin{enumerate}\itemsep=3pt
+    \item \textbf{lo stato?} \textrightarrow{} \textbf{due riferimenti}: \texttt{testa}, il primo nodo (quello che \texttt{dequeue} toglie) e \texttt{coda}, l'ultimo (dopo cui \texttt{enqueue} aggiunge); con la sola \texttt{testa}, \texttt{enqueue} dovrebbe scorrere tutta la lista come \texttt{addLast}. Coda vuota: entrambi \texttt{null}
+    \item \textbf{\texttt{enqueue} su una coda vuota?} \textrightarrow{} non c'è un ultimo a cui agganciare \texttt{q}: \texttt{q} diventa la \texttt{testa}; altrimenti \texttt{coda.prossimo = q}. In entrambi i casi, poi, \texttt{coda = q}
+    \item \textbf{\texttt{dequeue} dell'unico elemento?} \textrightarrow{} \texttt{testa} diventa \texttt{null}; anche \texttt{coda} va rimessa a \texttt{null}, per rispettare la regola dello stato (coda vuota: entrambi \texttt{null}): altrimenti continuerebbe a puntare a un nodo che non è più nella coda, e quel nodo non diventerebbe orfano
+    \item \textbf{\texttt{isEmpty} e \texttt{isFull}?} \textrightarrow{} \texttt{testa == null}; sempre \texttt{false}
+    \item \textbf{precondizioni?} \textrightarrow{} \texttt{dequeue} controlla \texttt{isEmpty} e solleva \texttt{IllegalStateException}; \texttt{enqueue} non ha nulla da controllare
+    \item \textbf{\texttt{toString}?} \textrightarrow{} scorrere con \texttt{temp} da \texttt{testa} a \texttt{null}, come in \texttt{ListaConcatenata}
+\end{enumerate}
+
+\column{0.38\textwidth}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.45\textheight,center}
+\begin{mermaid}
+classDiagram
+  class CodaLista~T~ {
+    -testa : Nodo~T~
+    -coda : Nodo~T~
+    +CodaLista()
+    +enqueue(T)
+    +dequeue() T
+    +isEmpty() boolean
+    +isFull() boolean
+    +toString() String
+  }
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\footnotesize
+I metodi dell'interfaccia sono \texttt{public} e con \texttt{@Override} (lezione~9).
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione (1/2) -- lo stato e \texttt{enqueue}}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+public class CodaLista<T>
+        implements Coda<T> {
+
+    private Nodo<T> testa;   // il primo
+    private Nodo<T> coda;    // l'ultimo
+
+    public CodaLista() {
+        testa = null;
+        coda = null;
+    }
+
+    @Override
+    public void enqueue(T x) {
+        Nodo<T> q = new Nodo<>(x);
+        if (isEmpty()) {
+            testa = q;           // il primo
+        } else {
+            coda.prossimo = q;   // dopo l'ultimo
+        }
+        coda = q;            // ora e' l'ultimo
+    }
+\end{lstlisting}
+
+\column{0.46\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+// fila era [Anna, Luca]
+fila.enqueue("Sara");
+\end{lstlisting}
+\MermaidAdjustBoxOpts{max width=\linewidth,max height=0.3\textheight,center}
+\begin{mermaid}
+---
+config:
+  themeVariables:
+    fontSize: 22px
+  flowchart:
+    nodeSpacing: 18
+    rankSpacing: 36
+    wrappingWidth: 600
+---
+flowchart LR
+  t["<b>testa</b>"]
+  c["<b>coda</b>"]
+  A["dato: Anna<br/>prossimo"]
+  B["dato: Luca<br/>prossimo"]
+  S["dato: Sara<br/>prossimo: null"]
+  t --> A --> B
+  B -- "1" --> S
+  c -- "2" --> S
+  c -. "prima" .-> B
+  style S fill:#dcfce7,stroke:#15803d
+\end{mermaid}
+\MermaidAdjustBoxOpts{max width=0.95\linewidth,max height=0.62\textheight,center}
+\begin{itemize}\itemsep=3pt
+    \item 1) \texttt{coda.prossimo = q}, poi 2) \texttt{coda = q}; \texttt{q.prossimo} è già \texttt{null} dal costruttore di \texttt{Nodo}: il nuovo ultimo non punta a nulla
+    \item il caso della coda vuota si distingue solo nell'aggancio; \texttt{coda = q} vale per tutti e due: non ripetiamolo nei due rami
+    \item \texttt{enqueue} non controlla \texttt{isFull}: non può essere vera
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\begin{frame}[fragile]{Una possibile soluzione (2/2) -- \texttt{dequeue}, i predicati, \texttt{toString}}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+@Override
+public T dequeue() {
+    if (isEmpty()) {
+        throw new IllegalStateException("vuota");
+    }
+    T x = testa.dato;
+    testa = testa.prossimo;
+    if (testa == null) {
+        coda = null;   // era l'unico
+    }
+    return x;
+}
+
+@Override
+public boolean isEmpty() {
+    return testa == null;
+}
+
+@Override
+public boolean isFull() {
+    return false;            // mai piena
+}
+\end{lstlisting}
+
+\column{0.46\textwidth}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+@Override
+public String toString() {
+    String s = "[";
+    Nodo<T> temp = testa;
+    while (temp != null) {
+        s += temp.dato;
+        if (temp.prossimo != null) {
+            s += ", ";
+        }
+        temp = temp.prossimo;
+    }
+    return s + "]";
+}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}\itemsep=3pt
+    \item \texttt{dequeue} è l'eliminazione in testa di \texttt{ListaConcatenata}, più l'\texttt{if} che azzera \texttt{coda} quando esce l'ultimo: lo stato torna quello della coda vuota, e \texttt{enqueue} la riconosce da \texttt{testa}
+    \item \texttt{toString} scorre tutti i nodi: l'unico metodo che costa quanto la lunghezza della coda
+    \item due realizzazioni, un'interfaccia: \texttt{sportello} non cambia
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ========================================================================
+\section{Wrap-up}
+
+\begin{frame}{Riepilogo: cosa abbiamo trattato}
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.1}
+\scriptsize
+\begin{tabular}{|>{\raggedright\arraybackslash}p{6.4cm}|>{\raggedright\arraybackslash}p{7.4cm}|}
+\hline
+\textbf{Concetto (unità)} & \textbf{Dove compare oggi} \\
+\hline
+\texttt{Comparable} sulle nostre classi: l'ordine naturale (U23) & \texttt{Persona implements Comparable<Persona>}, \texttt{compareTo} per età \\
+\hline
+\texttt{Arrays.sort} su un array di oggetti; il vincolo \texttt{<T extends Comparable<T>>} (U23, U22) & \texttt{ProvaPersone}; \texttt{Utili.max(elenco)}; la \texttt{ClassCastException} senza \texttt{Comparable} \\
+\hline
+\texttt{Comparator}: un altro ordine, fuori dalla classe (U23) & \texttt{ComparaPerCognome}, \texttt{Arrays.sort(elenco, comparatore)} \\
+\hline
+Collezioni, contenitori, politiche di accesso; precondizioni e postcondizioni (U24) & la tabella delle politiche; i commenti di \texttt{Pila} e \texttt{Coda}; \texttt{IllegalStateException} \\
+\hline
+L'ADT pila, \emph{stack} (LIFO: \texttt{push}, \texttt{pop}) e l'ADT coda, \emph{queue} (FIFO: \texttt{enqueue}, \texttt{dequeue}); l'interfaccia dell'ADT (U24, U17) & \texttt{Pila<T>}, \texttt{Coda<T>}; \texttt{Parentesi} e \texttt{sportello} usano solo l'interfaccia \\
+\hline
+Pila e coda con un array; la coda circolare (U24) & \texttt{PilaArray}, \texttt{CodaArray} con \texttt{\% elementi.length} e \texttt{quanti} \\
+\hline
+Il nodo e la lista concatenata (\emph{linked list}): inserimento ed eliminazione in testa, in coda, interna (U24) & \texttt{Nodo<T>}, \texttt{ListaConcatenata<T>}; i diagrammi con \texttt{q} e \texttt{temp} \\
+\hline
+Pila e coda con una lista concatenata (U24) & \texttt{PilaLista}; \texttt{CodaLista} con \texttt{testa} e \texttt{coda} \\
+\hline
+\end{tabular}
+\end{center}
+
+\vspace{0.1cm}
+\textbf{Prossima lezione (L13)}: i file di testo: stream di byte e di caratteri, gli stream standard, scrivere con \texttt{PrintWriter} e \texttt{FileWriter}, leggere con \texttt{Scanner} e \texttt{BufferedReader}, \texttt{close} e il try-with-resources (il \texttt{finally} della lezione~10); una rubrica su file caricata in una lista concatenata. Ripasso finale e simulazione della prova.
+\end{frame}
+
+% ========================================================================
+\begin{frame}{Homework 12 (da svolgere entro la prossima lezione)}
+\footnotesize\setlength{\parskip}{0pt}
+Tre esercizi, ciascuno con il suo programma di prova, nella cartella \texttt{homework/}; dove servono, copiare \texttt{Nodo}, \texttt{Pila}, \texttt{PilaLista}, \texttt{Coda} e la \texttt{CodaLista} dell'esercitazione. Le precondizioni violate sollevano \texttt{IllegalStateException}.
+\begin{enumerate}\itemsep=3pt
+    \item \textbf{\texttt{Libro.java}} (con \texttt{ComparaPerAnno.java} e \texttt{ProvaLibri.java}): \texttt{Libro} è immutabile, con \texttt{titolo}, \texttt{autore} e \texttt{anno}, i tre \texttt{get} e \texttt{toString} nella forma \texttt{Effective Java (Bloch, 2018)}; implementa \texttt{Comparable<Libro>} con l'ordine naturale per \textbf{titolo}. \texttt{ComparaPerAnno} implementa \texttt{Comparator<Libro>}, per anno crescente. \texttt{ProvaLibri} crea un array di quattro libri, lo ordina con \texttt{Arrays.sort} e lo stampa un libro per riga; cerca con \texttt{Arrays.binarySearch} un \texttt{new Libro("Effective Java", "?", 0)} e stampa l'indice trovato (perché basta il titolo?); infine lo riordina con il comparatore e lo ristampa.
+    \item \textbf{\texttt{ListaOrdinata.java}} (con \texttt{ProvaListaOrdinata.java}): \texttt{ListaOrdinata<T extends Comparable<T>>}, una lista concatenata di \texttt{Nodo<T>} i cui elementi restano sempre in ordine crescente (ripetizioni ammesse). \texttt{add(T x)} mette \texttt{x} al posto giusto con \textbf{un solo scorrimento}, fermandosi sull'ultimo nodo con dato non maggiore di \texttt{x} (in testa, interna o in coda: i casi di oggi); \texttt{remove(T x)} toglie la prima occorrenza e dice se c'era; \texttt{contains(T x)} si ferma appena incontra un dato maggiore di \texttt{x}; \texttt{isEmpty()}, \texttt{first()} (il più piccolo; pre: non vuota), \texttt{toString}. \texttt{ProvaListaOrdinata} inserisce i tempi \texttt{52, 48, 61, 48, 55} e stampa \texttt{[48, 48, 52, 55, 61]} e il migliore; rimuove un 48, il 61 e un valore assente, stampando ogni volta risultato e lista; prova \texttt{contains}; inserisce quattro nomi.
+    \item \textbf{\texttt{Palindromi.java}} (con \texttt{ProvaPalindromi.java}): un modulo con \texttt{isPalindroma(String s)}, vero se le \textbf{lettere} di \texttt{s}, ignorando spazi, punteggiatura e maiuscole, si leggono uguali nei due versi. Ogni lettera, resa minuscola con \texttt{Character.toLowerCase}, va in una \texttt{Pila<Character>} e in una \texttt{Coda<Character>}; poi si svuotano insieme, confrontando ciò che esce dalla pila (al contrario) con ciò che esce dalla coda (in ordine): \texttt{false} alla prima differenza. \texttt{ProvaPalindromi} lo prova su \texttt{anna}, \texttt{I topi non avevano nipoti}, \texttt{Java} e \texttt{""}.
+\end{enumerate}
+\end{frame}
+
+% ========================================================================
+\begin{frame}
+\begin{center}
+{\Huge Domande?}\\[2em]
+{\normalsize \href{mailto:mattia.fonisto@unina.it}{\texttt{mattia.fonisto@unina.it}}}
+\end{center}
+\end{frame}
+
+\end{document}

@@ -546,10 +546,10 @@ System.out.println(Counter.DEFAULT_MAX);     // 10
 System.out.println(b.getMax());              // 10
 System.out.println(c.getMax());              // 4
 // c.setMax(2);   // ERRORE: setMax non esiste
-// ERRORE: objCount e` private
 // Counter.objCount = 100;
-// ERRORE: DEFAULT_MAX e` final
+// ERRORE: objCount e` private
 // Counter.DEFAULT_MAX = 20;
+// ERRORE: DEFAULT_MAX e` final
 \end{lstlisting}
 \small
 Nel diagramma UML i membri \texttt{static} sono sottolineati. Rispetto alla versione~4, \texttt{setMax} è scomparso: \texttt{max} è \texttt{final}.
